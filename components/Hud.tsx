@@ -58,17 +58,17 @@ export default function Hud() {
         </div>
 
         <button
-          id="hud-chapters-btn"
+          id="hud-evidence-board-btn"
           type="button"
           className="btn sm ghost"
           onClick={() => {
             sfx("click");
-            setChapterModalOpen(true);
+            setViewMode(viewMode === "board" ? "location" : "board");
           }}
           style={{
-            borderColor: "var(--accent)",
-            color: "var(--accent)",
-            background: "rgba(255, 180, 84, 0.12)",
+            borderColor: viewMode === "board" ? "#d91e2b" : "var(--accent)",
+            color: viewMode === "board" ? "#ff8a80" : "var(--accent)",
+            background: viewMode === "board" ? "rgba(217, 30, 43, 0.18)" : "rgba(255, 180, 84, 0.12)",
             fontSize: 13,
             padding: "6px 14px",
             letterSpacing: ".15em",
@@ -80,18 +80,18 @@ export default function Hud() {
             marginLeft: 6,
           }}
         >
-          <span>[CHAPTERS]</span>
+          <span>📌 [EVIDENCE BOARD]</span>
           <span
             style={{
               fontSize: 11,
-              background: "var(--accent)",
+              background: viewMode === "board" ? "#d91e2b" : "var(--accent)",
               color: "#000",
               padding: "1px 6px",
               borderRadius: 2,
               fontWeight: "bold",
             }}
           >
-            {activeChapterId} / 7
+            {activeChapterId} / 8
           </span>
         </button>
 

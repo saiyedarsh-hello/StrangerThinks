@@ -1,38 +1,40 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/store";
 import IntroCutscene from "@/components/scenes/IntroCutscene";
-import LoginScreen from "@/components/LoginScreen";
+import LandingPage from "@/components/LandingPage";
+import VecnaEntryScreen from "@/components/VecnaEntryScreen";
 import StageView from "@/components/StageView";
 import Ending from "@/components/Ending";
 import ChapterCard from "@/components/ChapterCard";
-import Hud, { SoundToggle, Toast } from "@/components/Hud";
+import Hud, { Toast } from "@/components/Hud";
 import SabotageOverlay from "@/components/SabotageOverlay";
 
 export default function Home() {
   const router = useRouter();
   const { s, hydrated, cutscene, introSeen, setIntroSeen, session } = useGame();
+  const [showVecnaChosen, setShowVecnaChosen] = useState(false);
 
-  // Route Guard: If logged in as Vecna and visiting "/", redirect immediately to /vecna
+  // Route Guard: If already logged in as Vecna and visiting "/", show Vecna Entry or redirect to /vecna
   useEffect(() => {
     if (hydrated && session && session.role === "VECNA") {
-      router.replace("/vecna");
+      setShowVecnaChosen(true);
     }
-  }, [hydrated, session, router]);
+  }, [hydrated, session]);
 
   if (!hydrated) {
     return <div style={{ minHeight: "100vh", background: "#000" }} />;
   }
 
-  // A logged-in Vecna user is redirected to /vecna
-  if (session && session.role === "VECNA") {
-    return <div style={{ minHeight: "100vh", background: "#050102" }} />;
+  // Vecna Entry Screen (Image 2) when user has Vecna role
+  if (showVecnaChosen || (session && session.role === "VECNA")) {
+    return <VecnaEntryScreen onEnter={() => router.push("/vecna")} />;
   }
 
-  // Without a valid player session, show the unified login screen
+  // Without a valid player session, show the Image 1 Landing Page
   if (!session || session.role !== "PLAYER") {
-    return <LoginScreen />;
+    return <LandingPage onEnterVecna={() => setShowVecnaChosen(true)} />;
   }
 
   // Initial Cinematic Typewriter Intro for authenticated Player

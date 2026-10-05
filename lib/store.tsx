@@ -67,7 +67,7 @@ export interface GameState {
   phase: "intro" | "title" | "login" | "play";
   team: TeamInfo | null;
   location: LocationId;
-  viewMode: "map" | "location";
+  viewMode: "map" | "location" | "board";
   stage: StageId;
   solved: Record<string, boolean>;
   completedTasks: string[];
@@ -117,7 +117,7 @@ const INITIAL: GameState = {
   phase: "title",
   team: null,
   location: "town",
-  viewMode: "location",
+  viewMode: "board",
   stage: "hawkins",
   solved: {},
   completedTasks: [],
@@ -179,8 +179,8 @@ interface Ctx {
   active: string | null;
   setActive: (id: string | null) => void;
   travelTo: (loc: LocationId) => void;
-  viewMode: "map" | "location";
-  setViewMode: (m: "map" | "location") => void;
+  viewMode: "map" | "location" | "board";
+  setViewMode: (m: "map" | "location" | "board") => void;
   introSeen: boolean;
   setIntroSeen: (seen: boolean) => void;
   vecnaCutscene: boolean;
@@ -583,7 +583,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       team: teamObj,
       phase: "play",
       location: "town",
-      viewMode: "location",
+      viewMode: "board",
       storyProgress: 10,
       introSeen: false, // ensures cinematic typewriter intro runs on fresh login
     }));
@@ -616,7 +616,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       team: teamObj,
       phase: "play",
       location: "town",
-      viewMode: "location",
+      viewMode: "board",
       storyProgress: 10,
     }));
     setCutscene("hawkins");
@@ -930,7 +930,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const endCutscene = useCallback(() => setCutscene(null), []);
   const setSoundOn = useCallback((b: boolean) => setSoundOnState(b), []);
-  const setViewMode = useCallback((m: "map" | "location") => {
+  const setViewMode = useCallback((m: "map" | "location" | "board") => {
     sfx("click");
     setS((p) => ({ ...p, viewMode: m }));
   }, []);
