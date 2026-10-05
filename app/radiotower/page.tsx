@@ -55,7 +55,6 @@ export default function RadioTowerDirectPage() {
 
       <Hud />
       <Toast />
-      <SoundToggle />
     </div>
   );
 }

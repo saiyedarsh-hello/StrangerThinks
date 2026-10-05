@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
 import CinematicBackground from "../CinematicBackground";
-import CharacterStage from "../CharacterStage";
-import { getCharacterForChapter } from "@/lib/characters";
 import Radiometer from "../Radiometer";
+import { validateChapterOnServer } from "@/lib/api";
+import { getCharacterForChapter, CHARACTERS } from "@/lib/characters";
 
 export type ChapterId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -198,8 +198,18 @@ export const CHAPTERS: ChapterDef[] = [
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Pokemon FireRed Style Bottom Dialogue Box
+   Pokemon FireRed Style Bottom Dialogue Box with Character Sprite
    ───────────────────────────────────────────────────────────────────────────── */
+const CHAPTER_HINTS: Record<number, string> = {
+  1: "Callahan logged unusual psychokinetic activity near Sublevel 4 under Project MKUltra.",
+  2: "All field vectors and radio recordings converge directly on Hawkins Lab.",
+  3: "Rearrange Will's wall message: 'DO NOT OPEN THE GATE'.",
+  4: "Trace the parity routine: evens double (* 2), odds add 1 (+ 1). Sum them up.",
+  5: "Extract the glowing red pine runes left-to-right to find vector 4-1-7.",
+  6: "Tune frequencies and calibrate all 5 pins on the tower radiometer!",
+  7: "Apply the ROT13 cipher decryption on 'URAEL PERRY' to reveal Experiment 001's name.",
+};
+
 function PokemonFireRedBottomDialog({
   chapter,
   mode = "intro",
@@ -211,17 +221,29 @@ function PokemonFireRedBottomDialog({
   onComplete: () => void;
   onNextEpisode?: () => void;
 }) {
+  const character = getCharacterForChapter(chapter.id);
+  const themeCol = character.themeColor || "#ff2d3a";
+
+  const initialLines = mode === "completion" ? chapter.completionLines : chapter.archiveLines;
+  const [lines, setLines] = useState<string[]>(initialLines);
   const [lineIdx, setLineIdx] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
 
-  const lines = mode === "completion" ? chapter.completionLines : chapter.archiveLines;
   const currentLine = lines[lineIdx] || "";
+
+  useEffect(() => {
+    const fresh = mode === "completion" ? chapter.completionLines : chapter.archiveLines;
+    setLines(fresh);
+    setLineIdx(0);
+    setCharCount(0);
+    setIsTyping(true);
+  }, [chapter.id, mode]);
 
   useEffect(() => {
     setCharCount(0);
     setIsTyping(true);
-  }, [lineIdx, chapter.id, mode]);
+  }, [lineIdx]);
 
   useEffect(() => {
     if (!isTyping) return;
@@ -229,7 +251,7 @@ function PokemonFireRedBottomDialog({
       const timer = setTimeout(() => {
         setCharCount((c) => c + 1);
         if (Math.random() > 0.45) sfx("type");
-      }, 22);
+      }, 20);
       return () => clearTimeout(timer);
     } else {
       setIsTyping(false);
@@ -257,12 +279,27 @@ function PokemonFireRedBottomDialog({
     }
   }, [isTyping, lineIdx, lines.length, currentLine.length, mode, onNextEpisode, onComplete]);
 
+  const handleAskHint = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    sfx("clue");
+    const hintText = `${character.nameTag || character.name.toUpperCase()} INTEL: "${CHAPTER_HINTS[chapter.id] || "Investigate the facility telemetry carefully."}"`;
+    setLines((prev) => [...prev, hintText]);
+    setLineIdx((prev) => prev + 1);
+    setCharCount(0);
+    setIsTyping(true);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName || "").toUpperCase();
+      if (tag === "INPUT" || tag === "TEXTAREA" || (document.activeElement as HTMLElement)?.isContentEditable) {
+        return;
+      }
       if (["Shift", "Control", "Alt", "Meta"].includes(e.key)) return;
       if (e.key === "Escape") {
         onComplete();
-      } else {
+      } else if (e.key === "Enter" || e.code === "Space") {
+        e.preventDefault();
         handleAdvance();
       }
     };
@@ -283,10 +320,11 @@ function PokemonFireRedBottomDialog({
         flexDirection: "column",
         justifyContent: "flex-end",
         alignItems: "center",
-        paddingBottom: 22,
+        paddingBottom: "clamp(10px, 1.8vh, 20px)",
         boxSizing: "border-box",
       }}
     >
+      {/* ── 1. FULLSCREEN BLUR BACKDROP ── */}
       <motion.div
         key="lore-blur-backdrop"
         initial={{ opacity: 0 }}
@@ -299,224 +337,350 @@ function PokemonFireRedBottomDialog({
           inset: 0,
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          background: "rgba(4, 2, 6, 0.84)",
+          background: "rgba(4, 2, 6, 0.85)",
           pointerEvents: "auto",
           cursor: "pointer",
         }}
       />
 
+      {/* ── 2. CHARACTER SPRITE + RETRO DIALOGUE STRIP ── */}
       <motion.div
-        initial={{ opacity: 0, y: 35 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 35 }}
+        exit={{ opacity: 0, y: 30 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
-        onClick={handleAdvance}
         style={{
           position: "relative",
           zIndex: 10,
-          pointerEvents: "auto",
-          width: "min(1100px, 94vw)",
-          cursor: "pointer",
-          userSelect: "none",
+          pointerEvents: "none",
+          width: "min(1180px, 96vw)",
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "flex-end",
+          justifyContent: "flex-start",
+          gap: "clamp(10px, 1.8vw, 22px)",
+          padding: "0 clamp(6px, 1.2vw, 16px)",
+          boxSizing: "border-box",
         }}
       >
+        {/* CHARACTER SPRITE ANCHORED AT BOTTOM-LEFT */}
         <div
+          onClick={handleAdvance}
           style={{
-            position: "relative",
-            background: "linear-gradient(180deg, #100407 0%, #060103 100%)",
-            border: "3px solid #ff2d3a",
-            borderRadius: 8,
-            padding: "20px 28px 18px",
-            boxShadow: "0 16px 45px rgba(0, 0, 0, 0.95)",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            lineHeight: 0,
+            pointerEvents: "auto",
+            cursor: "pointer",
+            userSelect: "none",
           }}
         >
-          <div
-            style={{
-              position: "absolute",
-              left: -4,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: 7,
-              height: 48,
-              borderRadius: 2,
-              background: "#ff2d3a",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              right: -4,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: 7,
-              height: 48,
-              borderRadius: 2,
-              background: "#ff2d3a",
-            }}
-          />
+          {character.sprite ? (
+            <motion.img
+              src={character.sprite}
+              alt={character.name}
+              style={{
+                height: "clamp(120px, 22vh, 210px)",
+                width: "auto",
+                display: "block",
+                objectFit: "contain",
+                objectPosition: "bottom left",
+                marginBottom: 0,
+                verticalAlign: "bottom",
+                imageRendering: "pixelated",
+                filter: "drop-shadow(0 4px 18px rgba(0,0,0,0.95))",
+              }}
+            />
+          ) : (
+            <motion.div
+              style={{
+                height: "clamp(120px, 22vh, 210px)",
+                width: "clamp(75px, 14vh, 130px)",
+                color: themeCol,
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "center",
+                marginBottom: 0,
+                lineHeight: 0,
+                filter: `drop-shadow(0 0 16px ${themeCol}44)`,
+                background: "radial-gradient(ellipse at bottom, rgba(0,0,0,0.5) 0%, transparent 70%)",
+              }}
+              dangerouslySetInnerHTML={{
+                __html:
+                  character.silhouetteSvg ||
+                  `<svg viewBox="0 0 32 48" fill="currentColor" style="shape-rendering: crispEdges; width: 100%; height: 100%;">
+                    <rect x="10" y="6" width="12" height="12" />
+                    <rect x="8" y="18" width="16" height="16" />
+                    <rect x="6" y="20" width="2" height="10" />
+                    <rect x="24" y="20" width="2" height="10" />
+                    <rect x="9" y="34" width="6" height="14" />
+                    <rect x="17" y="34" width="6" height="14" />
+                  </svg>`,
+              }}
+            />
+          )}
+        </div>
 
+        {/* RETRO DIALOGUE BOX (RIGHT OF SPRITE) */}
+        <div
+          onClick={handleAdvance}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            position: "relative",
+            pointerEvents: "auto",
+            cursor: "pointer",
+            background: "linear-gradient(180deg, rgba(14, 5, 9, 0.97) 0%, rgba(6, 2, 4, 0.99) 100%)",
+            border: `3px double ${themeCol}`,
+            borderRadius: 6,
+            boxShadow: `0 8px 30px rgba(0, 0, 0, 0.95), inset 0 0 16px rgba(0, 0, 0, 0.8), 0 0 12px ${themeCol}28`,
+            padding: "clamp(12px, 1.6vh, 18px) clamp(16px, 2vw, 24px)",
+            boxSizing: "border-box",
+            userSelect: "none",
+          }}
+        >
+          {/* Character Name Tag Tab on Top-Left Edge */}
+          <div
+            style={{
+              position: "absolute",
+              top: -14,
+              left: 14,
+              background: themeCol,
+              color: "#000000",
+              fontFamily: "var(--font-term), 'VT323', monospace",
+              fontWeight: "bold",
+              fontSize: "clamp(13px, 1.6vh, 16px)",
+              letterSpacing: ".15em",
+              padding: "2px 12px",
+              borderRadius: "4px 4px 0 0",
+              border: "1px solid rgba(255, 255, 255, 0.4)",
+              borderBottom: "none",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.6)",
+              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>{character.nameTag || character.name.toUpperCase()}</span>
+          </div>
+
+          {/* Top-Right Status & Controls */}
+          <div
+            style={{
+              position: "absolute",
+              top: -12,
+              right: 14,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span
+              className="term dim"
+              style={{
+                fontSize: 11,
+                fontFamily: "var(--font-mono)",
+                color: isTyping ? "#36e0c4" : "rgba(255,255,255,0.4)",
+                letterSpacing: ".1em",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                background: "rgba(0,0,0,0.85)",
+                padding: "2px 7px",
+                borderRadius: 3,
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: isTyping ? "#36e0c4" : "#888",
+                  animation: isTyping ? "flicker 0.4s infinite" : "none",
+                }}
+              />
+              {isTyping ? "TRANSMITTING" : "READY"}
+            </span>
+
+            <span
+              style={{
+                fontSize: 11,
+                fontFamily: "var(--font-mono)",
+                color: "rgba(255,255,255,0.55)",
+                background: "rgba(0,0,0,0.85)",
+                padding: "2px 7px",
+                borderRadius: 3,
+                border: "1px solid rgba(255,255,255,0.12)",
+              }}
+            >
+              LOG {lineIdx + 1} / {lines.length}
+            </span>
+
+            <button
+              type="button"
+              onClick={handleAskHint}
+              className="btn sm ghost"
+              style={{
+                fontSize: 10,
+                padding: "2px 8px",
+                letterSpacing: ".1em",
+                borderColor: `${themeCol}88`,
+                color: themeCol,
+                background: "rgba(0,0,0,0.85)",
+                borderRadius: 3,
+                cursor: "pointer",
+              }}
+              title="Request character Intel"
+            >
+              💡 INTEL
+            </button>
+
+            {mode === "completion" && onNextEpisode && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sfx("ok");
+                  onNextEpisode();
+                }}
+                style={{
+                  fontSize: 11,
+                  padding: "2px 10px",
+                  letterSpacing: ".12em",
+                  borderRadius: 3,
+                  border: `1px solid ${themeCol}`,
+                  background: themeCol,
+                  color: "#000000",
+                  fontWeight: "bold",
+                  fontFamily: "var(--font-term)",
+                  cursor: "pointer",
+                }}
+              >
+                NEXT EPISODE →
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                sfx("click");
+                onComplete();
+              }}
+              style={{
+                fontSize: 10,
+                padding: "2px 8px",
+                letterSpacing: ".1em",
+                borderColor: "rgba(255, 255, 255, 0.3)",
+                color: "rgba(255, 255, 255, 0.7)",
+                background: "rgba(0,0,0,0.85)",
+                borderRadius: 3,
+                border: "1px solid rgba(255,255,255,0.2)",
+                cursor: "pointer",
+              }}
+              title="Close and begin challenge"
+            >
+              [ESC / SKIP]
+            </button>
+          </div>
+
+          {/* Subtitle / Archive Sector Bar */}
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
-              borderBottom: "1px solid rgba(255, 45, 58, 0.3)",
-              paddingBottom: 8,
+              gap: 8,
+              borderBottom: `1px solid ${themeCol}33`,
+              paddingBottom: 6,
               marginBottom: 10,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: "#ff2d3a",
-                }}
-              />
-              <span
-                className="eyebrow"
-                style={{
-                  fontSize: 12.5,
-                  letterSpacing: ".22em",
-                  color: "#ff2d3a",
-                  fontWeight: "bold",
-                }}
-              >
-                {mode === "completion"
-                  ? `EPILOGUE LORE ARCHIVE · ${chapter.archiveSector}`
-                  : `ARCHIVE TRANSMISSION · ${chapter.archiveSector}`}
-              </span>
-              <span style={{ fontSize: 12.5, color: "rgba(255, 255, 255, 0.65)", fontFamily: "var(--font-mono)" }}>
-                [{chapter.label}]
-              </span>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <span style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.55)", fontFamily: "var(--font-mono)" }}>
-                LOG {lineIdx + 1} / {lines.length}
-              </span>
-              {mode === "completion" && onNextEpisode && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    sfx("ok");
-                    onNextEpisode();
-                  }}
-                  style={{
-                    fontSize: 12,
-                    padding: "4px 12px",
-                    letterSpacing: ".12em",
-                    borderRadius: 3,
-                    border: "1px solid #ff2d3a",
-                    background: "#ff2d3a",
-                    color: "#000000",
-                    fontWeight: "bold",
-                    fontFamily: "var(--font-term)",
-                  }}
-                >
-                  NEXT EPISODE →
-                </button>
-              )}
-            </div>
+            <span
+              style={{
+                fontSize: 11,
+                letterSpacing: ".16em",
+                color: themeCol,
+                fontFamily: "var(--font-term)",
+                fontWeight: "bold",
+              }}
+            >
+              {mode === "completion"
+                ? `EPILOGUE LORE ARCHIVE · ${chapter.archiveSector}`
+                : `ARCHIVE TRANSMISSION · ${chapter.archiveSector} · ${character.title}`}
+            </span>
           </div>
 
+          {/* Dialogue Text */}
           <div
+            className="character-dialogue-text"
             style={{
-              minHeight: 60,
-              fontFamily: "var(--font-mono)",
-              fontSize: "clamp(16.5px, 2.2vw, 19.5px)",
-              lineHeight: 1.65,
+              fontFamily: "var(--font-term), 'VT323', monospace",
+              fontSize: "clamp(18px, 2.3vh, 24px)",
+              lineHeight: 1.42,
               color: "#ffffff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 18,
+              letterSpacing: ".04em",
+              wordBreak: "break-word",
+              minHeight: "clamp(38px, 4.8vh, 54px)",
+              paddingRight: 80,
             }}
           >
-            <div style={{ flex: 1 }}>
-              <span style={{ color: "#ffffff", fontWeight: 500, letterSpacing: ".02em" }}>
-                {currentLine.slice(0, charCount)}
-              </span>
-              {isTyping && (
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 8,
-                    height: 18,
-                    background: "#ff2d3a",
-                    marginLeft: 4,
-                    verticalAlign: "middle",
-                  }}
-                />
-              )}
-            </div>
+            <span>{currentLine.slice(0, charCount)}</span>
+            {isTyping && (
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: 16,
+                  background: themeCol,
+                  marginLeft: 4,
+                  verticalAlign: "middle",
+                  animation: "flicker 0.4s infinite",
+                }}
+              />
+            )}
+          </div>
+
+          {/* Bottom-Right Skip / Advance Info */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 8,
+              right: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 10,
+                fontFamily: "var(--font-term)",
+                color: "rgba(255, 255, 255, 0.45)",
+                letterSpacing: ".1em",
+              }}
+            >
+              {isTyping ? "[CLICK / SPACE TO SKIP]" : isFinalLine ? "[CLICK / SPACE TO BEGIN]" : "[SPACE / CLICK]"}
+            </span>
 
             {!isTyping && (
               <motion.div
-                animate={{ y: [0, 4, 0] }}
-                transition={{ repeat: Infinity, duration: 0.6, ease: "easeInOut" }}
-                style={{
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
+                animate={{
+                  opacity: [1, 0.2, 1],
+                  y: [0, 2, 0],
                 }}
-              >
-                {isFinalLine && mode === "completion" && onNextEpisode ? (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: "var(--font-term)",
-                      letterSpacing: ".15em",
-                      color: "#000000",
-                      background: "#ff2d3a",
-                      padding: "3px 8px",
-                      borderRadius: 3,
-                      fontWeight: "bold",
-                    }}
-                  >
-                    NEXT EPISODE →
-                  </span>
-                ) : isFinalLine && mode === "intro" ? (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: "var(--font-term)",
-                      letterSpacing: ".15em",
-                      color: "#ff2d3a",
-                      border: "1px solid #ff2d3a",
-                      background: "rgba(255, 45, 58, 0.18)",
-                      padding: "3px 8px",
-                      borderRadius: 3,
-                      fontWeight: "bold",
-                    }}
-                  >
-                    ACCESS CHALLENGE →
-                  </span>
-                ) : (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: "var(--font-term)",
-                      letterSpacing: ".12em",
-                      color: "rgba(255, 255, 255, 0.55)",
-                    }}
-                  >
-                    CLICK TO ADVANCE
-                  </span>
-                )}
-                <div
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderLeft: "7px solid transparent",
-                    borderRight: "7px solid transparent",
-                    borderTop: "9px solid #ff2d3a",
-                  }}
-                />
-              </motion.div>
+                transition={{ repeat: Infinity, duration: 0.65, ease: "easeInOut" }}
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderLeft: "6px solid transparent",
+                  borderRight: "6px solid transparent",
+                  borderTop: `8px solid ${themeCol}`,
+                }}
+              />
             )}
           </div>
         </div>
@@ -744,27 +908,16 @@ export default function ChapterManager() {
   const ch6Solved = radiometerPinCount === 5 || s.radiometer.codeSolved;
   const ch7Solved = !!s.completedTasks?.includes("ch7-upsidedown") || !!s.solved?.["ch7-upsidedown"];
 
-  // Narration track: plays once per chapter, then is GONE!
-  const [seenNarrations, setSeenNarrations] = useState<Record<number, boolean>>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("hawkins_seen_narrations");
-        if (saved) return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return {};
-  });
+  // Active lore briefing state: triggers at start of every chapter and section
+  const [activeLoreChapterId, setActiveLoreChapterId] = useState<number | null>(activeChapterId);
 
+  // Automatically trigger the lore briefing & character on every chapter switch!
   useEffect(() => {
-    try {
-      localStorage.setItem("hawkins_seen_narrations", JSON.stringify(seenNarrations));
-    } catch (e) {}
-  }, [seenNarrations]);
+    setActiveLoreChapterId(activeChapterId);
+  }, [activeChapterId]);
 
-  const [replayingNarration, setReplayingNarration] = useState(false);
-  const isNarrationActive = !seenNarrations[activeChapterId] || replayingNarration;
   const [completionStoryChapterId, setCompletionStoryChapterId] = useState<number | null>(null);
-  const isLoreActive = isNarrationActive || completionStoryChapterId !== null;
+  const isLoreActive = activeLoreChapterId !== null || completionStoryChapterId !== null;
 
   // All chapters unlocked for organizer and tester access
   const isChapterUnlocked = useCallback((id: ChapterId) => {
@@ -800,19 +953,20 @@ export default function ChapterManager() {
   }, [q1Selected]);
 
   const Q1_OPTIONS = [
-    { id: "A", text: "Project MKUltra / Sublevel 04", isCorrect: true },
-    { id: "B", text: "Operation Paperclip / Echo Division", isCorrect: false },
-    { id: "C", text: "Stargate Surveillance Protocol", isCorrect: false },
-    { id: "D", text: "Project Blue Book Sub-Archive", isCorrect: false },
+    { id: "A", text: "Project MKUltra / Sublevel 04" },
+    { id: "B", text: "Operation Paperclip / Echo Division" },
+    { id: "C", text: "Stargate Surveillance Protocol" },
+    { id: "D", text: "Project Blue Book Sub-Archive" },
   ];
 
-  const handleQ1Submit = () => {
+  const handleQ1Submit = async () => {
     if (!q1Selected || ch1Solved) return;
     const opt = Q1_OPTIONS.find((o) => o.id === q1Selected);
-    if (opt?.isCorrect) {
+    const res = await validateChapterOnServer(1, "ch1-quiz", q1Selected);
+    if (res.success) {
       sfx("ok");
       setQ1Error(false);
-      submitTask("ch1-quiz", 100, opt.text);
+      submitTask("ch1-quiz", res.pointsAwarded || 100, opt?.text || q1Selected);
       setCompletionStoryChapterId(1);
     } else {
       sfx("err");
@@ -851,19 +1005,20 @@ export default function ChapterManager() {
   ];
 
   const CASE_OPTIONS = [
-    { id: "A", text: "Hawkins National Laboratory (Sublevel 4)", isCorrect: true },
-    { id: "B", text: "Cornwallis Municipal Substation", isCorrect: false },
-    { id: "C", text: "Roane County Water Tower Reservoir", isCorrect: false },
-    { id: "D", text: "Sattler Quarry Abandoned Basin", isCorrect: false },
+    { id: "A", text: "Hawkins National Laboratory (Sublevel 4)" },
+    { id: "B", text: "Cornwallis Municipal Substation" },
+    { id: "C", text: "Roane County Water Tower Reservoir" },
+    { id: "D", text: "Sattler Quarry Abandoned Basin" },
   ];
 
-  const handleCaseSubmit = () => {
+  const handleCaseSubmit = async () => {
     if (!caseSelected || ch2Solved) return;
     const opt = CASE_OPTIONS.find((o) => o.id === caseSelected);
-    if (opt?.isCorrect) {
+    const res = await validateChapterOnServer(2, "ch2-police", caseSelected);
+    if (res.success) {
       sfx("ok");
       setCaseError(false);
-      submitTask("ch2-police", 150, opt.text);
+      submitTask("ch2-police", res.pointsAwarded || 150, opt?.text || caseSelected);
       setCompletionStoryChapterId(2);
     } else {
       sfx("err");
@@ -884,24 +1039,22 @@ export default function ChapterManager() {
   });
   const [selectedTileIdx, setSelectedTileIdx] = useState<number | null>(null);
 
-  const swapByersTiles = (idx1: number, idx2: number) => {
-    setByersTiles((prev) => {
-      const next = [...prev];
-      const temp = next[idx1];
-      next[idx1] = next[idx2];
-      next[idx2] = temp;
-      localStorage.setItem("hawkins_byers_tiles", JSON.stringify(next));
+  const swapByersTiles = async (idx1: number, idx2: number) => {
+    const next = [...byersTiles];
+    const temp = next[idx1];
+    next[idx1] = next[idx2];
+    next[idx2] = temp;
+    setByersTiles(next);
+    localStorage.setItem("hawkins_byers_tiles", JSON.stringify(next));
 
-      const isCorrect = next.join(" ") === "DO NOT OPEN THE GATE";
-      if (isCorrect) {
-        sfx("ok");
-        submitTask("ch3-byers", 150, "DO NOT OPEN THE GATE");
-        setCompletionStoryChapterId(3);
-      } else {
-        sfx("click");
-      }
-      return next;
-    });
+    const res = await validateChapterOnServer(3, "ch3-byers", next);
+    if (res.success) {
+      sfx("ok");
+      submitTask("ch3-byers", res.pointsAwarded || 150, next.join(" "));
+      setCompletionStoryChapterId(3);
+    } else {
+      sfx("click");
+    }
     setSelectedTileIdx(null);
   };
 
@@ -909,13 +1062,14 @@ export default function ChapterManager() {
   const [codeAnswer, setCodeAnswer] = useState<string>("");
   const [codeError, setCodeError] = useState(false);
 
-  const handleCodeSubmit = (e: React.FormEvent) => {
+  const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!codeAnswer.trim() || ch4Solved) return;
-    if (codeAnswer.trim() === "68") {
+    const res = await validateChapterOnServer(4, "ch4-lab", codeAnswer.trim());
+    if (res.success) {
       sfx("ok");
       setCodeError(false);
-      submitTask("ch4-lab", 200, "68");
+      submitTask("ch4-lab", res.pointsAwarded || 200, codeAnswer.trim());
       setCompletionStoryChapterId(4);
     } else {
       sfx("err");
@@ -928,13 +1082,14 @@ export default function ChapterManager() {
   const [forestRuneInput, setForestRuneInput] = useState<string>("");
   const [forestError, setForestError] = useState(false);
 
-  const handleForestSubmit = (e: React.FormEvent) => {
+  const handleForestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forestRuneInput.trim() || ch5Solved) return;
-    if (forestRuneInput.trim() === "417") {
+    const res = await validateChapterOnServer(5, "ch5-forest", forestRuneInput.trim());
+    if (res.success) {
       sfx("ok");
       setForestError(false);
-      submitTask("ch5-forest", 200, "417");
+      submitTask("ch5-forest", res.pointsAwarded || 200, forestRuneInput.trim());
       setCompletionStoryChapterId(5);
     } else {
       sfx("err");
@@ -948,19 +1103,20 @@ export default function ChapterManager() {
   const [udError, setUdError] = useState(false);
 
   const UD_OPTIONS = [
-    { id: "A", text: "Dr. Martin Brenner", isCorrect: false },
-    { id: "B", text: "Henry Creel (Subject 001)", isCorrect: true },
-    { id: "C", text: "Edward Munson", isCorrect: false },
-    { id: "D", text: "Peter Ballard", isCorrect: false },
+    { id: "A", text: "Dr. Martin Brenner" },
+    { id: "B", text: "Henry Creel (Subject 001)" },
+    { id: "C", text: "Edward Munson" },
+    { id: "D", text: "Peter Ballard" },
   ];
 
-  const handleUdSubmit = () => {
+  const handleUdSubmit = async () => {
     if (!udSelected || ch7Solved) return;
     const opt = UD_OPTIONS.find((o) => o.id === udSelected);
-    if (opt?.isCorrect) {
+    const res = await validateChapterOnServer(7, "ch7-upsidedown", udSelected);
+    if (res.success) {
       sfx("boom");
       setUdError(false);
-      submitTask("ch7-upsidedown", 500, opt.text);
+      submitTask("ch7-upsidedown", res.pointsAwarded || 500, opt?.text || udSelected);
       setCompletionStoryChapterId(7);
     } else {
       sfx("err");
@@ -980,11 +1136,11 @@ export default function ChapterManager() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "flex-start",
-        paddingTop: "clamp(52px, 6.5vh, 62px)",
-        paddingBottom: "clamp(110px, 19vh, 190px)", // Reserves height for fixed character bottom strip
-        paddingLeft: "clamp(10px, 2vw, 24px)",
-        paddingRight: "clamp(10px, 2vw, 24px)",
+        justifyContent: "center",
+        paddingTop: 84,
+        paddingBottom: 24,
+        paddingLeft: "clamp(12px, 2.5vw, 32px)",
+        paddingRight: "clamp(12px, 2.5vw, 32px)",
         boxSizing: "border-box",
       }}
     >
@@ -995,6 +1151,45 @@ export default function ChapterManager() {
         vignette="heavy"
         overlayOpacity={0.65}
       />
+
+      {/* Pokemon FireRed Style Bottom Overlay Dialog (On bottom overlay on question) */}
+      {/* Pokemon FireRed Style Bottom Overlay Dialog with Character */}
+      <AnimatePresence>
+        {activeLoreChapterId !== null && (
+          <PokemonFireRedBottomDialog
+            key={`dialog-${activeLoreChapterId}`}
+            chapter={CHAPTERS.find((c) => c.id === activeLoreChapterId) || currentChapter}
+            mode="intro"
+            onComplete={() => {
+              setActiveLoreChapterId(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Completion Epilogue Dialogue */}
+      <AnimatePresence>
+        {completionStoryChapterId !== null && (
+          <PokemonFireRedBottomDialog
+            key={`completion-dialog-${completionStoryChapterId}`}
+            chapter={CHAPTERS.find((c) => c.id === completionStoryChapterId) || CHAPTERS[0]}
+            mode="completion"
+            onComplete={() => setCompletionStoryChapterId(null)}
+            onNextEpisode={
+              completionStoryChapterId < 7
+                ? () => {
+                    const nextId = (completionStoryChapterId + 1) as ChapterId;
+                    setCompletionStoryChapterId(null);
+                    setActiveChapterId(nextId);
+                  }
+                : () => {
+                    setCompletionStoryChapterId(null);
+                    setChapterModalOpen(true);
+                  }
+            }
+          />
+        )}
+      </AnimatePresence>
 
       {/* Chapters Gallery Modal */}
       <AnimatePresence>
@@ -1257,9 +1452,16 @@ export default function ChapterManager() {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.35 }}
         style={{
-          width: "min(1140px, 94vw)",
-          maxHeight: "100%",
+          width: "min(1160px, 94vw)",
+          maxHeight: "calc(100vh - 110px)",
           background: "rgba(10, 5, 10, 0.95)",
+          backdropFilter: isLoreActive ? "none" : "blur(14px)",
+          WebkitBackdropFilter: isLoreActive ? "none" : "blur(14px)",
+          filter: isLoreActive ? "blur(14px)" : "none",
+          opacity: isLoreActive ? 0.22 : 1,
+          pointerEvents: isLoreActive ? "none" : "auto",
+          userSelect: isLoreActive ? "none" : "auto",
+          transition: "filter 0.35s ease, opacity 0.35s ease",
           border: "1px solid rgba(255, 45, 58, 0.35)",
           boxShadow: "0 0 45px rgba(0,0,0,0.92)",
           borderRadius: 6,
@@ -1291,7 +1493,7 @@ export default function ChapterManager() {
                 <button
                   type="button"
                   className="btn sm ghost"
-                  onClick={() => setReplayingNarration(true)}
+                  onClick={() => setActiveLoreChapterId(currentChapter.id)}
                   style={{
                     marginLeft: "auto",
                     fontSize: 12,
@@ -1447,7 +1649,7 @@ export default function ChapterManager() {
                 <button
                   type="button"
                   className="btn sm ghost"
-                  onClick={() => setReplayingNarration(true)}
+                  onClick={() => setActiveLoreChapterId(currentChapter.id)}
                   style={{
                     marginLeft: "auto",
                     fontSize: 12,
@@ -1549,6 +1751,33 @@ export default function ChapterManager() {
                       >
                         {EVIDENCE_LOGS[activeEvidenceTab].content}
                       </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        background: "rgba(194, 136, 89, 0.12)",
+                        border: "1px solid rgba(194, 136, 89, 0.35)",
+                        borderRadius: 4,
+                        padding: "8px 12px",
+                        marginTop: 10,
+                      }}
+                    >
+                      <div
+                        style={{ width: 28, height: 28, flexShrink: 0 }}
+                        dangerouslySetInnerHTML={{ __html: CHARACTERS.hopper.silhouetteSvg }}
+                      />
+                      <div style={{ fontSize: 12.5, fontFamily: "var(--font-mono)", color: "#c28859", lineHeight: 1.4 }}>
+                        <strong>HOPPER:</strong> {
+                          activeEvidenceTab === 0
+                            ? '"Compare that dispatch recording with the high-voltage lab lines."'
+                            : activeEvidenceTab === 1
+                            ? '"The eyewitness was near the quarry, but the lights were pointing northwest."'
+                            : '"Sensor spike hit 14.3 MHz right when Sublevel 4 breached."'
+                        }
+                      </div>
                     </div>
                   </div>
 
@@ -1685,7 +1914,7 @@ export default function ChapterManager() {
                 <button
                   type="button"
                   className="btn sm ghost"
-                  onClick={() => setReplayingNarration(true)}
+                  onClick={() => setActiveLoreChapterId(currentChapter.id)}
                   style={{
                     marginLeft: "auto",
                     fontSize: 12,
@@ -1825,7 +2054,7 @@ export default function ChapterManager() {
                 <button
                   type="button"
                   className="btn sm ghost"
-                  onClick={() => setReplayingNarration(true)}
+                  onClick={() => setActiveLoreChapterId(currentChapter.id)}
                   style={{
                     marginLeft: "auto",
                     fontSize: 12,
@@ -2021,7 +2250,7 @@ console.log(stabilizeTelemetry(packet));`}
                 <button
                   type="button"
                   className="btn sm ghost"
-                  onClick={() => setReplayingNarration(true)}
+                  onClick={() => setActiveLoreChapterId(currentChapter.id)}
                   style={{
                     marginLeft: "auto",
                     fontSize: 12,
@@ -2166,8 +2395,36 @@ console.log(stabilizeTelemetry(packet));`}
 
         {/* CHAPTER 6: RADIO TOWER (PIP & 5-PIN RADIOMETER) */}
         {currentChapter.id === 6 && (
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", width: "100%", padding: "18px 24px" }}>
-            <Radiometer />
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", width: "100%" }}>
+            <div className="panel-head" style={{ padding: "16px 26px", display: "flex", alignItems: "center" }}>
+              <span className="dot" style={{ width: 9, height: 9, background: "#ff7c85" }} />
+              <span style={{ fontSize: 16, letterSpacing: ".16em", color: "#ff7c85" }}>
+                CHAPTER 6 : RADIO TOWER [5-PIN RADIOMETER]
+              </span>
+
+              <button
+                type="button"
+                className="btn sm ghost"
+                onClick={() => setActiveLoreChapterId(6)}
+                style={{
+                  marginLeft: "auto",
+                  fontSize: 12,
+                  padding: "5px 12px",
+                  letterSpacing: ".1em",
+                  borderRadius: 3,
+                }}
+                title="Replay Pip's radio tower lore"
+              >
+                [LORE BRIEFING]
+              </button>
+
+              <span className="term dim" style={{ marginLeft: 16, fontSize: 14, color: "var(--accent)" }}>
+                +250 PTS
+              </span>
+            </div>
+            <div style={{ padding: "14px 22px", flex: 1, overflowY: "auto" }}>
+              <Radiometer />
+            </div>
           </div>
         )}
 
@@ -2191,7 +2448,7 @@ console.log(stabilizeTelemetry(packet));`}
                 <button
                   type="button"
                   className="btn sm ghost"
-                  onClick={() => setReplayingNarration(true)}
+                  onClick={() => setActiveLoreChapterId(currentChapter.id)}
                   style={{
                     marginLeft: "auto",
                     fontSize: 12,
@@ -2328,22 +2585,6 @@ console.log(stabilizeTelemetry(packet));`}
           )
         )}
       </motion.div>
-
-      {/* ── Fixed Bottom Strip: Active Character & Dialogue Box ── */}
-      {currentChapter.id !== 6 && (
-        <CharacterStage
-          key={`char-stage-${currentChapter.id}-${completionStoryChapterId !== null ? "done" : "intro"}-${replayingNarration}`}
-          character={getCharacterForChapter(currentChapter.id)}
-          dialogueLines={
-            completionStoryChapterId === currentChapter.id
-              ? currentChapter.completionLines
-              : currentChapter.archiveLines
-          }
-          onHintClick={() => {
-            sfx("clue");
-          }}
-        />
-      )}
     </div>
   );
 }

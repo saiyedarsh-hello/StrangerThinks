@@ -48,7 +48,6 @@ export default function Home() {
       <SabotageOverlay />
       <ChapterCard />
       <Toast />
-      <SoundToggle />
     </>
   );
 }

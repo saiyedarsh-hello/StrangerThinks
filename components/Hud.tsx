@@ -7,21 +7,7 @@ import { LocationId } from "@/lib/tasks";
 import { isMuted, setMuted, sfx } from "@/lib/audio";
 
 export function SoundToggle({ style }: { style?: React.CSSProperties }) {
-  const { soundOn, setSoundOn } = useGame();
-  return (
-    <button
-      className="btn sm ghost"
-      style={{ position: "fixed", left: 14, bottom: 14, zIndex: 850, ...style }}
-      onClick={() => {
-        const n = !soundOn;
-        setSoundOn(n);
-        setMuted(!n);
-        sfx("click");
-      }}
-    >
-      {soundOn ? "AUDIO: ON" : "AUDIO: OFF"}
-    </button>
-  );
+  return null;
 }
 
 export function Toast() {

@@ -345,8 +345,30 @@ function TaskModal({
         </div>
 
         <div className="panel-body rm-modal__body">
-          {/* story context */}
-          <div className="eyebrow" style={{ fontSize: 14, marginBottom: 10 }}>{task.storyContext}</div>
+          {/* story context & Pip section briefing */}
+          <div className="eyebrow" style={{ fontSize: 13, marginBottom: 8, color: "var(--accent)" }}>{task.storyContext}</div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: "rgba(255, 124, 133, 0.1)",
+              border: "1px solid rgba(255, 124, 133, 0.3)",
+              borderRadius: 4,
+              padding: "7px 12px",
+              marginBottom: 14,
+            }}
+          >
+            <img
+              src="/characters/radiokid.png"
+              alt="Pip"
+              style={{ width: 30, height: 30, objectFit: "contain", imageRendering: "pixelated", flexShrink: 0 }}
+            />
+            <div style={{ fontSize: 13, fontFamily: "var(--font-mono)", color: "#ff7c85", lineHeight: 1.4 }}>
+              <strong>PIP:</strong> "Calibrating Pin {pinIndex + 1}! Check the frequency sweep and harmonic indicators to lock the digit!"
+            </div>
+          </div>
 
           {/* already solved state */}
           {alreadySolved ? (
@@ -687,16 +709,40 @@ export default function Radiometer() {
         <PinProgressBadge />
       </div>
 
-      {/* ── character stage (Pip in fixed bottom strip) ──────────────── */}
-      <CharacterStage
-        character={CHARACTERS.radiokid}
-        overrideText={pipCustomText}
-        reaction={pipReaction}
-        onHintClick={() => {
-          setPipCustomText(getPipLine("hint"));
-          setPipReaction("thinking");
+      {/* ── Pip's Live Radio Communication Bar ──────────────── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: "rgba(10, 4, 7, 0.85)",
+          border: "1px solid rgba(255, 124, 133, 0.35)",
+          borderRadius: 4,
+          padding: "8px 14px",
+          marginBottom: 14,
         }}
-      />
+      >
+        <img
+          src="/characters/radiokid.png"
+          alt="Pip"
+          style={{ width: 34, height: 34, objectFit: "contain", imageRendering: "pixelated" }}
+        />
+        <div style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 13, color: "#ff7c85" }}>
+          <strong style={{ color: "#fff", marginRight: 6 }}>[PIP]:</strong>
+          {pipCustomText || "Carrier wave locked on 14.3 MHz! Restore all 5 pins to decrypt the code!"}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setPipCustomText(getPipLine("hint"));
+            setPipReaction("thinking");
+          }}
+          className="btn sm ghost"
+          style={{ fontSize: 10, padding: "2px 8px", borderColor: "rgba(255, 124, 133, 0.4)", color: "#ff7c85" }}
+        >
+          💡 INTEL
+        </button>
+      </div>
 
       {/* ── instrument + task buttons ─────────────────────────────────── */}
       <div className="rm-layout">

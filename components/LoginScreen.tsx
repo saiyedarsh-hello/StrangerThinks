@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
-import { authenticateCredentials, saveSession } from "@/lib/config";
+import { authenticateTeamWithSupabase } from "@/lib/supabaseService";
+import { saveSession } from "@/lib/config";
 import CinematicBackground from "./CinematicBackground";
 
 export default function LoginScreen() {
@@ -14,32 +15,48 @@ export default function LoginScreen() {
   const [teamName, setTeamName] = useState("");
   const [leaderName, setLeaderName] = useState("");
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!teamName.trim() || !leaderName.trim()) return;
 
-    const authResult = authenticateCredentials(teamName, leaderName);
+    setIsAuthenticating(true);
+    setError(false);
 
-    if (authResult.success) {
-      setError(false);
-      sfx("boom");
+    try {
+      const authResult = await authenticateTeamWithSupabase(teamName, leaderName);
 
-      if (authResult.session.role === "VECNA") {
-        saveSession(authResult.session);
-        router.push("/vecna");
+      if (authResult.success) {
+        setError(false);
+        sfx("boom");
+
+        if (authResult.session.role === "VECNA") {
+          saveSession(authResult.session);
+          router.push("/vecna");
+        } else {
+          // Player credentials -> go to player game (cinematic intro, then map)
+          loginPlayer({
+            id: authResult.session.teamId || "T01",
+            teamName: authResult.session.teamName,
+            leaderName: authResult.session.leaderName,
+          });
+        }
       } else {
-        // Player credentials -> go to player game (cinematic intro, then map)
-        loginPlayer({
-          id: authResult.session.teamId || "T01",
-          teamName: authResult.session.teamName,
-          leaderName: authResult.session.leaderName,
-        });
+        setError(true);
+        setErrorMessage(authResult.error || "UNKNOWN TEAM CREDENTIALS IN DATABASE");
+        setShakeKey((k) => k + 1);
+        sfx("err");
       }
-    } else {
+    } catch (err: any) {
       setError(true);
+      setErrorMessage(err.message || "DATABASE CONNECTION ERROR");
       setShakeKey((k) => k + 1);
       sfx("err");
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -161,14 +178,14 @@ export default function LoginScreen() {
                   background: "rgba(255, 45, 58, 0.12)",
                   border: "1px solid var(--danger)",
                   borderRadius: 4,
-                  fontSize: 15,
+                  fontSize: 14,
                   fontFamily: "var(--font-term)",
                   textAlign: "center",
-                  letterSpacing: ".15em",
+                  letterSpacing: ".1em",
                   fontWeight: "bold",
                 }}
               >
-                [ACCESS DENIED] UNKNOWN TEAM CREDENTIALS
+                [ACCESS DENIED] {errorMessage || "UNKNOWN TEAM CREDENTIALS"}
               </motion.div>
             )}
           </AnimatePresence>
@@ -178,18 +195,56 @@ export default function LoginScreen() {
             type="submit"
             className="btn big"
             style={{
-              marginTop: 26,
+              marginTop: 24,
               width: "100%",
-              fontSize: 20,
+              fontSize: 18,
               padding: "14px 20px",
               letterSpacing: ".2em",
               boxShadow: "none",
               animation: "none",
+              opacity: isAuthenticating ? 0.7 : 1,
             }}
-            disabled={!teamName.trim() || !leaderName.trim()}
+            disabled={!teamName.trim() || !leaderName.trim() || isAuthenticating}
           >
-            ENTER
+            {isAuthenticating ? "VERIFYING VIA SUPABASE..." : "ENTER HAWKINS PROTOCOL"}
           </button>
+
+          {/* Supabase Security Badge & Quick Autofills */}
+          <div style={{ marginTop: 20, textAlign: "center" }}>
+            <div style={{ fontSize: 11, color: "#36e0c4", letterSpacing: ".15em", marginBottom: 12 }}>
+              ● SUPABASE DATABASE CONNECTED
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6 }}>
+              {[
+                { t: "Hawkins AV Club", l: "Dustin Henderson" },
+                { t: "The Hellfire Club", l: "Eddie Munson" },
+                { t: "Scoops Troop", l: "Robin Buckley" },
+              ].map((chip) => (
+                <button
+                  key={chip.t}
+                  type="button"
+                  onClick={() => {
+                    setTeamName(chip.t);
+                    setLeaderName(chip.l);
+                    setError(false);
+                  }}
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: ".08em",
+                    padding: "4px 8px",
+                    borderRadius: 3,
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    color: "#888899",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    cursor: "pointer",
+                  }}
+                >
+                  ⚡ {chip.t}
+                </button>
+              ))}
+            </div>
+          </div>
         </form>
       </motion.div>
     </div>

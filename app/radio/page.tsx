@@ -54,7 +54,6 @@ export default function RadioPage() {
 
       <Hud />
       <Toast />
-      <SoundToggle />
     </div>
   );
 }
