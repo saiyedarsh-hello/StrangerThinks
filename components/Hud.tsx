@@ -45,14 +45,34 @@ export default function Hud() {
   const { s, score, jump, reset, logout, radiometerPinCount, viewMode, setViewMode, activeChapterId, setChapterModalOpen } = useGame();
   const [dev, setDev] = useState(false);
   const [showClueLog, setShowClueLog] = useState(false);
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
 
   useEffect(() => {
     setDev(new URLSearchParams(window.location.search).get("dev") === "1");
+
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement | Document;
+      let currentScroll = 0;
+      if (target === document || target === document.documentElement || target === document.body) {
+        currentScroll = window.scrollY || document.documentElement.scrollTop;
+      } else if (target && "scrollTop" in target) {
+        currentScroll = (target as HTMLElement).scrollTop;
+      }
+
+      if (currentScroll > 25) {
+        setIsScrolledDown(true);
+      } else {
+        setIsScrolledDown(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
   }, []);
 
   return (
     <>
-      {/* Floating Pill Top HUD Navigation Bar (Matching Reference Image) */}
+      {/* Floating Pill Top HUD Navigation Bar (Auto-hides on scroll down) */}
       <div
         style={{
           position: "fixed",
@@ -76,6 +96,10 @@ export default function Hud() {
           boxSizing: "border-box",
           zIndex: 800,
           overflow: "hidden",
+          transform: isScrolledDown ? "translateY(-140%)" : "translateY(0)",
+          opacity: isScrolledDown ? 0 : 1,
+          pointerEvents: isScrolledDown ? "none" : "auto",
+          transition: "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease",
         }}
       >
         {/* Subtle Background Left Red Constellation Watermark */}
