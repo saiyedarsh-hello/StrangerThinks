@@ -2,6 +2,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/store";
+import { broadcastComponentConnection } from "@/lib/supabaseService";
 import IntroCutscene from "@/components/scenes/IntroCutscene";
 import LoginScreen from "@/components/LoginScreen";
 import StageView from "@/components/StageView";
@@ -13,6 +14,17 @@ import SabotageOverlay from "@/components/SabotageOverlay";
 export default function Home() {
   const router = useRouter();
   const { s, hydrated, cutscene, introSeen, setIntroSeen, session } = useGame();
+
+  // Broadcast live connection of the Main Page to Admin & Leaderboard bus
+  useEffect(() => {
+    broadcastComponentConnection(
+      "MAIN_PAGE",
+      session?.teamName
+        ? `Main game client active for squad "${session.teamName}" (Stage: ${s.stage})`
+        : "Main game client initialized & connected to Supabase bridge",
+      "CONNECTED"
+    );
+  }, [session, s.stage]);
 
   // Route Guard: If logged in as Vecna and visiting "/", redirect immediately to /vecna
   useEffect(() => {

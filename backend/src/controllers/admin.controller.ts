@@ -133,3 +133,26 @@ export const getAdminLeaderboard = (_req: Request, res: Response) => {
     leaderboard,
   });
 };
+
+/**
+ * POST /api/admin/leaderboard/score - Override team score directly
+ */
+export const updateAdminTeamScore = (req: Request, res: Response) => {
+  const { teamId, score } = req.body;
+  if (!teamId || score === undefined) {
+    return res.status(400).json({ success: false, error: "TEAM_ID_AND_SCORE_REQUIRED" });
+  }
+
+  const result = VaultStore.updateTeamScore(teamId, Number(score));
+  if (!result.success) {
+    return res.status(400).json(result);
+  }
+
+  res.json({
+    success: true,
+    message: `Team ${teamId} score updated to ${score} PTS.`,
+    team: result.team,
+    leaderboard: VaultStore.getLeaderboard(),
+  });
+};
+

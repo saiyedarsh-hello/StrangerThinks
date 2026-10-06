@@ -92,13 +92,27 @@ export interface OperatorAssignmentPayload {
   ts?: number;
 }
 
+export interface ScoreUpdatePayload {
+  type: "SCORE_UPDATE";
+  teamId: string;
+  teamName?: string;
+  newScore: number;
+  delta?: number;
+  chapterId?: number | string;
+  taskId?: string;
+  source?: "PLAYER" | "ADMIN";
+  operatorName?: string;
+  ts?: number;
+}
+
 export type RealtimeMessage =
   | PresencePayload
   | SabotagePayload
   | StoryEventPayload
   | ChallengeLockPayload
   | AwardPayload
-  | OperatorAssignmentPayload;
+  | OperatorAssignmentPayload
+  | ScoreUpdatePayload;
 
 type Handler = (msg: RealtimeMessage) => void;
 

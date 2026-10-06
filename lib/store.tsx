@@ -4,9 +4,10 @@ import { Category, ITEMS, STAGES, STAGE_ORDER, StageId, TOTAL_TIME } from "./sta
 import { FINAL_CODE, RADIOMETER_PINS } from "./radiometer";
 import { STORY_TASKS, LocationId, StoryTask } from "./tasks";
 import { CONFIG, AuthSession, getStoredSession, saveSession, clearSession } from "./config";
-import { usePathname } from "next/navigation";
 import { setDroneTheme, sfx } from "./audio";
+import { usePathname } from "next/navigation";
 import { subscribe, presence, RealtimeMessage, StoryEventType } from "./realtime";
+import { updateTeamScoreInSupabase } from "./supabaseService";
 
 export type SabKind = "CORRUPT" | "TIME_FREEZE" | "LOCK" | "DISTORT" | "SIGNAL_JAM" | "WATCH" | "MESSAGE" | "GLITCH";
 
@@ -409,6 +410,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         sfx("ok");
         say(`AWARDED +${m.points} TEAMWORK BY ${m.operatorName || "ORGANIZER"}`);
       }
+
+      if (m.type === "SCORE_UPDATE" && m.source === "ADMIN") {
+        const teamMatches =
+          (cur.team?.id && m.teamId === cur.team.id) ||
+          (cur.team?.name && m.teamName && m.teamName.trim().toLowerCase() === cur.team.name.trim().toLowerCase());
+        if (teamMatches) {
+          const currentTotal = totalScore(cur.breakdown, cur.penalty);
+          const scoreDiff = m.newScore - currentTotal;
+          setS((p) => ({
+            ...p,
+            team: p.team ? { ...p.team, score: m.newScore } : null,
+            breakdown: {
+              ...p.breakdown,
+              teamwork: p.breakdown.teamwork + scoreDiff,
+            },
+          }));
+          sfx("power");
+          say(`ADMIN OVERRODE SQUAD POINTS: ${m.newScore} PTS`);
+        }
+      }
     });
 
     const beat = setInterval(() => {
@@ -700,6 +721,33 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const progressGain = Math.round(90 / Object.keys(STORY_TASKS).length);
       const newProgress = Math.min(100, p.storyProgress + progressGain);
 
+      const updatedBreakdown = {
+        ...p.breakdown,
+        [category]: p.breakdown[category] + points,
+        speed: p.breakdown.speed + speedBonus,
+        story: p.breakdown.story + 25,
+      };
+
+      const newTotalScore = totalScore(updatedBreakdown, p.penalty);
+      const teamId = p.team?.id || "TEAM-AV-CLUB";
+      const teamName = p.team?.name || "Hawkins AV Club";
+
+      // Detect chapter number if taskId has ch1, ch2, etc.
+      let chapterNum: number | undefined;
+      const chMatch = taskId.match(/ch(\d+)/i);
+      if (chMatch) {
+        chapterNum = parseInt(chMatch[1], 10);
+      }
+
+      // Realtime sync to Supabase and broadcast to Admin
+      updateTeamScoreInSupabase(teamId, newTotalScore, {
+        teamName,
+        delta: points + speedBonus + 25,
+        chapterId: chapterNum,
+        taskId,
+        source: "PLAYER",
+      }).catch((e) => console.warn("[REALTIME] Score update failed:", e));
+
       return {
         ...p,
         completedTasks: nextCompleted,
@@ -708,12 +756,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         unlocked: nextUnlocked,
         storyProgress: newProgress,
         solved: { ...p.solved, [taskId]: true },
-        breakdown: {
-          ...p.breakdown,
-          [category]: p.breakdown[category] + points,
-          speed: p.breakdown.speed + speedBonus,
-          story: p.breakdown.story + 25,
-        },
+        breakdown: updatedBreakdown,
       };
     });
   }, []);
@@ -736,15 +779,27 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (p.solved[cid]) return p;
       const cat = ch.category as Category;
       const speedBonus = Math.round(ch.points * 0.2 * (p.timeLeft / TOTAL_TIME));
+      const updatedBreakdown = {
+        ...p.breakdown,
+        [cat]: p.breakdown[cat] + ch.points,
+        speed: p.breakdown.speed + speedBonus,
+      };
+      const newTotalScore = totalScore(updatedBreakdown, p.penalty);
+      const teamId = p.team?.id || "TEAM-AV-CLUB";
+      const teamName = p.team?.name || "Hawkins AV Club";
+
+      updateTeamScoreInSupabase(teamId, newTotalScore, {
+        teamName,
+        delta: ch.points + speedBonus,
+        taskId: cid,
+        source: "PLAYER",
+      }).catch(() => {});
+
       return {
         ...p,
         solved: { ...p.solved, [cid]: true },
         completedTasks: Array.from(new Set([...p.completedTasks, cid])),
-        breakdown: {
-          ...p.breakdown,
-          [cat]: p.breakdown[cat] + ch.points,
-          speed: p.breakdown.speed + speedBonus,
-        },
+        breakdown: updatedBreakdown,
       };
     });
     return true;
@@ -881,6 +936,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       solved[pinIndex] = true;
       pinsSolved[pinIndex] = true;
       const numSolved = solved.filter(Boolean).length;
+      const updatedBreakdown = { ...p.breakdown, puzzle: p.breakdown.puzzle + points };
+      const newTotalScore = totalScore(updatedBreakdown, p.penalty);
+      const teamId = p.team?.id || "TEAM-AV-CLUB";
+      const teamName = p.team?.name || "Hawkins AV Club";
+
+      updateTeamScoreInSupabase(teamId, newTotalScore, {
+        teamName,
+        delta: points,
+        taskId: `radiometer-pin-${pinIndex}`,
+        source: "PLAYER",
+      }).catch(() => {});
+
       return {
         ...p,
         radiometer: {
@@ -890,7 +957,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           pinsSolved,
           distortion: 5 - numSolved,
         },
-        breakdown: { ...p.breakdown, puzzle: p.breakdown.puzzle + points },
+        breakdown: updatedBreakdown,
       };
     });
     sfx("clue");
@@ -901,12 +968,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       sfx("err");
       return false;
     }
-    setS((p) => ({
-      ...p,
-      radiometer: { ...p.radiometer, codeSolved: true },
-      unlocked: { ...p.unlocked, lab: true },
-      breakdown: { ...p.breakdown, puzzle: p.breakdown.puzzle + 200 },
-    }));
+    setS((p) => {
+      const updatedBreakdown = { ...p.breakdown, puzzle: p.breakdown.puzzle + 200 };
+      const newTotalScore = totalScore(updatedBreakdown, p.penalty);
+      const teamId = p.team?.id || "TEAM-AV-CLUB";
+      const teamName = p.team?.name || "Hawkins AV Club";
+
+      updateTeamScoreInSupabase(teamId, newTotalScore, {
+        teamName,
+        delta: 200,
+        taskId: "radiometer-code",
+        source: "PLAYER",
+      }).catch(() => {});
+
+      return {
+        ...p,
+        radiometer: { ...p.radiometer, codeSolved: true },
+        unlocked: { ...p.unlocked, lab: true },
+        breakdown: updatedBreakdown,
+      };
+    });
     sfx("power");
     return true;
   }, []);

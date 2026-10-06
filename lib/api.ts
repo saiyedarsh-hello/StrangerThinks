@@ -261,3 +261,23 @@ export async function fetchAdminLeaderboard(token: string): Promise<{ success: b
     return { success: false, error: "BACKEND_OFFLINE" };
   }
 }
+
+export async function updateAdminTeamScore(
+  teamId: string,
+  score: number,
+  token: string = "HAWKINS_CHIEF_1983"
+): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/leaderboard/score`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ teamId, score: Number(score) }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: "BACKEND_OFFLINE" };
+  }
+}

@@ -1,0 +1,70 @@
+[
+  {
+    "teamId": "T01",
+    "teamName": "Stack Smashers",
+    "leaderName": "Maya Lin",
+    "score": 1250,
+    "completedTasks": [
+      "ch1-quiz",
+      "ch2-police",
+      "ch3-byers",
+      "ch4-lab",
+      "ch5-forest"
+    ],
+    "lastSubmissionTime": "2026-10-05T14:17:53.770Z"
+  },
+  {
+    "teamId": "T02",
+    "teamName": "Null Pointers",
+    "leaderName": "Aarav Sharma",
+    "score": 710,
+    "completedTasks": [
+      "ch1-quiz",
+      "ch2-police",
+      "ch3-byers",
+      "ch4-lab"
+    ],
+    "lastSubmissionTime": "2026-10-05T14:18:52.004Z"
+  },
+  {
+    "teamId": "T03",
+    "teamName": "Byte Busters",
+    "leaderName": "Lucas Sinclair",
+    "score": 400,
+    "completedTasks": [
+      "ch1-quiz",
+      "ch2-police",
+      "ch3-byers"
+    ],
+    "lastSubmissionTime": "2026-10-05T13:41:17.685Z"
+  },
+  {
+    "teamId": "T04",
+    "teamName": "Hawkins AV Club",
+    "leaderName": "Dustin Henderson",
+    "score": 250,
+    "completedTasks": [
+      "ch1-quiz",
+      "ch2-police"
+    ],
+    "lastSubmissionTime": "2026-10-05T13:40:20.429Z"
+  },
+  {
+    "teamId": "T05",
+    "teamName": "Radio Static",
+    "leaderName": "Will Byers",
+    "score": 100,
+    "completedTasks": [
+      "ch1-quiz"
+    ],
+    "lastSubmissionTime": "2026-10-05T13:55:20.261Z"
+  },
+  {
+    "teamId": "T06",
+    "teamName": "Upside Down Recon",
+    "leaderName": "Jim Hopper",
+    "score": 0,
+    "completedTasks": [],
+    "lastSubmissionTime": "2026-10-05T13:21:31.879Z"
+  }
+]

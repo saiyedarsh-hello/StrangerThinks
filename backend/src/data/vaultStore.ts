@@ -70,6 +70,27 @@ function initStorage() {
     } else {
       saveState();
     }
+
+    // Load persisted leaderboard from disk if present
+    if (fs.existsSync(LEADERBOARD_PATH)) {
+      const rawLb = fs.readFileSync(LEADERBOARD_PATH, "utf-8");
+      const parsedLb = JSON.parse(rawLb);
+      if (Array.isArray(parsedLb)) {
+        parsedLb.forEach((t: any) => {
+          teamsMap.set(t.teamId, {
+            teamId: t.teamId,
+            teamName: t.teamName,
+            leaderName: t.leaderName,
+            score: Number(t.score),
+            solvedTasks: new Set(t.solvedTasks || t.completedTasks || []),
+            lastSubmissionTime: t.lastSubmissionTime || new Date().toISOString(),
+          });
+        });
+        console.log(`[VAULT STORE] Loaded persisted leaderboard with ${teamsMap.size} teams.`);
+      }
+    } else {
+      saveLeaderboardState();
+    }
   } catch (err) {
     console.error("[VAULT STORE ERROR] Failed to load store from disk:", err);
   }
@@ -83,6 +104,25 @@ function saveState() {
     fs.writeFileSync(STORE_PATH, JSON.stringify(state, null, 2), "utf-8");
   } catch (err) {
     console.error("[VAULT STORE ERROR] Failed to save store to disk:", err);
+  }
+}
+
+function saveLeaderboardState() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const list = Array.from(teamsMap.values()).map((t) => ({
+      teamId: t.teamId,
+      teamName: t.teamName,
+      leaderName: t.leaderName,
+      score: t.score,
+      completedTasks: Array.from(t.solvedTasks),
+      lastSubmissionTime: t.lastSubmissionTime,
+    }));
+    fs.writeFileSync(LEADERBOARD_PATH, JSON.stringify(list, null, 2), "utf-8");
+  } catch (err) {
+    console.error("[VAULT STORE ERROR] Failed to save leaderboard to disk:", err);
   }
 }
 
@@ -225,6 +265,40 @@ export const VaultStore = {
     }
     existing.lastSubmissionTime = new Date().toISOString();
     teamsMap.set(teamId, existing);
+    saveLeaderboardState();
+  },
+
+  // Update team score directly (Admin override)
+  updateTeamScore(teamId: string, newScore: number): { success: boolean; team?: any; error?: string } {
+    if (!teamId) return { success: false, error: "TEAM_ID_REQUIRED" };
+
+    let existing = teamsMap.get(teamId);
+    if (!existing) {
+      for (const [id, rec] of teamsMap.entries()) {
+        if (id.toLowerCase() === teamId.toLowerCase() || rec.teamName.toLowerCase() === teamId.toLowerCase()) {
+          existing = rec;
+          break;
+        }
+      }
+    }
+
+    if (!existing) {
+      existing = {
+        teamId,
+        teamName: `Team ${teamId}`,
+        leaderName: "Squad Leader",
+        score: Number(newScore),
+        solvedTasks: new Set<string>(),
+        lastSubmissionTime: new Date().toISOString(),
+      };
+      teamsMap.set(teamId, existing);
+    } else {
+      existing.score = Number(newScore);
+      existing.lastSubmissionTime = new Date().toISOString();
+    }
+
+    saveLeaderboardState();
+    return { success: true, team: existing };
   },
 
   // Return live leaderboard
