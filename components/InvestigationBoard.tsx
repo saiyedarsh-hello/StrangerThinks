@@ -12,7 +12,7 @@ interface InvestigationBoardProps {
 interface CaseCardData {
   id: number;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   imgSrc: string;
   checkpoints: string[];
   note?: string;
@@ -24,7 +24,6 @@ const CASE_CARDS: CaseCardData[] = [
   {
     id: 1,
     title: "HAWKINS TOWN",
-    subtitle: "1. QUIZ QUESTIONS (SERIES LORE)",
     imgSrc: "/hawkins-town-bg.jpg",
     checkpoints: [
       "Enter Civic District",
@@ -37,7 +36,6 @@ const CASE_CARDS: CaseCardData[] = [
   {
     id: 2,
     title: "POLICE STATION",
-    subtitle: "4. CASE STUDY QUESTIONS",
     imgSrc: "/hawkins-police-bg.jpg",
     checkpoints: [
       "Hopper's desk dossier",
@@ -50,7 +48,6 @@ const CASE_CARDS: CaseCardData[] = [
   {
     id: 3,
     title: "BYERS HOUSE",
-    subtitle: "3. REARRANGE QUESTIONS",
     imgSrc: "/hawkins-bg.jpg",
     checkpoints: [
       "Living room wall interface",
@@ -63,7 +60,6 @@ const CASE_CARDS: CaseCardData[] = [
   {
     id: 4,
     title: "HAWKINS LAB",
-    subtitle: "7. LAB-TYPE TASKS",
     imgSrc: "/hawkins-lab-bg.jpg",
     checkpoints: [
       "Sublevel 3 mainframe terminal",
@@ -76,7 +72,6 @@ const CASE_CARDS: CaseCardData[] = [
   {
     id: 5,
     title: "THE FOREST",
-    subtitle: "2. CONNECTION QUESTIONS",
     imgSrc: "/creel-bg.jpg",
     checkpoints: [
       "Deep woods near Trail 7",
@@ -89,7 +84,6 @@ const CASE_CARDS: CaseCardData[] = [
   {
     id: 6,
     title: "RADIO TOWER",
-    subtitle: "6. RADIO TRANSMISSION",
     imgSrc: "/hawkins-gate-bg.jpg",
     checkpoints: [
       "East Hill radio tower sublevel",
@@ -102,7 +96,6 @@ const CASE_CARDS: CaseCardData[] = [
   {
     id: 7,
     title: "THE GATE RIFT",
-    subtitle: "FINALE · VECNA'S MIND",
     imgSrc: "/upsidedown-bg.jpg",
     checkpoints: [
       "Parallel abyss threshold",
@@ -578,17 +571,19 @@ export default function InvestigationBoard({
                       >
                         {card.title}
                       </div>
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: "bold",
-                          color: "#7a6d63",
-                          letterSpacing: "0.1em",
-                          marginTop: "2px",
-                        }}
-                      >
-                        {card.subtitle}
-                      </div>
+                      {card.subtitle && (
+                        <div
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: "bold",
+                            color: "#7a6d63",
+                            letterSpacing: "0.1em",
+                            marginTop: "2px",
+                          }}
+                        >
+                          {card.subtitle}
+                        </div>
+                      )}
                     </div>
                   </div>
 
