@@ -285,9 +285,36 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
     ],
   },
 };
+const CQ_STAGE_POSITIONS: Record<string, { chapter: number; itemIndex: number }> = {
+  CQ_01: { chapter: 1, itemIndex: 0 },
+  Q1: { chapter: 1, itemIndex: 0 },
+  CQ_05: { chapter: 1, itemIndex: 1 },
+  Q5: { chapter: 1, itemIndex: 1 },
+  CQ_06: { chapter: 2, itemIndex: 0 },
+  Q6: { chapter: 2, itemIndex: 0 },
+  CQ_07: { chapter: 2, itemIndex: 1 },
+  Q7: { chapter: 2, itemIndex: 1 },
+  CQ_09: { chapter: 3, itemIndex: 0 },
+  Q9: { chapter: 3, itemIndex: 0 },
+  CQ_11: { chapter: 3, itemIndex: 1 },
+  Q11: { chapter: 3, itemIndex: 1 },
+  CQ_12: { chapter: 4, itemIndex: 0 },
+  Q12: { chapter: 4, itemIndex: 0 },
+  CQ_13: { chapter: 4, itemIndex: 1 },
+  Q13: { chapter: 4, itemIndex: 1 },
+  CQ_14: { chapter: 5, itemIndex: 0 },
+  Q14: { chapter: 5, itemIndex: 0 },
+  CQ_15: { chapter: 6, itemIndex: 0 },
+  Q15: { chapter: 6, itemIndex: 0 },
+  CQ_18: { chapter: 6, itemIndex: 1 },
+  Q18: { chapter: 6, itemIndex: 1 },
+  CQ_20: { chapter: 7, itemIndex: 0 },
+  Q20: { chapter: 7, itemIndex: 0 },
+};
 
 /**
- * Dynamically assign fetched questions into StageQuizConfig structure for Chapters 1-7
+ * Dynamically assign fetched questions into StageQuizConfig structure for Chapters 1-7.
+ * Guarantees that each question retains its matching prompt, columns, and multiple-choice options.
  */
 export function buildStageQuizConfigsFromQuestions(
   fetchedQuestions: any[]
@@ -296,81 +323,69 @@ export function buildStageQuizConfigsFromQuestions(
     return STAGE_QUIZ_CONFIGS;
   }
 
-  // Pre-configured stage templates
+  // Clone canonical stage configs as the stable foundation
   const result: Record<number, StageQuizConfig> = JSON.parse(JSON.stringify(STAGE_QUIZ_CONFIGS));
 
-  // Mapping rules: distribute questions across the 7 chapters
-  const chapterMapping: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
+  // Overlay fetched question data onto the matching chapter and item slot
+  fetchedQuestions.forEach((item, idx) => {
+    const rawId = String(item.id || item.question_id || "").toUpperCase();
+    const pos = CQ_STAGE_POSITIONS[rawId];
 
-  fetchedQuestions.forEach((q, idx) => {
-    // If q specifies chapter_id, use it
-    if (q.chapter_id && chapterMapping[q.chapter_id]) {
-      chapterMapping[q.chapter_id].push(q);
-    } else {
-      let ch = Math.min(7, Math.floor(idx / 2) + 1);
-      chapterMapping[ch].push(q);
+    const ch = pos ? pos.chapter : Math.min(7, Math.floor(idx / 2) + 1);
+    const itemIdx = pos ? pos.itemIndex : idx % 2;
+
+    if (!result[ch] || !result[ch].questions[itemIdx]) {
+      return;
     }
-  });
 
-  for (let ch = 1; ch <= 7; ch++) {
-    const list = chapterMapping[ch];
-    if (list && list.length > 0) {
-      result[ch].questions = list.map((item, itemIdx) => {
-        let optionsList: QuizOption[] = [];
+    const defaultQ = result[ch].questions[itemIdx];
 
-        // Parse options if provided
-        if (Array.isArray(item.options) && item.options.length > 0) {
-          optionsList = item.options.map((opt: any, oIdx: number) => {
-            if (typeof opt === "string") {
-              const match = opt.match(/^([A-D])[\).\s]+(.*)$/i);
-              return match
-                ? { id: match[1].toUpperCase(), text: match[2] }
-                : { id: String.fromCharCode(65 + oIdx), text: opt };
-            }
+    // Parse options if provided
+    let optionsList: QuizOption[] = [];
+    if (Array.isArray(item.options) && item.options.length > 0) {
+      optionsList = item.options
+        .map((opt: any, oIdx: number) => {
+          if (typeof opt === "string") {
+            const match = opt.match(/^([A-D])[\).\s]+(.*)$/i);
+            return match
+              ? { id: match[1].toUpperCase(), text: match[2] }
+              : { id: String.fromCharCode(65 + oIdx), text: opt };
+          }
+          if (opt && typeof opt === "object" && opt.text && !opt.text.includes("Clues provided")) {
             return {
               id: String(opt.id || String.fromCharCode(65 + oIdx)).toUpperCase(),
               text: String(opt.text || ""),
             };
-          });
-        } else if (item.correctAnswer || item.correct_answer) {
-          const ans = item.correctAnswer || item.correct_answer;
-          optionsList = [
-            { id: "A", text: ans },
-            { id: "B", text: "Alternative permutation B" },
-            { id: "C", text: "Alternative permutation C" },
-            { id: "D", text: "Alternative permutation D" },
-          ];
-        }
-
-        // Build question prompt with Column A & B if present
-        let fullPrompt = item.prompt || item.question || "Classified docket telemetry inquiry";
-        if (item.columnA && item.columnA.length > 0 && !fullPrompt.includes("COLUMN A")) {
-          const colAText = item.columnA.map((a: any) => `[${a.id}] ${a.text}`).join("\n");
-          const colBText = (item.columnB || []).map((b: any) => `[${b.id}] ${b.text}`).join("\n");
-          fullPrompt += `\n\nCOLUMN A:\n${colAText}\n\nCOLUMN B:\n${colBText}`;
-        }
-
-        return {
-          id: String(item.id || item.question_id || `ch${ch}-q${itemIdx + 1}`),
-          itemNumber: itemIdx + 1,
-          subHeader: `ITEM 0${itemIdx + 1}: ${(item.title || item.category || "CLASSIFIED ANOMALY").toUpperCase()}`,
-          docketTag: item.category || "TELEMETRY",
-          question: fullPrompt,
-          options:
-            optionsList.length > 0
-              ? optionsList
-              : STAGE_QUIZ_CONFIGS[ch]?.questions[itemIdx]?.options || [
-                  { id: "A", text: "Option A" },
-                  { id: "B", text: "Option B" },
-                  { id: "C", text: "Option C" },
-                  { id: "D", text: "Option D" },
-                ],
-          correctAnswerId: String(item.correctAnswerId || item.correct_answer || "A").trim().toUpperCase(),
-          hint: item.hint || "",
-        };
-      });
+          }
+          return null;
+        })
+        .filter(Boolean) as QuizOption[];
     }
-  }
+
+    // Ensure we have 4 valid multiple-choice options for this question
+    const finalOptions =
+      optionsList.length >= 4
+        ? optionsList
+        : defaultQ.options;
+
+    // Use full canonical prompt or clean DB prompt
+    let promptText = defaultQ.question;
+    if (item.prompt && item.prompt.includes("COLUMN A")) {
+      promptText = item.prompt;
+    }
+
+    result[ch].questions[itemIdx] = {
+      ...defaultQ,
+      id: rawId || defaultQ.id,
+      subHeader: item.title ? `ITEM 0${itemIdx + 1}: ${String(item.title).toUpperCase()}` : defaultQ.subHeader,
+      question: promptText,
+      options: finalOptions,
+      correctAnswerId: item.correct_answer === "A" || item.correct_answer === "B" || item.correct_answer === "C" || item.correct_answer === "D"
+        ? item.correct_answer
+        : defaultQ.correctAnswerId,
+      hint: item.hint || defaultQ.hint,
+    };
+  });
 
   return result;
 }

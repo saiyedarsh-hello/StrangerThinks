@@ -1198,7 +1198,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "Hawkins by the Numbers",
     category: "NUMBER CONVERSIONS",
     questionType: "MATCHING",
-    prompt: "Hawkins Lab labelled its subjects with numbers. Convert each Stranger Things number in Column A to its matching value in Column B.",
+    prompt:
+      "Hawkins Lab labelled its subjects with numbers. Convert each Stranger Things number in Column A to its matching value in Column B:\n\nCOLUMN A:\n[1] Eleven's subject number (decimal 11)\n[2] Eight's number + One's number (8 + 1 = 9)\n[3] The year Season 1 is set (1983)\n[4] Eight's number × Eleven's number (8 × 11 = 88)\n\nCOLUMN B:\n[a] 58 (hexadecimal)\n[b] 1011 (binary)\n[c] 7BF (hexadecimal)\n[d] 1001 (binary)",
     columnA: [
       { id: 1, text: "Eleven's subject number (decimal 11)" },
       { id: 2, text: "Eight's number + One's number (8 + 1 = 9)" },
@@ -1211,7 +1212,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "c", text: "7BF (hexadecimal)" },
       { id: "d", text: "1001 (binary)" },
     ],
-    correctAnswer: "1-b, 2-d, 3-c, 4-a",
+    options: [
+      { id: "A", text: "1-b, 2-d, 3-c, 4-a" },
+      { id: "B", text: "1-d, 2-b, 3-a, 4-c" },
+      { id: "C", text: "1-a, 2-c, 3-b, 4-d" },
+      { id: "D", text: "1-c, 2-a, 3-d, 4-b" },
+    ],
+    correctAnswer: "A",
     hint: "11 = 1011 in binary; 9 = 1001 in binary; 1983 = 7BF in hex; 88 = 58 in hex.",
     points: 100,
   },
@@ -1221,7 +1228,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "Mind Flayer vs Cybersecurity",
     category: "CYBER ATTACK VECTORS",
     questionType: "MATCHING",
-    prompt: "Match each Hawkins threat to the cyber attack it resembles.",
+    prompt:
+      "Match each Hawkins threat to the cyber attack it resembles:\n\nCOLUMN A:\n[1] One Mind Flayer remotely controls hundreds of townspeople, who all act on its orders.\n[2] Demodogs swarm Hawkins in such numbers that the town's resources collapse.\n[3] A secret Russian base is hidden beneath what looks like an ordinary shopping mall.\n[4] Vecna silently reads a victim's memories and fears without them realising.\n\nCOLUMN B:\n[a] Ransomware\n[b] Spyware\n[c] Botnet\n[d] Trojan horse\n[e] DDoS attack",
     columnA: [
       { id: 1, text: "One Mind Flayer remotely controls hundreds of townspeople, who all act on its orders." },
       { id: 2, text: "Demodogs swarm Hawkins in such numbers that the town's resources collapse." },
@@ -1235,7 +1243,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "d", text: "Trojan horse" },
       { id: "e", text: "DDoS attack" },
     ],
-    correctAnswer: "1-c, 2-e, 3-d, 4-b",
+    options: [
+      { id: "A", text: "1-c, 2-e, 3-d, 4-b" },
+      { id: "B", text: "1-d, 2-c, 3-e, 4-b" },
+      { id: "C", text: "1-c, 2-a, 3-d, 4-e" },
+      { id: "D", text: "1-e, 2-c, 3-b, 4-d" },
+    ],
+    correctAnswer: "A",
     hint: "Remote zombie host control = Botnet; resource swarm exhaustion = DDoS; malicious payload inside normal front = Trojan; silent covert surveillance = Spyware.",
     points: 120,
   },
@@ -1245,7 +1259,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "Hawkins Version Control",
     category: "GIT WORKFLOW",
     questionType: "MATCHING",
-    prompt: "Treat Hawkins as a Git repository. Match each event to the Git command that does the same thing.",
+    prompt:
+      "Treat Hawkins as a Git repository. Match each event to the Git command that does the same thing:\n\nCOLUMN A:\n[1] The Upside Down: a parallel version of Hawkins that evolves separately.\n[2] Bringing the parallel world's changes back into the main timeline.\n[3] Saving a snapshot of Hawkins as it is right now, with a note describing it.\n[4] Undoing the last disaster by adding a new change that reverses it, while keeping the history.\n\nCOLUMN B:\n[a] git commit\n[b] git clone\n[c] git revert\n[d] git branch\n[e] git merge",
     columnA: [
       { id: 1, text: "The Upside Down: a parallel version of Hawkins that evolves separately." },
       { id: 2, text: "Bringing the parallel world's changes back into the main timeline." },
@@ -1259,7 +1274,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "d", text: "git branch" },
       { id: "e", text: "git merge" },
     ],
-    correctAnswer: "1-d, 2-e, 3-a, 4-c",
+    options: [
+      { id: "A", text: "1-d, 2-e, 3-a, 4-c" },
+      { id: "B", text: "1-d, 2-a, 3-e, 4-c" },
+      { id: "C", text: "1-e, 2-d, 3-a, 4-b" },
+      { id: "D", text: "1-a, 2-e, 3-c, 4-d" },
+    ],
+    correctAnswer: "A",
     hint: "Isolated branch = git branch; reconciling branches = git merge; snapshot = commit; history-preserving undo = git revert.",
     points: 120,
   },
@@ -1269,7 +1290,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "Decode the Hellfire Club",
     category: "PYTHON STRING SLICING",
     questionType: "MATCHING",
-    prompt: "Dustin wrote Python snippets in his notebook. Match each snippet to the output it prints.",
+    prompt:
+      "Dustin wrote Python snippets in his notebook. Match each snippet to the output it prints:\n\nCOLUMN A:\n[1] print(\"STRANGERTHINGS\"[::3])\n[2] print(\"VECNA\"[1:4])\n[3] print(\"MINDFLAYER\"[-5:])\n[4] print(\"ELEVEN\".count(\"E\"))\n\nCOLUMN B:\n[a] 3\n[b] ECN\n[c] SAEHG\n[d] LAYER",
     columnA: [
       { id: 1, text: 'print("STRANGERTHINGS"[::3])' },
       { id: 2, text: 'print("VECNA"[1:4])' },
@@ -1282,7 +1304,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "c", text: "SAEHG" },
       { id: "d", text: "LAYER" },
     ],
-    correctAnswer: "1-c, 2-b, 3-d, 4-a",
+    options: [
+      { id: "A", text: "1-c, 2-b, 3-d, 4-a" },
+      { id: "B", text: "1-b, 2-c, 3-a, 4-d" },
+      { id: "C", text: "1-c, 2-d, 3-b, 4-a" },
+      { id: "D", text: "1-d, 2-b, 3-c, 4-a" },
+    ],
+    correctAnswer: "A",
     hint: "[::3] takes every 3rd letter: S-A-E-H-G. [1:4] takes indices 1 to 3: E-C-N. [-5:] takes last 5 letters: L-A-Y-E-R. .count('E') returns 3.",
     points: 150,
   },
@@ -1292,7 +1320,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "Hawkins Operating System",
     category: "OS CONCURRENCY & SCHEDULING",
     questionType: "MATCHING",
-    prompt: "Match each Hawkins scenario to the operating system concept it illustrates.",
+    prompt:
+      "Match each Hawkins scenario to the operating system concept it illustrates:\n\nCOLUMN A:\n[1] Mike, Dustin and Lucas share one walkie-talkie, each getting it for exactly 2 minutes in a fixed rotation.\n[2] Mike holds the compass and waits for Dustin's walkie. Dustin holds the walkie and waits for Mike's compass. Neither lets go.\n[3] Only one kid may press the transmit button on the shared radio at a time. The others must wait until it is released.\n[4] During one rescue mission, Nancy tracks the monster while Jonathan searches elsewhere, both sharing the same information at the same time.\n\nCOLUMN B:\n[a] Paging\n[b] Mutual exclusion (mutex)\n[c] Multithreading\n[d] Round Robin scheduling\n[e] Deadlock",
     columnA: [
       { id: 1, text: "Mike, Dustin and Lucas share one walkie-talkie, each getting it for exactly 2 minutes in a fixed rotation." },
       { id: 2, text: "Mike holds the compass and waits for Dustin's walkie. Dustin holds the walkie and waits for Mike's compass. Neither lets go." },
@@ -1306,7 +1335,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "d", text: "Round Robin scheduling" },
       { id: "e", text: "Deadlock" },
     ],
-    correctAnswer: "1-d, 2-e, 3-b, 4-c",
+    options: [
+      { id: "A", text: "1-d, 2-e, 3-b, 4-c" },
+      { id: "B", text: "1-e, 2-d, 3-c, 4-b" },
+      { id: "C", text: "1-d, 2-b, 3-e, 4-c" },
+      { id: "D", text: "1-b, 2-e, 3-d, 4-a" },
+    ],
+    correctAnswer: "A",
     hint: "Fixed time slice allocation = Round Robin; circular wait where neither proceeds = Deadlock; exclusive resource lock = Mutex; parallel tasks sharing memory = Multithreading.",
     points: 150,
   },
@@ -1316,7 +1351,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "The Search for Will",
     category: "SEARCH ALGORITHMS",
     questionType: "MATCHING",
-    prompt: "Match each search strategy used in Hawkins to the algorithm it represents.",
+    prompt:
+      "Match each search strategy used in Hawkins to the algorithm it represents:\n\nCOLUMN A:\n[1] Hopper checks every house on his list, one after another, from the first.\n[2] Joyce has an alphabetically sorted list of residents. She opens it in the middle and discards the half that cannot contain the name, again and again.\n[3] Dustin enters a tunnel and keeps going as deep as possible before backing up to try another path.\n[4] A search party spreads outward from the Lab in expanding rings, covering everything at one distance before moving further.\n\nCOLUMN B:\n[a] Breadth-First Search (BFS)\n[b] Depth-First Search (DFS)\n[c] Binary Search\n[d] Linear Search",
     columnA: [
       { id: 1, text: "Hopper checks every house on his list, one after another, from the first." },
       { id: 2, text: "Joyce has an alphabetically sorted list of residents. She opens it in the middle and discards the half that cannot contain the name, again and again." },
@@ -1329,7 +1365,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "c", text: "Binary Search" },
       { id: "d", text: "Linear Search" },
     ],
-    correctAnswer: "1-d, 2-c, 3-b, 4-a",
+    options: [
+      { id: "A", text: "1-d, 2-c, 3-b, 4-a" },
+      { id: "B", text: "1-c, 2-d, 3-a, 4-b" },
+      { id: "C", text: "1-d, 2-b, 3-c, 4-a" },
+      { id: "D", text: "1-a, 2-c, 3-b, 4-d" },
+    ],
+    correctAnswer: "A",
     hint: "One by one = Linear Search; halve sorted data = Binary Search; dive down branch before backtrack = DFS; concentric level rings = BFS.",
     points: 160,
   },
@@ -1339,7 +1381,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "How Fast Is Hawkins?",
     category: "TIME COMPLEXITY (BIG-O)",
     questionType: "MATCHING",
-    prompt: "Match each Hawkins task to its time complexity.",
+    prompt:
+      "Match each Hawkins task to its time complexity:\n\nCOLUMN A:\n[1] Taking the top card from the Hellfire Club's deck.\n[2] Reading each of n pages in a notebook exactly once to find a clue.\n[3] Sorting all n of Dustin's trading cards using merge sort.\n[4] Every one of n party members compares notes with every other member.\n\nCOLUMN B:\n[a] O(n²)\n[b] O(2ⁿ)\n[c] O(n log n)\n[d] O(1)\n[e] O(n)",
     columnA: [
       { id: 1, text: "Taking the top card from the Hellfire Club's deck." },
       { id: 2, text: "Reading each of n pages in a notebook exactly once to find a clue." },
@@ -1353,7 +1396,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "d", text: "O(1)" },
       { id: "e", text: "O(n)" },
     ],
-    correctAnswer: "1-d, 2-e, 3-c, 4-a",
+    options: [
+      { id: "A", text: "1-d, 2-e, 3-c, 4-a" },
+      { id: "B", text: "1-e, 2-d, 3-a, 4-c" },
+      { id: "C", text: "1-d, 2-c, 3-e, 4-a" },
+      { id: "D", text: "1-a, 2-e, 3-c, 4-d" },
+    ],
+    correctAnswer: "A",
     hint: "Single array pop = O(1); single pass over n = O(n); divide-and-conquer merge sort = O(n log n); pairwise comparisons = n*(n-1)/2 = O(n²).",
     points: 160,
   },
@@ -1363,7 +1412,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "Classes of Hawkins",
     category: "OBJECT-ORIENTED PROGRAMMING",
     questionType: "MATCHING",
-    prompt: "Match each Hawkins situation to the Object-Oriented Programming concept it shows.",
+    prompt:
+      "Match each Hawkins situation to the Object-Oriented Programming concept it shows:\n\nCOLUMN A:\n[1] Eleven and Kali both have the abilities of the base class 'Test Subject' and add their own.\n[2] The same command attack() produces different results: the Demogorgon bites, the Mind Flayer controls, Vecna curses.\n[3] Dr. Brenner's files can only be reached through authorised channels. The raw data is hidden.\n[4] Dustin tunes Cerebro using a few knobs without knowing how radio waves work inside.\n\nCOLUMN B:\n[a] Abstraction\n[b] Encapsulation\n[c] Inheritance\n[d] Polymorphism",
     columnA: [
       { id: 1, text: "Eleven and Kali both have the abilities of the base class 'Test Subject' and add their own." },
       { id: 2, text: "The same command attack() produces different results: the Demogorgon bites, the Mind Flayer controls, Vecna curses." },
@@ -1376,7 +1426,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "c", text: "Inheritance" },
       { id: "d", text: "Polymorphism" },
     ],
-    correctAnswer: "1-c, 2-d, 3-b, 4-a",
+    options: [
+      { id: "A", text: "1-c, 2-d, 3-b, 4-a" },
+      { id: "B", text: "1-d, 2-c, 3-a, 4-b" },
+      { id: "C", text: "1-c, 2-b, 3-d, 4-a" },
+      { id: "D", text: "1-a, 2-d, 3-b, 4-c" },
+    ],
+    correctAnswer: "A",
     hint: "Subclasses extending base = Inheritance; same method name polymorphic dispatch = Polymorphism; restricting direct state access = Encapsulation; exposing interface while hiding complexity = Abstraction.",
     points: 180,
   },
@@ -1386,20 +1442,15 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "When Everything Goes Dark",
     category: "SYSTEM DESIGN ARCHITECTURE",
     questionType: "FIND_THE_LINK",
-    prompt: "Name the system-design concept that connects all four clues:",
-    clues: [
-      "Every infected townsperson depends on one central Mind Flayer. If it is disrupted, they all lose control.",
-      "If Hawkins Power & Light fails, the entire town goes dark.",
-      "A website goes offline because its only server crashed.",
-      "A network where every computer connects through one hub. If the hub fails, nobody can communicate.",
-    ],
+    prompt:
+      "Name the system-design concept that connects all four clues:\n\n1. Every infected townsperson depends on one central Mind Flayer. If it is disrupted, they all lose control.\n2. If Hawkins Power & Light fails, the entire town goes dark.\n3. A website goes offline because its only server crashed.\n4. A network where every computer connects through one central hub; if the hub fails, nobody can communicate.",
     options: [
       { id: "A", text: "Single Point of Failure (SPOF)" },
       { id: "B", text: "Distributed Hash Consensus" },
       { id: "C", text: "Load Balanced Proxy Sharding" },
       { id: "D", text: "Split-Brain Quorum Isolation" },
     ],
-    correctAnswer: "Single Point of Failure",
+    correctAnswer: "A",
     hint: "One single bottleneck whose failure collapses the entire dependent architecture.",
     points: 180,
   },
@@ -1409,20 +1460,15 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "The Lab Door Circuit",
     category: "DIGITAL LOGIC & CIRCUITS",
     questionType: "TRACE_CIRCUIT",
-    prompt: "The Hawkins Lab door is controlled by expression: Door = (A AND B) OR ((NOT B) AND C). Where A = keycard valid, B = fingerprint valid, C = emergency override. Name the standard circuit and determine if the door opens.",
-    clues: [
-      "1. A = 1, B = 1, C = 0  --> OPEN (1)",
-      "2. A = 0, B = 1, C = 1  --> LOCKED (0)",
-      "3. A = 1, B = 0, C = 1  --> OPEN (1)",
-      "4. A = 0, B = 0, C = 0  --> LOCKED (0)",
-    ],
+    prompt:
+      "The Hawkins Lab door is controlled by expression: Door = (A AND B) OR ((NOT B) AND C). Where A = keycard valid, B = fingerprint valid, C = emergency override. Name the standard circuit that executes this logic.",
     options: [
       { id: "A", text: "2-to-1 Multiplexer (Select Line: B)" },
       { id: "B", text: "Full Adder Circuit with Carry Flag" },
       { id: "C", text: "SR Latch Bistable Multivibrator" },
       { id: "D", text: "3-to-8 Binary Line Decoder" },
     ],
-    correctAnswer: "2-to-1 Multiplexer",
+    correctAnswer: "A",
     hint: "If B = 1 output is A; if B = 0 output is C. B selects between inputs A and C.",
     points: 200,
   },
@@ -1432,7 +1478,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "Dustin Tests Python",
     category: "PYTHON TYPE EVALUATION",
     questionType: "MATCHING",
-    prompt: "Dustin tests expressions in Python. Match each expression to the data type it returns.",
+    prompt:
+      "Dustin tests expressions in Python. Match each expression to the data type it returns:\n\nCOLUMN A:\n[1] type(11 / 2)\n[2] type(11 // 2)\n[3] type(\"11\" + \"2\")\n[4] type(11 > 2)\n\nCOLUMN B:\n[a] bool\n[b] float\n[c] str\n[d] int\n[e] list",
     columnA: [
       { id: 1, text: "type(11 / 2)" },
       { id: 2, text: "type(11 // 2)" },
@@ -1446,7 +1493,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "d", text: "int" },
       { id: "e", text: "list (Distractor)" },
     ],
-    correctAnswer: "1-b, 2-d, 3-c, 4-a",
+    options: [
+      { id: "A", text: "1-b, 2-d, 3-c, 4-a" },
+      { id: "B", text: "1-d, 2-b, 3-c, 4-a" },
+      { id: "C", text: "1-b, 2-d, 3-a, 4-c" },
+      { id: "D", text: "1-a, 2-d, 3-c, 4-b" },
+    ],
+    correctAnswer: "A",
     hint: "Division / yields float (5.5); floor // yields int (5); string concat yields str ('112'); comparison yields bool (True).",
     points: 150,
   },
@@ -1456,7 +1509,8 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
     title: "Debugging the Lab",
     category: "DEBUGGING & ERROR TYPES",
     questionType: "MATCHING",
-    prompt: "Match each Python snippet to the error or bug it produces. Assume Eleven has not been defined anywhere.",
+    prompt:
+      "Match each Python snippet to the error or bug it produces. Assume Eleven has not been defined anywhere:\n\nCOLUMN A:\n[1] print(\"Hawkins\n[2] print(10 / 0)\n[3] print(3 + 5) # area of a 3 x 5 rectangle\n[4] print(Eleven)\n\nCOLUMN B:\n[a] NameError\n[b] Logic error\n[c] SyntaxError\n[d] TypeError\n[e] ZeroDivisionError",
     columnA: [
       { id: 1, text: 'print("Hawkins' },
       { id: 2, text: 'print(10 / 0)' },
@@ -1470,7 +1524,13 @@ export const CANON_NORMAL_QUESTIONS: NormalCodingQuestionItem[] = [
       { id: "d", text: "TypeError (Distractor)" },
       { id: "e", text: "ZeroDivisionError" },
     ],
-    correctAnswer: "1-c, 2-e, 3-b, 4-a",
+    options: [
+      { id: "A", text: "1-c, 2-e, 3-b, 4-a" },
+      { id: "B", text: "1-c, 2-e, 3-a, 4-b" },
+      { id: "C", text: "1-e, 2-c, 3-b, 4-a" },
+      { id: "D", text: "1-b, 2-a, 3-c, 4-e" },
+    ],
+    correctAnswer: "A",
     hint: "Unclosed string quote = SyntaxError; dividing by zero = ZeroDivisionError; calculating 3+5 instead of 3*5 = Logic error; undefined variable = NameError.",
     points: 150,
   },
@@ -1486,7 +1546,7 @@ export async function checkSupabaseQuestionsStatus(): Promise<{
   message: string;
 }> {
   try {
-    const { data, error, count } = await supabase
+    const { data, error } = await supabase
       .from("questions")
       .select("*", { count: "exact" });
 
@@ -1503,7 +1563,7 @@ export async function checkSupabaseQuestionsStatus(): Promise<{
     return {
       connected: true,
       rowCount,
-      rlsBlocked: rowCount === 0, // If empty but table exists, likely RLS policy is missing
+      rlsBlocked: rowCount === 0,
       message: rowCount > 0 ? `Loaded ${rowCount} rows from database` : "0 rows returned (Check RLS policy)",
     };
   } catch (err: any) {
@@ -1518,7 +1578,8 @@ export async function checkSupabaseQuestionsStatus(): Promise<{
 
 /**
  * Fetch questions directly from Supabase 'questions' table.
- * If Supabase returns empty (e.g. RLS pending), seamlessly falls back to the canonical question sets.
+ * Specifically isolates the 12 Coding questions (CQ_*) for NORMAL screen
+ * and the 13 Lore questions (MHQ_*) for VECNA screen, preventing cross-contamination.
  */
 export async function fetchQuestionsFromSupabase(targetScreen: "NORMAL" | "VECNA"): Promise<{
   success: boolean;
@@ -1526,55 +1587,99 @@ export async function fetchQuestionsFromSupabase(targetScreen: "NORMAL" | "VECNA
   source: "supabase" | "canonical";
 }> {
   try {
-    // Strategy 1: Query with target_screen filter
-    let { data, error } = await supabase
-      .from("questions")
-      .select("*")
-      .ilike("target_screen", `%${targetScreen}%`);
+    if (targetScreen === "NORMAL") {
+      // Specifically query the 12 Hawkins Coding questions (CQ_01, CQ_05, etc.)
+      let { data, error } = await supabase
+        .from("questions")
+        .select("*")
+        .ilike("question_id", "CQ_%");
 
-    // Strategy 2: If no data returned with filter, query all rows and filter in JS
-    if ((!data || data.length === 0) && !error) {
-      const allRes = await supabase.from("questions").select("*");
-      if (allRes.data && allRes.data.length > 0) {
-        if (targetScreen === "VECNA") {
-          data = allRes.data.filter(
-            (q: any) =>
-              (q.target_screen && /vecna/i.test(q.target_screen)) ||
-              (q.question_type && /multiple/i.test(q.question_type)) ||
-              String(q.question_id || "").toUpperCase().startsWith("V")
+      if ((!data || data.length === 0) && !error) {
+        // Fallback: query all questions and pick CQ_* only
+        const allRes = await supabase.from("questions").select("*");
+        if (allRes.data && allRes.data.length > 0) {
+          data = allRes.data.filter((q: any) =>
+            String(q.question_id || "").toUpperCase().startsWith("CQ_")
           );
-          // If still empty, take questions that have options and no column_a
-          if (data.length === 0) {
-            data = allRes.data.filter((q: any) => !q.column_a && q.options);
-          }
-        } else {
-          data = allRes.data.filter(
-            (q: any) =>
-              (q.target_screen && /normal/i.test(q.target_screen)) ||
-              (q.question_type && /match|circuit|link/i.test(q.question_type)) ||
-              String(q.question_id || "").toUpperCase().startsWith("Q") ||
-              q.column_a
-          );
-          if (data.length === 0) {
-            data = allRes.data.filter((q: any) => q.column_a || !q.options);
-          }
         }
       }
-    }
 
-    if (!error && data && data.length > 0) {
-      if (targetScreen === "VECNA") {
+      if (!error && data && data.length > 0) {
+        // Sort in canonical order
+        const orderMap: Record<string, number> = {
+          CQ_01: 1, CQ_05: 2, CQ_06: 3, CQ_07: 4, CQ_09: 5,
+          CQ_11: 6, CQ_12: 7, CQ_13: 8, CQ_14: 9, CQ_15: 10,
+          CQ_18: 11, CQ_20: 12
+        };
+        data.sort((a: any, b: any) => (orderMap[a.question_id] || 99) - (orderMap[b.question_id] || 99));
+
+        const mappedNormal: NormalCodingQuestionItem[] = data.map((q: any, idx: number) => {
+          const canonQ =
+            CANON_NORMAL_QUESTIONS.find(
+              (c) => c.id === q.question_id || c.id === q.question_id?.replace("CQ_", "Q")
+            ) || CANON_NORMAL_QUESTIONS[idx % CANON_NORMAL_QUESTIONS.length];
+
+          // Parse options if present in DB row
+          let parsedOpts = q.options;
+          if (typeof parsedOpts === "string") {
+            try { parsedOpts = JSON.parse(parsedOpts); } catch (e) { parsedOpts = null; }
+          }
+          if (
+            !Array.isArray(parsedOpts) ||
+            parsedOpts.length === 0 ||
+            (parsedOpts.length === 1 && parsedOpts[0]?.text?.includes("Clues provided"))
+          ) {
+            parsedOpts = canonQ.options;
+          }
+
+          return {
+            id: String(q.question_id || canonQ.id),
+            itemNumber: idx + 1,
+            title: q.title || canonQ.title,
+            category: q.category || canonQ.category,
+            questionType: q.question_type || canonQ.questionType,
+            prompt: canonQ.prompt, // Always use clean canonical prompt with Column A & B included
+            columnA: canonQ.columnA,
+            columnB: canonQ.columnB,
+            options: parsedOpts,
+            correctAnswer: q.correct_answer === "A" || q.correct_answer === "B" || q.correct_answer === "C" || q.correct_answer === "D"
+              ? q.correct_answer
+              : "A",
+            hint: q.hint || canonQ.hint || "",
+            points: Number(q.points || canonQ.points || 150),
+          };
+        });
+
+        return { success: true, questions: mappedNormal, source: "supabase" };
+      }
+    } else {
+      // VECNA Screen: Specifically query MHQ_* (the 13 Hawkins Lore questions)
+      let { data, error } = await supabase
+        .from("questions")
+        .select("*")
+        .ilike("question_id", "MHQ_%");
+
+      if ((!data || data.length === 0) && !error) {
+        const allRes = await supabase.from("questions").select("*");
+        if (allRes.data && allRes.data.length > 0) {
+          data = allRes.data.filter((q: any) =>
+            String(q.question_id || "").toUpperCase().startsWith("MHQ_")
+          );
+        }
+      }
+
+      if (!error && data && data.length > 0) {
+        // Sort MHQ_01 to MHQ_13
+        data.sort((a: any, b: any) => {
+          const numA = parseInt(String(a.question_id).replace(/\D/g, ""), 10) || 0;
+          const numB = parseInt(String(b.question_id).replace(/\D/g, ""), 10) || 0;
+          return numA - numB;
+        });
+
         const mappedTrials: VecnaTrialItem[] = data.map((q: any, idx: number) => {
           let parsedOptions = q.options;
           if (typeof parsedOptions === "string") {
-            try {
-              parsedOptions = JSON.parse(parsedOptions);
-            } catch (e) {
-              parsedOptions = parsedOptions.split("\n").map((line: string, i: number) => ({
-                id: String.fromCharCode(65 + i),
-                text: line.trim(),
-              }));
-            }
+            try { parsedOptions = JSON.parse(parsedOptions); } catch (e) { parsedOptions = []; }
           }
           if (Array.isArray(parsedOptions) && typeof parsedOptions[0] === "string") {
             parsedOptions = parsedOptions.map((optStr: string, i: number) => {
@@ -1585,96 +1690,25 @@ export async function fetchQuestionsFromSupabase(targetScreen: "NORMAL" | "VECNA
             });
           }
 
-          const numericId =
-            parseInt(String(q.question_id || q.id || "").replace(/\D/g, ""), 10) || idx + 1;
+          const canon = CANON_VECNA_TRIALS[idx % CANON_VECNA_TRIALS.length];
+          const numericId = parseInt(String(q.question_id || "").replace(/\D/g, ""), 10) || idx + 1;
 
           return {
             id: numericId,
-            title: q.title || `TRIAL ${numericId}: ${q.category || "PSYCHIC INQUIRY"}`,
-            subtitle: q.subtitle || q.prompt?.slice(0, 36) || "CLASSIFIED DOSSIER",
-            category: q.category || "VECNA BREACH",
-            description: q.explanation || q.prompt || "",
-            question: q.prompt || q.question || "",
-            codeSnippet: q.code_snippet || q.code || undefined,
-            options:
-              Array.isArray(parsedOptions) && parsedOptions.length > 0
-                ? parsedOptions
-                : CANON_VECNA_TRIALS[idx % CANON_VECNA_TRIALS.length]?.options,
-            correctAnswer: q.correct_answer || "A",
-            points: Number(q.points || 150),
-            powersGranted:
-              q.powers_granted ||
-              CANON_VECNA_TRIALS[idx % CANON_VECNA_TRIALS.length]?.powersGranted ||
-              "TELEKINETIC STRIKE",
+            title: q.title || canon?.title || `TRIAL ${numericId}: PSYCHIC INQUIRY`,
+            subtitle: q.subtitle || canon?.subtitle || "CLASSIFIED DOSSIER",
+            category: q.category || canon?.category || "VECNA BREACH",
+            description: q.explanation || q.prompt || canon?.description || "",
+            question: q.prompt || canon?.question || "",
+            codeSnippet: q.code_snippet || canon?.codeSnippet || undefined,
+            options: Array.isArray(parsedOptions) && parsedOptions.length > 0 ? parsedOptions : canon?.options,
+            correctAnswer: q.correct_answer || canon?.correctAnswer || "A",
+            points: Number(q.points || canon?.points || 150),
+            powersGranted: canon?.powersGranted || "TELEKINETIC STRIKE",
           };
         });
 
-        // Sort by id ascending
-        mappedTrials.sort((a, b) => a.id - b.id);
         return { success: true, questions: mappedTrials, source: "supabase" };
-      } else {
-        const mappedNormal: NormalCodingQuestionItem[] = data.map((q: any, idx: number) => {
-          let colA = q.column_a;
-          if (typeof colA === "string") {
-            try {
-              colA = JSON.parse(colA);
-            } catch (e) {
-              colA = [];
-            }
-          }
-          let colB = q.column_b;
-          if (typeof colB === "string") {
-            try {
-              colB = JSON.parse(colB);
-            } catch (e) {
-              colB = [];
-            }
-          }
-          let parsedOpts = q.options;
-          if (typeof parsedOpts === "string") {
-            try {
-              parsedOpts = JSON.parse(parsedOpts);
-            } catch (e) {
-              parsedOpts = [];
-            }
-          }
-
-          return {
-            id: String(q.question_id || q.id || `Q${idx + 1}`),
-            itemNumber: idx + 1,
-            title: q.title || `TRANSMISSION ${idx + 1}`,
-            category: q.category || "SYSTEM LOGIC",
-            questionType: q.question_type || "MATCHING",
-            prompt: q.prompt || "",
-            columnA:
-              Array.isArray(colA) && colA.length > 0
-                ? colA
-                : CANON_NORMAL_QUESTIONS[idx % CANON_NORMAL_QUESTIONS.length]?.columnA,
-            columnB:
-              Array.isArray(colB) && colB.length > 0
-                ? colB
-                : CANON_NORMAL_QUESTIONS[idx % CANON_NORMAL_QUESTIONS.length]?.columnB,
-            options:
-              Array.isArray(parsedOpts) && parsedOpts.length > 0
-                ? parsedOpts
-                : CANON_NORMAL_QUESTIONS[idx % CANON_NORMAL_QUESTIONS.length]?.options,
-            correctAnswer:
-              q.correct_answer ||
-              CANON_NORMAL_QUESTIONS[idx % CANON_NORMAL_QUESTIONS.length]?.correctAnswer ||
-              "",
-            hint:
-              q.hint ||
-              CANON_NORMAL_QUESTIONS[idx % CANON_NORMAL_QUESTIONS.length]?.hint ||
-              "",
-            points: Number(
-              q.points ||
-                CANON_NORMAL_QUESTIONS[idx % CANON_NORMAL_QUESTIONS.length]?.points ||
-                150
-            ),
-          };
-        });
-
-        return { success: true, questions: mappedNormal, source: "supabase" };
       }
     }
   } catch (err) {
