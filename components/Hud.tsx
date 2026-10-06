@@ -52,285 +52,239 @@ export default function Hud() {
 
   return (
     <>
+      {/* Floating Pill Top HUD Navigation Bar (Matching Reference Image) */}
       <div
-        className="hud"
         style={{
+          position: "fixed",
+          top: 14,
+          left: "clamp(14px, 2.5vw, 28px)",
+          right: "clamp(14px, 2.5vw, 28px)",
+          maxWidth: 1440,
+          margin: "0 auto",
+          height: 66,
+          background: "linear-gradient(180deg, rgba(14, 3, 7, 0.94) 0%, rgba(6, 1, 3, 0.97) 100%)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderRadius: 12,
+          border: "1.5px solid rgba(220, 24, 38, 0.75)",
+          boxShadow:
+            "0 0 24px rgba(220, 24, 38, 0.3), inset 0 0 16px rgba(220, 24, 38, 0.08), 0 10px 35px rgba(0, 0, 0, 0.95)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "8px clamp(16px, 2.5vw, 32px)",
-          height: 64,
-          background: "linear-gradient(180deg, rgba(16, 4, 10, 0.98) 0%, rgba(6, 2, 5, 0.99) 100%)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1.5px solid rgba(255, 45, 58, 0.35)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 45, 58, 0.25)",
-          gap: 16,
-          zIndex: 800,
+          padding: "0 clamp(16px, 2.5vw, 32px)",
           boxSizing: "border-box",
+          zIndex: 800,
+          overflow: "hidden",
         }}
       >
-        {/* Left Side: Crazy Tactile 3D Red Pushpin & Yarn Evidence Board Toggle */}
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <button
-            id="hud-evidence-board-btn"
-            type="button"
-            onClick={() => {
-              sfx("click");
-              setViewMode(viewMode === "board" ? "location" : "board");
-            }}
-            style={{
-              position: "relative",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "7px 16px 7px 12px",
-              background:
-                viewMode === "board"
-                  ? "linear-gradient(135deg, rgba(220, 20, 35, 0.32) 0%, rgba(100, 10, 20, 0.45) 100%)"
-                  : "linear-gradient(135deg, rgba(25, 10, 18, 0.85) 0%, rgba(12, 4, 8, 0.9) 100%)",
-              border: viewMode === "board" ? "1.5px solid #ff2d3a" : "1px solid rgba(255, 45, 58, 0.3)",
-              borderRadius: 6,
-              cursor: "pointer",
-              boxShadow:
-                viewMode === "board"
-                  ? "0 0 24px rgba(255, 45, 58, 0.55), inset 0 0 14px rgba(255, 45, 58, 0.25)"
-                  : "0 4px 14px rgba(0, 0, 0, 0.7)",
-              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-              transform: viewMode === "board" ? "scale(1.02)" : "scale(1)",
-            }}
-          >
-            {/* Realistic 3D Angled Red Pushpin with Thread */}
-            <div
-              style={{
-                position: "relative",
-                width: 24,
-                height: 24,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                style={{
-                  filter: "drop-shadow(0 3px 6px rgba(255, 34, 51, 0.9))",
-                  transform: "rotate(-18deg)",
-                }}
-              >
-                {/* Silver Needle Tip */}
-                <path d="M12 15L7 23L15 17" stroke="#e0e0e0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M11.5 16L8 22" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" />
-                {/* Pin Head Base Rim */}
-                <ellipse cx="14.5" cy="9.5" rx="6.5" ry="4.5" fill="#660000" transform="rotate(-35 14.5 9.5)" />
-                {/* Glossy Red Head Sphere */}
-                <circle cx="12.5" cy="7.5" r="6" fill="url(#hudPinGrad)" />
-                {/* White Gloss Highlight */}
-                <ellipse cx="10.5" cy="5.5" rx="2.5" ry="1.5" fill="#ffffff" opacity="0.85" transform="rotate(-30 10.5 5.5)" />
-                <defs>
-                  <radialGradient id="hudPinGrad" cx="35%" cy="30%" r="70%">
-                    <stop offset="0%" stopColor="#ff5a66" />
-                    <stop offset="50%" stopColor="#ff1726" />
-                    <stop offset="100%" stopColor="#80000a" />
-                  </radialGradient>
-                </defs>
-              </svg>
+        {/* Subtle Background Left Red Constellation Watermark */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 140,
+            background: "radial-gradient(circle at 10% 50%, rgba(220, 24, 38, 0.18) 0%, transparent 80%)",
+            pointerEvents: "none",
+          }}
+        />
 
-              {/* Glowing Red Yarn Thread Trailing Off */}
-              <span
-                style={{
-                  position: "absolute",
-                  bottom: -1,
-                  right: -5,
-                  width: 12,
-                  height: 12,
-                  borderBottom: "2px solid #ff2233",
-                  borderRight: "2px solid #ff2233",
-                  borderRadius: "0 0 8px 0",
-                  opacity: 0.85,
-                  filter: "drop-shadow(0 0 4px #ff2233)",
-                  pointerEvents: "none",
-                }}
-              />
-            </div>
-
-            {/* Evidence Board Text & Status */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.15 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span
-                  style={{
-                    fontFamily: "var(--font-term), monospace",
-                    fontSize: 14.5,
-                    fontWeight: 900,
-                    letterSpacing: ".16em",
-                    color: viewMode === "board" ? "#ffffff" : "#ff8a80",
-                    textTransform: "uppercase",
-                    textShadow: viewMode === "board" ? "0 0 12px rgba(255, 45, 58, 0.8)" : "none",
-                  }}
-                >
-                  EVIDENCE PINBOARD
-                </span>
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "#ff2233",
-                    boxShadow: "0 0 8px #ff2233",
-                    animation: "pulse 1.4s infinite",
-                  }}
-                />
-              </div>
-
-              <div
-                style={{
-                  fontSize: 10,
-                  fontFamily: "var(--font-mono)",
-                  letterSpacing: ".14em",
-                  color: "rgba(255, 255, 255, 0.45)",
-                  marginTop: 2,
-                }}
-              >
-                HAWKINS INVESTIGATION MATRIX
-              </div>
-            </div>
-
-            {/* Chapter Badge */}
-            <div
-              style={{
-                marginLeft: 4,
-                padding: "2px 8px",
-                borderRadius: 3,
-                background: viewMode === "board" ? "#ff2d3a" : "rgba(255, 45, 58, 0.18)",
-                color: viewMode === "board" ? "#000000" : "#ff8a80",
-                border: "1px solid rgba(255, 45, 58, 0.5)",
-                fontSize: 11,
-                fontWeight: 900,
-                letterSpacing: ".1em",
-                fontFamily: "var(--font-mono)",
-                boxShadow: viewMode === "board" ? "0 0 10px rgba(255, 45, 58, 0.6)" : "none",
-              }}
-            >
-              {activeChapterId || 1} / 8
-            </div>
-          </button>
-        </div>
-
-        <div className="grow" />
-
-        {/* Right Side: Team Info (No [T06]), Score & Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "clamp(12px, 2.2vw, 28px)" }}>
-          {/* Team Name Only Capsule */}
+        {/* LEFT SECTION: HAWKINS / INVESTIGATION // 1986 */}
+        <button
+          type="button"
+          onClick={() => {
+            sfx("click");
+            setViewMode(viewMode === "board" ? "location" : "board");
+          }}
+          title="Click to toggle Hawkins Investigation Board"
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            textAlign: "left",
+            position: "relative",
+            zIndex: 2,
+          }}
+        >
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-end",
-              background: "rgba(255, 255, 255, 0.03)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              padding: "4px 14px",
-              borderRadius: 5,
+              fontFamily: "var(--font-title), Georgia, 'Times New Roman', serif",
+              color: "#e61a28",
+              fontSize: "clamp(16px, 1.8vw, 19px)",
+              fontWeight: 900,
+              letterSpacing: ".38em",
+              textTransform: "uppercase",
+              lineHeight: 1.1,
+              textShadow: "0 0 14px rgba(230, 26, 40, 0.55)",
             }}
           >
-            <span
-              style={{
-                letterSpacing: ".26em",
-                color: "#ff9e58",
-                fontSize: 9.5,
-                fontWeight: 900,
-                textTransform: "uppercase",
-                marginBottom: 2,
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              SQUAD / TEAM
-            </span>
-            <span
-              style={{
-                fontSize: "clamp(14px, 1.6vw, 17px)",
-                fontWeight: 900,
-                color: "#ffffff",
-                letterSpacing: ".08em",
-                textShadow: "0 0 12px rgba(255, 255, 255, 0.35)",
-                fontFamily: "var(--font-mono)",
-                textTransform: "uppercase",
-              }}
-            >
-              {s.team?.name || "RECON-1"}
-            </span>
+            H A W K I N S
           </div>
+          <div
+            style={{
+              fontFamily: "var(--font-mono), monospace",
+              color: "#8a8280",
+              fontSize: "clamp(9.5px, 1.1vw, 11px)",
+              fontWeight: 600,
+              letterSpacing: ".28em",
+              textTransform: "uppercase",
+              marginTop: 4,
+            }}
+          >
+            INVESTIGATION // 1986
+          </div>
+        </button>
 
-          {/* Elegant Vertical Neon Divider */}
+        {/* RIGHT SECTION: SQUAD | SCORE | LOGOUT */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            position: "relative",
+            zIndex: 2,
+          }}
+        >
+          {/* Vertical Divider 1 */}
           <div
             style={{
               width: 1,
-              height: 32,
-              background: "linear-gradient(180deg, transparent, rgba(255, 45, 58, 0.4), transparent)",
+              height: 36,
+              background: "rgba(220, 24, 38, 0.45)",
+              margin: "0 clamp(12px, 1.8vw, 24px)",
             }}
           />
 
-          {/* Score Display with Shaded Retro Digits */}
+          {/* SQUAD MODULE */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              alignItems: "flex-end",
-              background: "rgba(0, 0, 0, 0.45)",
-              border: "1px solid rgba(255, 45, 58, 0.2)",
-              padding: "3px 12px",
-              borderRadius: 5,
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
             <span
               style={{
-                letterSpacing: ".24em",
-                color: "rgba(255, 45, 58, 0.85)",
+                fontFamily: "var(--font-mono), monospace",
                 fontSize: 9.5,
-                fontWeight: 900,
+                fontWeight: 700,
+                color: "#8a8280",
+                letterSpacing: ".24em",
                 textTransform: "uppercase",
-                fontFamily: "var(--font-mono)",
-                marginBottom: 1,
+                marginBottom: 3,
+                lineHeight: 1,
+              }}
+            >
+              SQUAD
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "clamp(13.5px, 1.5vw, 15.5px)",
+                fontWeight: 800,
+                color: "#ffffff",
+                letterSpacing: ".12em",
+                textTransform: "uppercase",
+                lineHeight: 1.1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {s.team?.name || "HELLFIRE CLUB"}
+            </span>
+          </div>
+
+          {/* Vertical Divider 2 */}
+          <div
+            style={{
+              width: 1,
+              height: 36,
+              background: "rgba(220, 24, 38, 0.45)",
+              margin: "0 clamp(12px, 1.8vw, 24px)",
+            }}
+          />
+
+          {/* SCORE MODULE */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: 9.5,
+                fontWeight: 800,
+                color: "#e61a28",
+                letterSpacing: ".24em",
+                textTransform: "uppercase",
+                marginBottom: 2,
+                lineHeight: 1,
               }}
             >
               SCORE
             </span>
             <span
               style={{
-                fontSize: "clamp(20px, 2.2vw, 24px)",
+                fontFamily: "var(--font-term), 'VT323', monospace",
+                fontSize: "clamp(19px, 2.1vw, 23px)",
                 fontWeight: "bold",
-                color: "var(--accent, #ff8a4c)",
-                letterSpacing: ".12em",
-                fontFamily: "var(--font-term), monospace",
+                color: "#ff2a3a",
+                letterSpacing: ".2em",
                 lineHeight: 1,
-                textShadow: "0 0 14px rgba(255, 138, 76, 0.6)",
+                textShadow: "0 0 10px rgba(255, 42, 58, 0.85), 0 0 20px rgba(255, 42, 58, 0.4)",
               }}
             >
               {String(score).padStart(5, "0")}
             </span>
           </div>
 
-          {/* Logout Button */}
+          {/* Vertical Divider 3 */}
+          <div
+            style={{
+              width: 1,
+              height: 36,
+              background: "rgba(220, 24, 38, 0.45)",
+              margin: "0 clamp(12px, 1.8vw, 24px)",
+            }}
+          />
+
+          {/* LOGOUT BUTTON */}
           <button
             id="player-logout-btn"
             type="button"
-            className="btn sm ghost red"
             style={{
-              padding: "8px 16px",
-              fontSize: 12,
-              letterSpacing: ".15em",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontFamily: "var(--font-mono)",
+              padding: "7px clamp(16px, 1.8vw, 24px)",
+              background: "rgba(220, 24, 38, 0.08)",
+              border: "1.5px solid rgba(220, 24, 38, 0.75)",
+              borderRadius: 6,
+              color: "#e61a28",
+              fontFamily: "var(--font-mono), monospace",
+              fontSize: "clamp(11px, 1.2vw, 12.5px)",
               fontWeight: 800,
-              background: "rgba(255, 45, 58, 0.08)",
-              borderColor: "rgba(255, 45, 58, 0.45)",
-              color: "#ff4d5a",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.6)",
-              transition: "all 0.15s ease",
+              letterSpacing: ".2em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              boxShadow: "0 0 14px rgba(220, 24, 38, 0.2)",
+              transition: "all 0.18s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#e61a28";
+              e.currentTarget.style.color = "#000000";
+              e.currentTarget.style.boxShadow = "0 0 22px rgba(220, 24, 38, 0.7)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(220, 24, 38, 0.08)";
+              e.currentTarget.style.color = "#e61a28";
+              e.currentTarget.style.boxShadow = "0 0 14px rgba(220, 24, 38, 0.2)";
             }}
             onClick={() => {
               if (confirm("Log out of Hawkins Protocol and return to login screen?")) {
@@ -338,7 +292,7 @@ export default function Hud() {
               }
             }}
           >
-            [LOGOUT]
+            LOGOUT
           </button>
         </div>
       </div>
