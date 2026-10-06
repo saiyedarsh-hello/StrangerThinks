@@ -14,16 +14,16 @@ interface LandingPageProps {
 }
 
 /**
- * Clean, calibrated Stranger Things Logo Lockup with dynamic lightning flash reactivity
+ * Clean, calibrated Stranger Things Logo Lockup with bolder typography & refined contour glow
  */
 function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
   const fontStack =
-    '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", "Libre Caslon Display", "Playfair Display", Georgia, serif';
+    '"ITC Benguiat Std", "Benguiat", "Libre Caslon Display", "Playfair Display", Georgia, serif';
 
   const barShadow =
     flashLevel > 0
-      ? "0 0 14px rgba(255, 60, 80, 0.95), 0 0 28px rgba(255, 30, 45, 0.6)"
-      : "0 0 6px rgba(255, 30, 45, 0.8), 0 0 14px rgba(255, 30, 45, 0.35)";
+      ? "0 0 8px rgba(230, 26, 40, 0.8), 0 2px 8px rgba(0, 0, 0, 0.9)"
+      : "0 0 4px rgba(230, 26, 40, 0.55), 0 2px 6px rgba(0, 0, 0, 0.85)";
 
   return (
     <div
@@ -38,8 +38,8 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
         margin: "0 auto 36px auto",
         filter:
           flashLevel > 0
-            ? `drop-shadow(0 0 ${12 + flashLevel * 18}px rgba(255, 50, 70, 0.95)) drop-shadow(0 0 ${28 + flashLevel * 30}px rgba(255, 30, 45, 0.6))`
-            : "drop-shadow(0 0 8px rgba(255, 30, 45, 0.8)) drop-shadow(0 0 18px rgba(255, 30, 45, 0.35))",
+            ? "drop-shadow(0 0 10px rgba(230, 26, 40, 0.75)) drop-shadow(0 6px 22px rgba(0, 0, 0, 0.98))"
+            : "drop-shadow(0 0 5px rgba(230, 26, 40, 0.5)) drop-shadow(0 4px 18px rgba(0, 0, 0, 0.95))",
         transition: "filter 0.08s ease-out",
       }}
     >
@@ -61,8 +61,8 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
             top: 0,
             left: "14%",
             right: "14%",
-            height: "6px",
-            background: "#ff2230",
+            height: "8px",
+            background: "#e61a28",
             boxShadow: barShadow,
             borderRadius: "1px",
             transition: "box-shadow 0.08s ease-out",
@@ -73,10 +73,10 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
         <span
           style={{
             fontFamily: fontStack,
-            fontSize: "clamp(5.5rem, 14vw, 13.5rem)",
+            fontSize: "clamp(5.8rem, 14.5vw, 14rem)",
             fontWeight: 900,
-            color: "#ff2230",
-            WebkitTextStroke: "4.8px #ff5964",
+            color: "#e61a28",
+            WebkitTextStroke: "5.5px #ff2a3a",
             paintOrder: "stroke fill",
             letterSpacing: "-0.02em",
             transform: "translateY(12%)",
@@ -90,10 +90,10 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
         <span
           style={{
             fontFamily: fontStack,
-            fontSize: "clamp(4.2rem, 10.5vw, 10.2rem)",
+            fontSize: "clamp(4.4rem, 11vw, 10.6rem)",
             fontWeight: 900,
-            color: "#ff2230",
-            WebkitTextStroke: "4.8px #ff5964",
+            color: "#e61a28",
+            WebkitTextStroke: "5.5px #ff2a3a",
             paintOrder: "stroke fill",
             letterSpacing: "0.01em",
             paddingTop: "14px",
@@ -107,10 +107,10 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
         <span
           style={{
             fontFamily: fontStack,
-            fontSize: "clamp(5.5rem, 14vw, 13.5rem)",
+            fontSize: "clamp(5.8rem, 14.5vw, 14rem)",
             fontWeight: 900,
-            color: "#ff2230",
-            WebkitTextStroke: "4.8px #ff5964",
+            color: "#e61a28",
+            WebkitTextStroke: "5.5px #ff2a3a",
             paintOrder: "stroke fill",
             letterSpacing: "-0.02em",
             transform: "translateY(12%)",
@@ -136,8 +136,8 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
         <div
           style={{
             flex: 1,
-            height: "6px",
-            background: "#ff2230",
+            height: "8px",
+            background: "#e61a28",
             boxShadow: barShadow,
             borderRadius: "1px",
             transition: "box-shadow 0.08s ease-out",
@@ -148,11 +148,11 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
         <span
           style={{
             fontFamily: fontStack,
-            fontSize: "clamp(4.2rem, 10.5vw, 10.2rem)",
+            fontSize: "clamp(4.4rem, 11vw, 10.6rem)",
             fontWeight: 900,
             lineHeight: 0.9,
-            color: "#ff2230",
-            WebkitTextStroke: "4.8px #ff5964",
+            color: "#e61a28",
+            WebkitTextStroke: "5.5px #ff2a3a",
             paintOrder: "stroke fill",
             letterSpacing: "0.02em",
             whiteSpace: "nowrap",
@@ -165,8 +165,8 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
         <div
           style={{
             flex: 1,
-            height: "6px",
-            background: "#ff2230",
+            height: "8px",
+            background: "#e61a28",
             boxShadow: barShadow,
             borderRadius: "1px",
             transition: "box-shadow 0.08s ease-out",
@@ -250,7 +250,8 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
+        justifyContent: "center",
+        alignItems: "center",
         position: "relative",
         overflow: "hidden",
         background: "#05080b",
@@ -260,50 +261,23 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
       <CinematicBackground
         src="/hawkins-town-bg.jpg"
         particles="none"
-        vignette="heavy"
-        overlayOpacity={0.68}
+        vignette="medium"
+        overlayOpacity={0.42}
       />
 
       {/* Realistic Procedural Red Lightning & Embers Canvas (Layered behind text) */}
-      <RedLightningCanvas onFlash={(intensity) => setFlashLevel(intensity)} />
+      <RedLightningCanvas density="normal" onFlash={(intensity) => setFlashLevel(intensity)} />
 
-      {/* Atmospheric Dual Horizon Glow */}
+      {/* Subtle Atmospheric Dark Vignette Layer */}
       <div
         className="layer"
         style={{
           zIndex: 3,
           pointerEvents: "none",
           background:
-            "radial-gradient(ellipse at 85% 25%, rgba(255, 30, 45, 0.45) 0%, transparent 60%), radial-gradient(ellipse at 15% 75%, rgba(10, 25, 45, 0.5) 0%, transparent 65%), linear-gradient(180deg, rgba(0,0,0,0.65) 0%, transparent 40%, rgba(0,0,0,0.85) 100%)",
+            "radial-gradient(circle at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.78) 100%), linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 50%, rgba(0,0,0,0.85) 100%)",
         }}
       />
-
-      {/* Minimal Top Header */}
-      <header
-        style={{
-          position: "relative",
-          zIndex: 10,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          padding: "24px 44px",
-          width: "100%",
-        }}
-      >
-        <div
-          style={{
-            fontFamily:
-              '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", "Libre Caslon Display", "Playfair Display", Georgia, serif',
-            fontSize: "clamp(15px, 1.6vw, 18px)",
-            letterSpacing: "0.15em",
-            fontWeight: 900,
-            textTransform: "uppercase",
-            color: "rgba(255, 255, 255, 0.7)",
-          }}
-        >
-          STRANGER <span style={{ color: "#ff2d3a" }}>THINGS</span>
-        </div>
-      </header>
 
       {/* CENTER STRANGER THINGS TITLE & ENTER CTA */}
       <main
@@ -335,9 +309,9 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
           transition={{ duration: 1, delay: 0.6 }}
           whileHover={{
             scale: 1.05,
-            backgroundColor: "#6b080f",
-            borderColor: "#8f0d16",
-            boxShadow: "0 0 30px rgba(130, 10, 20, 0.85), inset 0 0 18px rgba(0, 0, 0, 0.6)",
+            backgroundColor: "#b81420",
+            borderColor: "#ff5964",
+            boxShadow: "0 0 24px rgba(230, 26, 40, 0.7), 0 4px 18px rgba(0, 0, 0, 0.9)",
           }}
           whileTap={{ scale: 0.96 }}
           onClick={handleOpenAuth}
@@ -348,19 +322,19 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
             gap: "18px",
             marginTop: "36px",
             padding: "16px 54px",
-            background: "#ff2230",
+            background: "#e61a28",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
-            border: "1.5px solid #ff5964",
+            border: "1.5px solid #ff4d5a",
             color: "#ffffff",
             fontFamily:
-              '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", "Libre Caslon Display", "Playfair Display", Georgia, serif',
+              '"ITC Benguiat Std", "Benguiat", "Libre Caslon Display", "Playfair Display", Georgia, serif',
             fontSize: "clamp(17px, 1.9vw, 22px)",
             fontWeight: 900,
             letterSpacing: "0.25em",
             cursor: "pointer",
             boxShadow:
-              "0 0 28px rgba(255, 34, 48, 0.65), inset 0 0 14px rgba(255, 255, 255, 0.25)",
+              "0 4px 20px rgba(0, 0, 0, 0.8), 0 0 14px rgba(230, 26, 40, 0.35)",
             transition: "all 0.3s ease",
           }}
         >
@@ -368,25 +342,6 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
           <span style={{ fontSize: "1.2em" }}>→</span>
         </motion.button>
       </main>
-
-      {/* FOOTER BAR */}
-      <footer
-        style={{
-          position: "relative",
-          zIndex: 10,
-          padding: "18px 44px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          fontSize: "12px",
-          fontFamily: "var(--font-mono)",
-          color: "rgba(255, 255, 255, 0.4)",
-          letterSpacing: "0.15em",
-        }}
-      >
-        <div>STRANGER THINGS · HAWKINS PROTOCOL</div>
-        <div>CLASSIFIED 1986 TOURNAMENT</div>
-      </footer>
 
       {/* AUTHENTICATION / ENTER PROTOCOL MODAL */}
       <AnimatePresence>
