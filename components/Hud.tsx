@@ -45,103 +45,280 @@ export default function Hud() {
   const { s, score, jump, reset, logout, radiometerPinCount, viewMode, setViewMode, activeChapterId, setChapterModalOpen } = useGame();
   const [dev, setDev] = useState(false);
   const [showClueLog, setShowClueLog] = useState(false);
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
 
   useEffect(() => {
     setDev(new URLSearchParams(window.location.search).get("dev") === "1");
+
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement | Document;
+      let currentScroll = 0;
+      if (target === document || target === document.documentElement || target === document.body) {
+        currentScroll = window.scrollY || document.documentElement.scrollTop;
+      } else if (target && "scrollTop" in target) {
+        currentScroll = (target as HTMLElement).scrollTop;
+      }
+
+      if (currentScroll > 25) {
+        setIsScrolledDown(true);
+      } else {
+        setIsScrolledDown(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll, true);
   }, []);
 
   return (
     <>
-      <div className="hud">
-        <div className="brand" style={{ letterSpacing: ".2em" }}>
-          THE HAWKINS PROTOCOL
-        </div>
+      {/* Floating Pill Top HUD Navigation Bar (Auto-hides on scroll down) */}
+      <div
+        style={{
+          position: "fixed",
+          top: 14,
+          left: "clamp(14px, 2.5vw, 28px)",
+          right: "clamp(14px, 2.5vw, 28px)",
+          maxWidth: 1440,
+          margin: "0 auto",
+          height: 66,
+          background: "linear-gradient(180deg, rgba(14, 3, 7, 0.94) 0%, rgba(6, 1, 3, 0.97) 100%)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderRadius: 12,
+          border: "1.5px solid rgba(220, 24, 38, 0.75)",
+          boxShadow:
+            "0 0 24px rgba(220, 24, 38, 0.3), inset 0 0 16px rgba(220, 24, 38, 0.08), 0 10px 35px rgba(0, 0, 0, 0.95)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 clamp(16px, 2.5vw, 32px)",
+          boxSizing: "border-box",
+          zIndex: 800,
+          overflow: "hidden",
+          transform: isScrolledDown ? "translateY(-140%)" : "translateY(0)",
+          opacity: isScrolledDown ? 0 : 1,
+          pointerEvents: isScrolledDown ? "none" : "auto",
+          transition: "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease",
+        }}
+      >
+        {/* Subtle Background Left Red Constellation Watermark */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 140,
+            background: "radial-gradient(circle at 10% 50%, rgba(220, 24, 38, 0.18) 0%, transparent 80%)",
+            pointerEvents: "none",
+          }}
+        />
 
+        {/* LEFT SECTION: HAWKINS / INVESTIGATION // 1986 */}
         <button
-          id="hud-chapters-btn"
           type="button"
-          className="btn sm ghost"
           onClick={() => {
             sfx("click");
-            setChapterModalOpen(true);
+            setViewMode(viewMode === "board" ? "location" : "board");
           }}
+          title="Click to toggle Hawkins Investigation Board"
           style={{
-            borderColor: "var(--accent)",
-            color: "var(--accent)",
-            background: "rgba(255, 180, 84, 0.12)",
-            fontSize: 13,
-            padding: "6px 14px",
-            letterSpacing: ".15em",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
+            background: "transparent",
+            border: "none",
+            padding: 0,
             cursor: "pointer",
-            borderRadius: 4,
-            marginLeft: 6,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            textAlign: "left",
+            position: "relative",
+            zIndex: 2,
           }}
         >
-          <span>[CHAPTERS]</span>
-          <span
+          <div
             style={{
-              fontSize: 11,
-              background: "var(--accent)",
-              color: "#000",
-              padding: "1px 6px",
-              borderRadius: 2,
-              fontWeight: "bold",
+              fontFamily: "var(--font-title), Georgia, 'Times New Roman', serif",
+              color: "#e61a28",
+              fontSize: "clamp(16px, 1.8vw, 19px)",
+              fontWeight: 900,
+              letterSpacing: ".38em",
+              textTransform: "uppercase",
+              lineHeight: 1.1,
+              textShadow: "0 0 14px rgba(230, 26, 40, 0.55)",
             }}
           >
-            {activeChapterId} / 7
-          </span>
+            H A W K I N S
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--font-mono), monospace",
+              color: "#8a8280",
+              fontSize: "clamp(9.5px, 1.1vw, 11px)",
+              fontWeight: 600,
+              letterSpacing: ".28em",
+              textTransform: "uppercase",
+              marginTop: 4,
+            }}
+          >
+            INVESTIGATION // 1986
+          </div>
         </button>
 
-        <div className="grow" />
-
-        {/* Team Name, ID & Leader Name */}
-        <div className="stat" style={{ minWidth: 150 }}>
-          <small style={{ letterSpacing: ".25em", color: "var(--dim)", fontSize: 11 }}>TEAM / LEADER</small>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginTop: 3 }}>
-            <b style={{ fontSize: 17, color: "#fff", letterSpacing: ".08em" }}>{s.team?.name || "RECON-1"}</b>
-            {s.team?.id && (
-              <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: "bold", background: "rgba(255,180,84,0.12)", padding: "1px 6px", borderRadius: 3, border: "1px solid rgba(255,180,84,0.25)" }}>
-                [{s.team.id}]
-              </span>
-            )}
-          </div>
-          {s.team?.leaderName && (
-            <div style={{ fontSize: 12, color: "var(--dim)", letterSpacing: ".06em", marginTop: 2 }}>
-              LEADER: <span style={{ color: "#fff" }}>{s.team.leaderName}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Score Readout */}
-        <div className="stat" style={{ paddingLeft: 12, borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
-          <small style={{ letterSpacing: ".25em", color: "var(--dim)", fontSize: 11 }}>SCORE</small>
-          <b style={{ fontSize: 24, color: "var(--accent)", letterSpacing: ".1em", marginTop: 2 }}>
-            {String(score).padStart(5, "0")}
-          </b>
-        </div>
-
-        <button
-          id="player-logout-btn"
-          className="btn sm ghost red"
+        {/* RIGHT SECTION: SQUAD | SCORE | LOGOUT */}
+        <div
           style={{
-            marginLeft: 8,
-            padding: "8px 16px",
-            fontSize: 13,
-            letterSpacing: ".15em",
-            borderRadius: 4,
-            cursor: "pointer",
-          }}
-          onClick={() => {
-            if (confirm("Log out of Hawkins Protocol and return to login screen?")) {
-              logout();
-            }
+            display: "flex",
+            alignItems: "center",
+            position: "relative",
+            zIndex: 2,
           }}
         >
-          [LOGOUT]
-        </button>
+          {/* Vertical Divider 1 */}
+          <div
+            style={{
+              width: 1,
+              height: 36,
+              background: "rgba(220, 24, 38, 0.45)",
+              margin: "0 clamp(12px, 1.8vw, 24px)",
+            }}
+          />
+
+          {/* SQUAD MODULE */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: 9.5,
+                fontWeight: 700,
+                color: "#8a8280",
+                letterSpacing: ".24em",
+                textTransform: "uppercase",
+                marginBottom: 3,
+                lineHeight: 1,
+              }}
+            >
+              SQUAD
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "clamp(13.5px, 1.5vw, 15.5px)",
+                fontWeight: 800,
+                color: "#ffffff",
+                letterSpacing: ".12em",
+                textTransform: "uppercase",
+                lineHeight: 1.1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {s.team?.name || "HELLFIRE CLUB"}
+            </span>
+          </div>
+
+          {/* Vertical Divider 2 */}
+          <div
+            style={{
+              width: 1,
+              height: 36,
+              background: "rgba(220, 24, 38, 0.45)",
+              margin: "0 clamp(12px, 1.8vw, 24px)",
+            }}
+          />
+
+          {/* SCORE MODULE */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: 9.5,
+                fontWeight: 800,
+                color: "#e61a28",
+                letterSpacing: ".24em",
+                textTransform: "uppercase",
+                marginBottom: 2,
+                lineHeight: 1,
+              }}
+            >
+              SCORE
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-term), 'VT323', monospace",
+                fontSize: "clamp(19px, 2.1vw, 23px)",
+                fontWeight: "bold",
+                color: "#ff2a3a",
+                letterSpacing: ".2em",
+                lineHeight: 1,
+                textShadow: "0 0 10px rgba(255, 42, 58, 0.85), 0 0 20px rgba(255, 42, 58, 0.4)",
+              }}
+            >
+              {String(score).padStart(5, "0")}
+            </span>
+          </div>
+
+          {/* Vertical Divider 3 */}
+          <div
+            style={{
+              width: 1,
+              height: 36,
+              background: "rgba(220, 24, 38, 0.45)",
+              margin: "0 clamp(12px, 1.8vw, 24px)",
+            }}
+          />
+
+          {/* LOGOUT BUTTON */}
+          <button
+            id="player-logout-btn"
+            type="button"
+            style={{
+              padding: "7px clamp(16px, 1.8vw, 24px)",
+              background: "rgba(220, 24, 38, 0.08)",
+              border: "1.5px solid rgba(220, 24, 38, 0.75)",
+              borderRadius: 6,
+              color: "#e61a28",
+              fontFamily: "var(--font-mono), monospace",
+              fontSize: "clamp(11px, 1.2vw, 12.5px)",
+              fontWeight: 800,
+              letterSpacing: ".2em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              boxShadow: "0 0 14px rgba(220, 24, 38, 0.2)",
+              transition: "all 0.18s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#e61a28";
+              e.currentTarget.style.color = "#000000";
+              e.currentTarget.style.boxShadow = "0 0 22px rgba(220, 24, 38, 0.7)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(220, 24, 38, 0.08)";
+              e.currentTarget.style.color = "#e61a28";
+              e.currentTarget.style.boxShadow = "0 0 14px rgba(220, 24, 38, 0.2)";
+            }}
+            onClick={() => {
+              if (confirm("Log out of Hawkins Protocol and return to login screen?")) {
+                logout();
+              }
+            }}
+          >
+            LOGOUT
+          </button>
+        </div>
       </div>
 
       {/* Slide-out Clue Log Drawer */}

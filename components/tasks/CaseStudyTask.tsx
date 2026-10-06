@@ -1,8 +1,8 @@
-"use client";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { StoryTask, LocationId } from "@/lib/tasks";
 import { sfx } from "@/lib/audio";
+import PushPin from "@/components/PushPin";
 
 interface CaseStudyTaskProps {
   task: StoryTask;
@@ -114,20 +114,10 @@ export default function CaseStudyTask({ task, solved, onSolve, disabled }: CaseS
                 boxShadow: "none",
               }}
             >
-              {/* Pushpin indicator */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: -8,
-                  right: 12,
-                  width: 16,
-                  height: 16,
-                  borderRadius: "50%",
-                  background: isPinned ? "#ff2d3a" : "#555",
-                  boxShadow: "none",
-                  border: "2px solid #fff",
-                }}
-              />
+              {/* 3D Realistic Pushpin indicator */}
+              <div style={{ position: "absolute", top: "-11px", right: "12px", zIndex: 10 }}>
+                <PushPin color={isPinned ? "#d32f2f" : "#607d8b"} size={22} angle={isPinned ? -8 : 12} />
+              </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <span

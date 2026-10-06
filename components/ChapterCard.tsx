@@ -43,31 +43,79 @@ export default function ChapterCard() {
           {/* Scanline effect on card */}
           <div style={{ position: "absolute", inset: 0, background: "repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 2px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0) 4px)", pointerEvents: "none" }} />
 
-          <motion.div className="chap" initial={{ opacity: 0, letterSpacing: "1.4em" }} animate={{ opacity: 1, letterSpacing: "0.6em" }} transition={{ duration: 1.6, delay: 0.3 }}>
+          <motion.div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "clamp(14px, 1.8vw, 20px)",
+              color: "#36e0c4",
+              letterSpacing: "0.55em",
+              textTransform: "uppercase",
+              marginBottom: "16px",
+            }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2, delay: 0.2 }}
+          >
             {st.chapter}
           </motion.div>
+
           <motion.h1
-            className="title-xl"
-            style={{ ["--accent" as any]: upside ? "#ff2d3a" : "#ff3b45", color: upside ? "#ff2d3a" : "#ff3b45", padding: "0 20px" }}
-            initial={{ opacity: 0, scale: 1.25, filter: "blur(18px)" }}
-            animate={{ opacity: [0, 1, 0.4, 1, 0.7, 1], scale: 1, filter: "blur(0px)" }}
-            transition={{ duration: 1.8, delay: 0.7 }}
+            style={{
+              fontFamily:
+                '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", "Libre Caslon Display", "Playfair Display", Georgia, serif',
+              fontSize: "clamp(3.8rem, 10vw, 8rem)",
+              fontWeight: 900,
+              background: "linear-gradient(180deg, #ff71ce 0%, #ff2d3a 52%, #b7121f 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 0 18px rgba(255, 45, 58, 0.75))",
+              letterSpacing: "-0.01em",
+              margin: "0 0 12px 0",
+              lineHeight: 1,
+              textTransform: "uppercase",
+            }}
+            initial={{ opacity: 0, scale: 1.15, filter: "blur(14px)" }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            transition={{ duration: 1.4, delay: 0.5 }}
           >
-            <Glitch text={st.title} className="ttl" hard={upside} />
+            {st.title}
           </motion.h1>
-          <motion.div className="sub" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2, duration: 1 }}>
+
+          <motion.div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "clamp(13px, 1.4vw, 17px)",
+              color: "rgba(215, 235, 240, 0.75)",
+              letterSpacing: "0.25em",
+              marginBottom: "28px",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.4, duration: 1 }}
+          >
             {st.subtitle}
           </motion.div>
+
           <motion.div
-            initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 1.2, duration: 2.2, ease: "easeInOut" }}
-            style={{ height: 2, width: "min(520px,70vw)", marginTop: 34, background: `linear-gradient(90deg,transparent,${upside ? "#ff2d3a" : "#ff3b45"},transparent)`, transformOrigin: "left" }}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ delay: 0.8, duration: 1.6, ease: "easeInOut" }}
+            style={{
+              height: 2,
+              width: "min(560px, 75vw)",
+              background: "linear-gradient(90deg, transparent, #ff2d3a, transparent)",
+              boxShadow: "0 0 14px rgba(255, 45, 58, 0.85)",
+            }}
           />
+
           <motion.div
             className="term dim"
-            initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} transition={{ delay: 3.2, duration: 0.8 }}
-            style={{ position: "absolute", bottom: 28, fontSize: 17, letterSpacing: ".35em" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.5 }}
+            transition={{ delay: 2.5, duration: 0.8 }}
+            style={{ position: "absolute", bottom: 28, fontSize: 14, letterSpacing: ".35em" }}
           >
-            CLICK TO SKIP
+            CLICK TO CONTINUE
           </motion.div>
         </motion.div>
       )}
