@@ -1,8 +1,8 @@
-"use client";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
+import PushPin from "./PushPin";
 
 interface InvestigationBoardProps {
   onSelectChapter?: (chapterId: number) => void;
@@ -128,35 +128,7 @@ const CASE_CARDS: CaseCardData[] = [
   },
 ];
 
-/* 3D Realistic PushPin Component */
-export function PushPin({ color = "#d32f2f", size = 18 }: { color?: string; size?: number }) {
-  return (
-    <div
-      style={{
-        position: "relative",
-        width: size,
-        height: size,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        filter: "drop-shadow(2px 4px 3px rgba(0,0,0,0.65))",
-        zIndex: 5,
-        userSelect: "none",
-        pointerEvents: "none",
-      }}
-    >
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          background: `radial-gradient(circle at 35% 30%, #ff8a80 0%, ${color} 50%, #5d0000 100%)`,
-          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.6), inset 0 -2px 3px rgba(0,0,0,0.6)",
-        }}
-      />
-    </div>
-  );
-}
+export { PushPin };
 
 export default function InvestigationBoard({
   onSelectChapter,
@@ -254,8 +226,8 @@ export default function InvestigationBoard({
               minWidth: "340px",
             }}
           >
-            <div style={{ position: "absolute", top: "-10px", left: "50%", transform: "translateX(-50%)" }}>
-              <PushPin />
+            <div style={{ position: "absolute", top: "-14px", left: "50%", transform: "translateX(-50%)" }}>
+              <PushPin size={28} angle={-6} />
             </div>
             <h1
               style={{
@@ -310,8 +282,8 @@ export default function InvestigationBoard({
                 textAlign: "center",
               }}
             >
-              <div style={{ position: "absolute", top: "-8px", left: "50%", transform: "translateX(-50%)" }}>
-                <PushPin />
+              <div style={{ position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)" }}>
+                <PushPin size={24} angle={12} color="#e53935" />
               </div>
               <div
                 style={{
@@ -353,8 +325,8 @@ export default function InvestigationBoard({
                 border: "1px solid #d5c8b5",
               }}
             >
-              <div style={{ position: "absolute", top: "-8px", left: "14px" }}>
-                <PushPin />
+              <div style={{ position: "absolute", top: "-11px", left: "12px" }}>
+                <PushPin size={22} angle={-10} color="#d32f2f" />
               </div>
               <span
                 style={{
@@ -388,8 +360,8 @@ export default function InvestigationBoard({
                 color: "#2b2510",
               }}
             >
-              <div style={{ position: "absolute", top: "-8px", right: "20px" }}>
-                <PushPin />
+              <div style={{ position: "absolute", top: "-12px", right: "20px" }}>
+                <PushPin size={24} angle={8} color="#fbc02d" />
               </div>
               <div>SOMETHING STRANGE IS HAPPENING IN HAWKINS. FOLLOW THE CLUES. SOLVE THE TASKS. UNLOCK THE TRUTH.</div>
               <div
@@ -418,7 +390,7 @@ export default function InvestigationBoard({
             alignItems: "flex-start",
           }}
         >
-          {/* 8 Case Cards Grid */}
+          {/* 7 Case Cards Grid */}
           <div
             style={{
               display: "grid",
@@ -453,8 +425,12 @@ export default function InvestigationBoard({
                   }}
                 >
                   {/* Top Pushpin */}
-                  <div style={{ position: "absolute", top: "-10px", right: "16px" }}>
-                    <PushPin color={unlocked ? "#d32f2f" : "#757575"} />
+                  <div style={{ position: "absolute", top: "-13px", right: "16px" }}>
+                    <PushPin
+                      color={unlocked ? (idx % 3 === 0 ? "#d32f2f" : idx % 3 === 1 ? "#c62828" : "#b71c1c") : "#607d8b"}
+                      size={25}
+                      angle={idx % 2 === 0 ? -12 : 10}
+                    />
                   </div>
 
                   {/* Card Header */}
@@ -636,8 +612,8 @@ export default function InvestigationBoard({
             }}
           >
             {/* Pushpin at top center */}
-            <div style={{ position: "absolute", top: "-10px", left: "50%", transform: "translateX(-50%)" }}>
-              <PushPin />
+            <div style={{ position: "absolute", top: "-14px", left: "50%", transform: "translateX(-50%)" }}>
+              <PushPin size={26} angle={-6} />
             </div>
 
             {/* Red Timeline Header with decorative underline */}

@@ -9,6 +9,7 @@ import { validateChapterOnServer } from "@/lib/api";
 import { getCharacterForChapter } from "@/lib/characters";
 import HopperPoliceReportQuiz from "./HopperPoliceReportQuiz";
 import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
+import PushPin from "../PushPin";
 
 export type ChapterId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -907,7 +908,8 @@ function ChapterCompletionView({
             transition: "all 0.15s ease",
           }}
         >
-          <span>📌</span> RETURN TO EVIDENCE BOARD
+          <PushPin size={18} angle={-6} />
+          <span>RETURN TO EVIDENCE BOARD</span>
         </button>
       </div>
     </motion.div>
