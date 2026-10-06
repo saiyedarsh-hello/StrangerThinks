@@ -250,21 +250,38 @@ export const VaultStore = {
   // Track team progress live
   recordTeamScore(teamId: string, teamName: string, leaderName: string, taskId: string, pointsAwarded: number) {
     if (!teamId) return;
-    const existing = teamsMap.get(teamId) || {
-      teamId,
-      teamName: teamName || `Team ${teamId}`,
-      leaderName: leaderName || "Operative",
-      score: 0,
-      solvedTasks: new Set<string>(),
-      lastSubmissionTime: new Date().toISOString(),
-    };
+
+    let existing = teamsMap.get(teamId);
+    if (!existing) {
+      for (const [id, rec] of teamsMap.entries()) {
+        if (
+          id.toLowerCase() === teamId.toLowerCase() ||
+          rec.teamName.toLowerCase() === teamId.toLowerCase() ||
+          (teamName && rec.teamName.toLowerCase() === teamName.toLowerCase())
+        ) {
+          existing = rec;
+          break;
+        }
+      }
+    }
+
+    if (!existing) {
+      existing = {
+        teamId,
+        teamName: teamName || `Team ${teamId}`,
+        leaderName: leaderName || "Operative",
+        score: 0,
+        solvedTasks: new Set<string>(),
+        lastSubmissionTime: new Date().toISOString(),
+      };
+      teamsMap.set(teamId, existing);
+    }
 
     if (!existing.solvedTasks.has(taskId)) {
       existing.solvedTasks.add(taskId);
       existing.score += pointsAwarded;
     }
     existing.lastSubmissionTime = new Date().toISOString();
-    teamsMap.set(teamId, existing);
     saveLeaderboardState();
   },
 

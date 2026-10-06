@@ -933,6 +933,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
     setChapterModalOpen,
     radiometerPinCount,
     setViewMode,
+    session,
   } = useGame();
 
   const handleBackToBoard = useCallback(() => {
@@ -1003,7 +1004,8 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
 
     if (allCorrect) {
       sfx("ok");
-      const res = await validateChapterOnServer(chapterId, taskId, answers[0] || "A");
+      const teamId = session?.teamId || session?.teamName;
+      const res = await validateChapterOnServer(chapterId, taskId, answers[0] || "A", teamId);
       submitTask(taskId, res?.pointsAwarded || pts, `Chapter ${chapterId} Docket Verified`);
       setCompletionStoryChapterId(chapterId);
     } else {

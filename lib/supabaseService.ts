@@ -334,7 +334,29 @@ export async function authenticateTeamWithSupabase(
     };
   }
 
-  return { success: false, error: "Unrecognized squad credentials. Confirm team and leader name." };
+  // 4. Auto-register new squad so any team can enter the game smoothly
+  const newTeamId = `TEAM-${normTeam.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "SQUAD"}-${Math.floor(100 + Math.random() * 900)}`;
+  try {
+    supabase.from("teams").upsert({
+      team_id: newTeamId,
+      team_name: teamName.trim(),
+      squad_leader: leaderName.trim(),
+      access_passcode: "salt_pass_player",
+      total_score: 0,
+      status: "ACTIVE",
+    }, { onConflict: "team_id" }).then();
+  } catch {}
+
+  return {
+    success: true,
+    session: {
+      role: "PLAYER",
+      teamName: teamName.trim(),
+      leaderName: leaderName.trim(),
+      teamId: newTeamId,
+    },
+    source: "registered",
+  };
 }
 
 /**

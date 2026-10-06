@@ -150,6 +150,27 @@ export default function InvestigationBoard({
     return true;
   };
 
+  const isChapterSolved = (id: number) => {
+    switch (id) {
+      case 1:
+        return !!s.completedTasks?.includes("ch1-quiz") || !!s.solved?.["ch1-quiz"];
+      case 2:
+        return !!s.completedTasks?.includes("ch2-police") || !!s.solved?.["ch2-police"] || !!s.completedTasks?.includes("ch3-case-study");
+      case 3:
+        return !!s.completedTasks?.includes("ch3-byers") || !!s.solved?.["ch3-byers"];
+      case 4:
+        return !!s.completedTasks?.includes("ch4-lab") || !!s.solved?.["ch4-lab"] || !!s.completedTasks?.includes("ch2-coding");
+      case 5:
+        return !!s.completedTasks?.includes("ch5-forest") || !!s.solved?.["ch5-forest"] || !!s.completedTasks?.includes("forest-marks");
+      case 6:
+        return s.radiometer?.pins?.filter(Boolean).length === 5 || s.radiometer?.codeSolved || !!s.completedTasks?.includes("ch6-radio-tower") || !!s.solved?.["ch6-radio-tower"];
+      case 7:
+        return !!s.completedTasks?.includes("ch7-upsidedown") || !!s.solved?.["ch7-upsidedown"];
+      default:
+        return false;
+    }
+  };
+
   const handleCardClick = (card: CaseCardData) => {
     sfx("click");
     setSelectedCardId(card.id);
@@ -505,6 +526,7 @@ export default function InvestigationBoard({
 
             {CASE_CARDS.map((card, idx) => {
               const unlocked = isChapterUnlocked(card.id);
+              const solved = isChapterSolved(card.id);
               const isSelected = selectedCardId === card.id;
 
               return (
@@ -519,13 +541,15 @@ export default function InvestigationBoard({
                   onClick={() => handleCardClick(card)}
                   style={{
                     position: "relative",
-                    background: unlocked ? "#f7f1e5" : "#ded6c8",
+                    background: solved ? "#fcfbf7" : unlocked ? "#f7f1e5" : "#ded6c8",
                     borderRadius: "2px",
                     padding: "16px",
                     boxShadow: isSelected
                       ? "0 0 0 2px #d91e2b, 4px 8px 20px rgba(0,0,0,0.6)"
+                      : solved
+                      ? "0 0 0 2px #2e7d32, 3px 6px 16px rgba(0,0,0,0.4)"
                       : "3px 6px 16px rgba(0,0,0,0.5)",
-                    border: "1px solid #c9beae",
+                    border: solved ? "1px solid #81c784" : "1px solid #c9beae",
                     cursor: unlocked ? "pointer" : "not-allowed",
                     transform: `rotate(${idx % 2 === 0 ? "-0.8deg" : "0.8deg"})`,
                     transition: "box-shadow 0.2s ease",
@@ -537,54 +561,73 @@ export default function InvestigationBoard({
                   {/* Top Pushpin */}
                   <div style={{ position: "absolute", top: "-13px", right: "16px" }}>
                     <PushPin
-                      color={unlocked ? (idx % 3 === 0 ? "#d32f2f" : idx % 3 === 1 ? "#c62828" : "#b71c1c") : "#607d8b"}
+                      color={solved ? "#2e7d32" : unlocked ? (idx % 3 === 0 ? "#d32f2f" : idx % 3 === 1 ? "#c62828" : "#b71c1c") : "#607d8b"}
                       size={25}
                       angle={idx % 2 === 0 ? -12 : 10}
                     />
                   </div>
 
                   {/* Card Header */}
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "12px" }}>
-                    <div
-                      style={{
-                        background: unlocked ? "#d91e2b" : "#7d6b63",
-                        color: "#ffffff",
-                        fontWeight: 900,
-                        fontSize: "14px",
-                        padding: "3px 8px",
-                        borderRadius: "2px",
-                        fontFamily: '"Share Tech Mono", monospace',
-                      }}
-                    >
-                      {card.id}
-                    </div>
-                    <div>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px", marginBottom: "12px" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
                       <div
                         style={{
+                          background: solved ? "#2e7d32" : unlocked ? "#d91e2b" : "#7d6b63",
+                          color: "#ffffff",
+                          fontWeight: 900,
+                          fontSize: "14px",
+                          padding: "3px 8px",
+                          borderRadius: "2px",
                           fontFamily: '"Share Tech Mono", monospace',
-                          fontSize: "16px",
-                          fontWeight: "bold",
-                          color: "#1c1814",
-                          letterSpacing: "0.04em",
-                          lineHeight: 1.1,
                         }}
                       >
-                        {card.title}
+                        {card.id}
                       </div>
-                      {card.subtitle && (
+                      <div>
                         <div
                           style={{
-                            fontSize: "11px",
+                            fontFamily: '"Share Tech Mono", monospace',
+                            fontSize: "16px",
                             fontWeight: "bold",
-                            color: "#7a6d63",
-                            letterSpacing: "0.1em",
-                            marginTop: "2px",
+                            color: "#1c1814",
+                            letterSpacing: "0.04em",
+                            lineHeight: 1.1,
                           }}
                         >
-                          {card.subtitle}
+                          {card.title}
                         </div>
-                      )}
+                        {card.subtitle && (
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: "bold",
+                              color: "#7a6d63",
+                              letterSpacing: "0.1em",
+                              marginTop: "2px",
+                            }}
+                          >
+                            {card.subtitle}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    {solved && (
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: 900,
+                          color: "#1b5e20",
+                          background: "#e8f5e9",
+                          border: "1px solid #4caf50",
+                          borderRadius: "2px",
+                          padding: "2px 6px",
+                          letterSpacing: ".08em",
+                          fontFamily: '"Share Tech Mono", monospace',
+                        }}
+                      >
+                        ✓ CLEARED
+                      </div>
+                    )}
                   </div>
 
                   {/* Image Container with Lock Overlay */}
@@ -675,7 +718,7 @@ export default function InvestigationBoard({
                     </div>
                   )}
 
-                  {/* Action Button: [ ENTER CHAPTER → ] or [ LOCKED ] */}
+                  {/* Action Button: [ ENTER CHAPTER → ] or [ REVIEW DOSSIER ✓ ] or [ LOCKED ] */}
                   <button
                     type="button"
                     disabled={!unlocked}
@@ -686,7 +729,7 @@ export default function InvestigationBoard({
                     style={{
                       width: "100%",
                       padding: "10px 14px",
-                      background: unlocked ? "#d91e2b" : "#a39587",
+                      background: solved ? "#1b5e20" : unlocked ? "#d91e2b" : "#a39587",
                       color: "#ffffff",
                       fontFamily: '"Share Tech Mono", monospace',
                       fontSize: "13px",
@@ -695,13 +738,15 @@ export default function InvestigationBoard({
                       border: "none",
                       borderRadius: "2px",
                       cursor: unlocked ? "pointer" : "not-allowed",
-                      boxShadow: unlocked
+                      boxShadow: solved
+                        ? "0 2px 8px rgba(27, 94, 32, 0.45)"
+                        : unlocked
                         ? "0 2px 8px rgba(217, 30, 43, 0.45)"
                         : "none",
                       transition: "all 0.2s ease",
                     }}
                   >
-                    {unlocked ? "ENTER CHAPTER →" : "LOCKED"}
+                    {solved ? "REVIEW DOSSIER ✓" : unlocked ? "ENTER CHAPTER →" : "LOCKED"}
                   </button>
                 </motion.div>
               );
@@ -747,10 +792,11 @@ export default function InvestigationBoard({
               THE TIMELINE
             </h2>
 
-            {/* List of 1 through 8 chapters */}
+            {/* List of 1 through 7 chapters */}
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               {CASE_CARDS.map((card) => {
                 const unlocked = isChapterUnlocked(card.id);
+                const solved = isChapterSolved(card.id);
                 const isCurrent = selectedCardId === card.id;
 
                 return (
@@ -773,7 +819,7 @@ export default function InvestigationBoard({
                         width: "24px",
                         height: "24px",
                         borderRadius: "50%",
-                        background: unlocked ? "#d91e2b" : "#c4b8aa",
+                        background: solved ? "#2e7d32" : unlocked ? "#d91e2b" : "#c4b8aa",
                         color: "#ffffff",
                         fontSize: "12px",
                         fontWeight: "bold",
@@ -783,7 +829,7 @@ export default function InvestigationBoard({
                         flexShrink: 0,
                       }}
                     >
-                      {card.id}
+                      {solved ? "✓" : card.id}
                     </div>
 
                     {/* Chapter Title & Status */}
@@ -802,12 +848,12 @@ export default function InvestigationBoard({
                       <div
                         style={{
                           fontSize: "10px",
-                          color: unlocked ? (card.id === 1 ? "#d91e2b" : "#558b2f") : "#a3988b",
+                          color: solved ? "#2e7d32" : unlocked ? (card.id === 1 ? "#d91e2b" : "#558b2f") : "#a3988b",
                           fontWeight: "bold",
                           letterSpacing: "0.08em",
                         }}
                       >
-                        {unlocked ? (card.id === 1 ? "READY TO ACCESS" : "UNLOCKED") : "LOCKED"}
+                        {solved ? "CASE SOLVED ✓" : unlocked ? (card.id === 1 ? "READY TO ACCESS" : "AVAILABLE") : "LOCKED"}
                       </div>
                     </div>
                   </div>
