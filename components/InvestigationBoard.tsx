@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
@@ -32,8 +32,6 @@ const CASE_CARDS: CaseCardData[] = [
       "MKUltra & 1983 incident lore",
       "Municipal telemetry pulse",
     ],
-    note: "Prepared by: Hala · Roshni · Pooja",
-    noteColor: "yellow",
     stageKey: "hawkins",
   },
   {
@@ -47,8 +45,6 @@ const CASE_CARDS: CaseCardData[] = [
       "Evidence & witness statements",
       "Epicenter correlation",
     ],
-    note: "Prepared by: Bhagya · Tanuj · Apurv",
-    noteColor: "yellow",
     stageKey: "lab",
   },
   {
@@ -62,8 +58,6 @@ const CASE_CARDS: CaseCardData[] = [
       "Rearrange scrambled messages",
       "Will's warning: DO NOT OPEN",
     ],
-    note: "Prepared by: Harisha · Vijay · Sonam",
-    noteColor: "red",
     stageKey: "will",
   },
   {
@@ -77,8 +71,6 @@ const CASE_CARDS: CaseCardData[] = [
       "Parity logic loop analysis",
       "Buffer overflow resolution",
     ],
-    note: "Prepared by: Madhav · Nilotpal Deb · Yashas",
-    noteColor: "yellow",
     stageKey: "forest",
   },
   {
@@ -92,8 +84,6 @@ const CASE_CARDS: CaseCardData[] = [
       "Identify entity relationships",
       "Carved pine rune triangulation",
     ],
-    note: "Prepared by: Ali · Ram · Khushi",
-    noteColor: "yellow",
     stageKey: "gate",
   },
   {
@@ -107,8 +97,6 @@ const CASE_CARDS: CaseCardData[] = [
       "Calibrate 5-pin radiometer",
       "Clear dimensional interference",
     ],
-    note: "Prepared by: Aparna · Kushal · Chinmay",
-    noteColor: "yellow",
     stageKey: "upsidedown",
   },
   {
@@ -136,6 +124,33 @@ export default function InvestigationBoard({
 }: InvestigationBoardProps) {
   const { s, score } = useGame();
   const [selectedCardId, setSelectedCardId] = useState<number>(activeChapterId);
+
+  // Refs for measuring card positions for the red string overlay
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [pinPoints, setPinPoints] = useState<{ x: number; y: number }[]>([]);
+
+  // Compute pin anchor positions relative to the grid container
+  const updatePinPoints = useCallback(() => {
+    if (!gridRef.current) return;
+    const gridRect = gridRef.current.getBoundingClientRect();
+    const pts = cardRefs.current.map((el) => {
+      if (!el) return { x: 0, y: 0 };
+      const r = el.getBoundingClientRect();
+      // Pin is at top-right of the card: right=16px from right edge, top=-13px
+      return {
+        x: r.right - gridRect.left - 16 - 12, // ~12px = half pin size
+        y: r.top - gridRect.top + 0,           // pin is -13px above card top
+      };
+    });
+    setPinPoints(pts);
+  }, []);
+
+  useEffect(() => {
+    updatePinPoints();
+    window.addEventListener("resize", updatePinPoints);
+    return () => window.removeEventListener("resize", updatePinPoints);
+  }, [updatePinPoints]);
 
   // All chapters unlocked for immediate player and organizer access
   const isChapterUnlocked = (id: number) => {
@@ -392,12 +407,109 @@ export default function InvestigationBoard({
         >
           {/* 7 Case Cards Grid */}
           <div
+            ref={gridRef}
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
               gap: "24px",
+              position: "relative",
             }}
           >
+            {/* ── Red String Thread SVG Overlay ── */}
+            {pinPoints.length === CASE_CARDS.length && (
+              <svg
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  pointerEvents: "none",
+                  zIndex: 20,
+                  overflow: "visible",
+                }}
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <defs>
+                  <filter id="string-glow">
+                    <feGaussianBlur stdDeviation="1.5" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+                {/* Draw thread between consecutive pins with slight sag */}
+                {pinPoints.map((pt, i) => {
+                  if (i === 0) return null;
+                  const prev = pinPoints[i - 1];
+                  // Control point: midpoint dropped down slightly for string sag
+                  const mx = (prev.x + pt.x) / 2;
+                  const my = (prev.y + pt.y) / 2 + 22;
+                  return (
+                    <g key={`thread-${i}`}>
+                      {/* Shadow/depth string */}
+                      <path
+                        d={`M ${prev.x} ${prev.y} Q ${mx} ${my} ${pt.x} ${pt.y}`}
+                        stroke="rgba(80,0,0,0.45)"
+                        strokeWidth="3"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      {/* Main red string */}
+                      <path
+                        d={`M ${prev.x} ${prev.y} Q ${mx} ${my} ${pt.x} ${pt.y}`}
+                        stroke="#cc1111"
+                        strokeWidth="1.8"
+                        fill="none"
+                        strokeLinecap="round"
+                        filter="url(#string-glow)"
+                        opacity="0.92"
+                      />
+                      {/* Highlight thread fiber */}
+                      <path
+                        d={`M ${prev.x} ${prev.y} Q ${mx} ${my - 1} ${pt.x} ${pt.y}`}
+                        stroke="rgba(255,120,120,0.35)"
+                        strokeWidth="0.7"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  );
+                })}
+                {/* Cross-thread: card 1 → 3, card 2 → 4, card 3 → 5 (web effect) */}
+                {[
+                  [0, 2], [1, 3], [2, 4], [3, 5], [4, 6],
+                ].map(([a, b]) => {
+                  if (!pinPoints[a] || !pinPoints[b]) return null;
+                  const pa = pinPoints[a];
+                  const pb = pinPoints[b];
+                  const mx = (pa.x + pb.x) / 2;
+                  const my = (pa.y + pb.y) / 2 + 14;
+                  return (
+                    <g key={`cross-${a}-${b}`}>
+                      <path
+                        d={`M ${pa.x} ${pa.y} Q ${mx} ${my} ${pb.x} ${pb.y}`}
+                        stroke="rgba(80,0,0,0.3)"
+                        strokeWidth="2.5"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d={`M ${pa.x} ${pa.y} Q ${mx} ${my} ${pb.x} ${pb.y}`}
+                        stroke="#aa0000"
+                        strokeWidth="1.2"
+                        fill="none"
+                        strokeLinecap="round"
+                        opacity="0.65"
+                        strokeDasharray="none"
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
+
             {CASE_CARDS.map((card, idx) => {
               const unlocked = isChapterUnlocked(card.id);
               const isSelected = selectedCardId === card.id;
@@ -405,6 +517,11 @@ export default function InvestigationBoard({
               return (
                 <motion.div
                   key={card.id}
+                  ref={(el) => {
+                    cardRefs.current[idx] = el as HTMLDivElement | null;
+                    // Re-measure after each card mounts
+                    if (el) requestAnimationFrame(updatePinPoints);
+                  }}
                   whileHover={{ y: -4, transition: { duration: 0.2 } }}
                   onClick={() => handleCardClick(card)}
                   style={{
