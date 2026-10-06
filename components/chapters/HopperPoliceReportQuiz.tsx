@@ -1,8 +1,7 @@
-// components/chapters/HopperPoliceReportQuiz.tsx
-"use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sfx } from "@/lib/audio";
+import { useGame } from "@/lib/store";
 import { QuizQuestion, STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
 
 interface HopperPoliceReportQuizProps {
@@ -68,6 +67,9 @@ export default function HopperPoliceReportQuiz({
     }
     return {};
   });
+
+  const { unlockHint, isHintUnlocked, score } = useGame();
+  const [unlockingHintKey, setUnlockingHintKey] = useState<string | null>(null);
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -600,19 +602,183 @@ export default function HopperPoliceReportQuiz({
               &quot;{currentQ.question}&quot;
             </div>
 
-            {currentQ.hint && (
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "#6e6051",
-                  fontStyle: "italic",
-                  marginTop: 6,
-                  paddingLeft: 4,
-                }}
-              >
-                <b>INTEL CLUE:</b> {currentQ.hint}
-              </div>
-            )}
+            {currentQ.hint && (() => {
+              const currentHintKey = currentQ.id || `ch${chapterNumber}-q${currentIdx + 1}`;
+              const isCurrentHintUnlocked = isHintUnlocked(currentHintKey);
+              const isUnlocking = unlockingHintKey === currentHintKey;
+
+              const handleUnlockHint = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                setUnlockingHintKey(currentHintKey);
+                unlockHint(currentHintKey, 10);
+                setTimeout(() => {
+                  setUnlockingHintKey(null);
+                }, 400);
+              };
+
+              return (
+                <div
+                  style={{
+                    marginTop: 12,
+                    background: isCurrentHintUnlocked ? "#fbf6ec" : "#ece3d0",
+                    border: isCurrentHintUnlocked ? "1.5px solid #c49646" : "1.5px dashed #a8947c",
+                    borderRadius: 3,
+                    padding: "10px 14px",
+                    boxShadow: isCurrentHintUnlocked
+                      ? "0 2px 8px rgba(212, 167, 89, 0.2), inset 0 0 10px rgba(255,255,255,0.6)"
+                      : "inset 0 0 8px rgba(0,0,0,0.06)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {isCurrentHintUnlocked ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: 6,
+                          flexWrap: "wrap",
+                          gap: 6,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 900,
+                            color: "#8a5818",
+                            letterSpacing: ".14em",
+                            fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                            textTransform: "uppercase",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <span>🔓</span>
+                          <span>DECRYPTED INTEL DOSSIER</span>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: "bold",
+                            fontFamily: "'Courier New', monospace",
+                            color: "#7a4808",
+                            background: "rgba(212, 167, 89, 0.25)",
+                            border: "1px solid rgba(138, 88, 24, 0.35)",
+                            padding: "1px 6px",
+                            borderRadius: 2,
+                            letterSpacing: ".08em",
+                          }}
+                        >
+                          CLEARANCE LEVEL 4 GRANTED (-10 PTS)
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: "clamp(12.5px, 1.3vw, 14px)",
+                          color: "#24180d",
+                          lineHeight: 1.5,
+                          fontFamily: "'Courier New', Courier, monospace",
+                          fontWeight: 700,
+                          borderLeft: "3px solid #c49646",
+                          paddingLeft: 10,
+                          background: "rgba(255,255,255,0.45)",
+                          padding: "6px 10px",
+                          borderRadius: "0 2px 2px 0",
+                        }}
+                      >
+                        💡 <b>SURVEILLANCE CLUE:</b> &quot;{currentQ.hint}&quot;
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 200, flex: 1 }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 900,
+                            letterSpacing: ".14em",
+                            fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                            color: "#b81d24",
+                            textTransform: "uppercase",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span>🔒</span>
+                          <span>INTEL CLUE:</span>
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: "monospace",
+                            letterSpacing: ".2em",
+                            color: "rgba(70, 50, 35, 0.45)",
+                            fontSize: 12,
+                            userSelect: "none",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ██████████████████████████████████████
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleUnlockHint}
+                        disabled={isUnlocking}
+                        style={{
+                          padding: "6px 14px",
+                          background: "#24130d",
+                          color: "#ffd54f",
+                          border: "1.5px solid #8f2d24",
+                          borderRadius: 3,
+                          fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                          fontSize: 11,
+                          fontWeight: 900,
+                          letterSpacing: ".12em",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+                          transition: "all 0.15s ease",
+                          textTransform: "uppercase",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#8f1218";
+                          e.currentTarget.style.color = "#ffffff";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "#24130d";
+                          e.currentTarget.style.color = "#ffd54f";
+                        }}
+                        title="Unlock classified dossier clue for 10 points"
+                      >
+                        <span>{isUnlocking ? "⚡ DECRYPTING..." : "🔒 UNLOCK CLUE (-10 PTS)"}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </motion.div>
         </AnimatePresence>
 

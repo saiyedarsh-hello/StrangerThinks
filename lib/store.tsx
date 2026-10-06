@@ -89,6 +89,7 @@ export interface GameState {
   introSeen: boolean;
   vecnaCutscene: boolean;
   radiometer: RadiometerState;
+  unlockedHints: Record<string, boolean>;
 }
 
 const EMPTY_BREAKDOWN: Breakdown = { tech: 0, puzzle: 0, clue: 0, speed: 0, story: 0, teamwork: 0 };
@@ -139,6 +140,7 @@ const INITIAL: GameState = {
   introSeen: false,
   vecnaCutscene: false,
   radiometer: INITIAL_RADIOMETER,
+  unlockedHints: {},
 };
 
 const KEY = CONFIG.STORAGE_KEY;
@@ -193,6 +195,10 @@ interface Ctx {
   setActiveChapterId: (id: 1 | 2 | 3 | 4 | 5 | 6 | 7) => void;
   chapterModalOpen: boolean;
   setChapterModalOpen: (open: boolean) => void;
+  unlockedHints: Record<string, boolean>;
+  unlockHint: (hintKey: string, cost?: number) => boolean;
+  isHintUnlocked: (hintKey: string) => boolean;
+  spendPoints: (points: number, reason?: string) => void;
 }
 
 const GameCtx = createContext<Ctx | null>(null);
@@ -275,6 +281,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           completedTasks: parsed.completedTasks || [],
           clues: parsed.clues || {},
           unlocked: { ...INITIAL_UNLOCKED, ...(parsed.unlocked || {}) },
+          unlockedHints: parsed.unlockedHints || {},
           lockedChallenges: parsed.lockedChallenges || {},
           radiometer: {
             ...INITIAL_RADIOMETER,
@@ -944,6 +951,46 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const radiometerPinCount = s.radiometer.pinsSolved.filter(Boolean).length;
 
+  const unlockHint = useCallback(
+    (hintKey: string, cost = 10): boolean => {
+      const cur = sRef.current;
+      if (cur.unlockedHints?.[hintKey]) return true;
+
+      sfx("clue");
+      setS((p) => ({
+        ...p,
+        penalty: p.penalty + cost,
+        unlockedHints: {
+          ...(p.unlockedHints || {}),
+          [hintKey]: true,
+        },
+      }));
+      say(`CLASSIFIED INTEL DECRYPTED (-${cost} PTS)`);
+      return true;
+    },
+    [say]
+  );
+
+  const isHintUnlocked = useCallback(
+    (hintKey: string): boolean => {
+      return !!s.unlockedHints?.[hintKey];
+    },
+    [s.unlockedHints]
+  );
+
+  const spendPoints = useCallback(
+    (points: number, reason?: string) => {
+      setS((p) => ({
+        ...p,
+        penalty: p.penalty + points,
+      }));
+      if (reason) {
+        say(`${reason} (-${points} PTS)`);
+      }
+    },
+    [say]
+  );
+
   const value: Ctx = useMemo(
     () => ({
       s,
@@ -990,6 +1037,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setActiveChapterId,
       chapterModalOpen,
       setChapterModalOpen,
+      unlockedHints: s.unlockedHints || {},
+      unlockHint,
+      isHintUnlocked,
+      spendPoints,
     }),
     [
       s,
@@ -1029,6 +1080,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       radiometerPinCount,
       activeChapterId,
       chapterModalOpen,
+      unlockHint,
+      isHintUnlocked,
+      spendPoints,
     ]
   );
 

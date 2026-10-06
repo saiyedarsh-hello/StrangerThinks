@@ -391,9 +391,13 @@ function PokemonFireRedBottomDialog({
     }
   }, [isTyping, lineIdx, lines.length, currentLine.length, mode, onNextEpisode, onComplete]);
 
+  const { unlockHint, isHintUnlocked } = useGame();
+  const dialogHintKey = `ch${chapter.id}-story-intel`;
+  const isDialogUnlocked = isHintUnlocked(dialogHintKey);
+
   const handleAskHint = (e: React.MouseEvent) => {
     e.stopPropagation();
-    sfx("clue");
+    unlockHint(dialogHintKey, 10);
     const hintText = `${character.nameTag || character.name.toUpperCase()} INTEL: "${CHAPTER_HINTS[chapter.id] || "Investigate the facility telemetry carefully."}"`;
     setLines((prev) => [...prev, hintText]);
     setLineIdx((prev) => prev + 1);
@@ -615,8 +619,8 @@ function PokemonFireRedBottomDialog({
                   type="button"
                   onClick={handleAskHint}
                   style={{
-                    background: "transparent",
-                    border: "1px solid rgba(255, 255, 255, 0.25)",
+                    background: isDialogUnlocked ? "rgba(255, 213, 79, 0.2)" : "transparent",
+                    border: isDialogUnlocked ? "1px solid #ffd54f" : "1px solid rgba(255, 255, 255, 0.25)",
                     color: "#ffd54f",
                     fontSize: 10,
                     fontWeight: "bold",
@@ -626,8 +630,9 @@ function PokemonFireRedBottomDialog({
                     borderRadius: 3,
                     cursor: "pointer",
                   }}
+                  title="Unlock classified story intel clue (-10 pts)"
                 >
-                  💡 INTEL
+                  {isDialogUnlocked ? "💡 INTEL (DECRYPTED)" : "🔒 INTEL (-10 PTS)"}
                 </button>
               )}
               <span style={{ color: themeCol }}>
