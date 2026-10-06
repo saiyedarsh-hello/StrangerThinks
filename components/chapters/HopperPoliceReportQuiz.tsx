@@ -20,6 +20,7 @@ interface HopperPoliceReportQuizProps {
   onOpenLore: () => void;
   points?: number;
   onExitFullScreen?: () => void;
+  onOpenCodingAnomalies?: () => void;
 }
 
 export default function HopperPoliceReportQuiz({
@@ -37,6 +38,7 @@ export default function HopperPoliceReportQuiz({
   onOpenLore,
   points = 100,
   onExitFullScreen,
+  onOpenCodingAnomalies,
 }: HopperPoliceReportQuizProps) {
   const stageConfig = STAGE_QUIZ_CONFIGS[chapterNumber] || STAGE_QUIZ_CONFIGS[1];
 
@@ -335,6 +337,34 @@ export default function HopperPoliceReportQuiz({
             <span>📁</span>
             <span>CASE BRIEFING</span>
           </button>
+
+          {/* 12 Coding Connection Anomalies Button */}
+          {onOpenCodingAnomalies && (
+            <button
+              type="button"
+              onClick={onOpenCodingAnomalies}
+              style={{
+                padding: "8px 12px",
+                background: "#d91e2b",
+                color: "#ffffff",
+                border: "1.5px solid #ff4d5a",
+                borderRadius: 4,
+                fontFamily: "'Share Tech Mono', monospace",
+                fontWeight: 800,
+                fontSize: 11,
+                letterSpacing: ".12em",
+                cursor: "pointer",
+                boxShadow: "0 0 12px rgba(217, 30, 43, 0.45)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+              title="Open the 12 Hawkins Coding & Logic Connection Anomalies"
+            >
+              <span>⚡</span>
+              <span>12 CODING ANOMALIES</span>
+            </button>
+          )}
 
           {/* Case Points Badge */}
           <div

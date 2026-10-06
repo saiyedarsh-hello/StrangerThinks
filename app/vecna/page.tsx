@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { STAGES, StageId } from "@/lib/stages";
 import {
@@ -21,169 +21,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import VecnaTacticalMap, { MapTeamInfo } from "@/components/vecna/VecnaTacticalMap";
 import VecnaTriggerPanel, { TriggerAction } from "@/components/vecna/VecnaTriggerPanel";
 import VecnaMessagePanel from "@/components/vecna/VecnaMessagePanel";
+import {
+  fetchQuestionsFromSupabase,
+  VecnaTrialItem,
+  CANON_VECNA_TRIALS,
+  checkSupabaseQuestionsStatus,
+} from "@/lib/supabaseService";
 
-interface VecnaTrial {
-  id: number;
-  title: string;
-  subtitle: string;
-  category: string;
-  description: string;
-  question: string;
-  codeSnippet?: string;
-  options?: { id: string; text: string }[];
-  correctAnswer: string;
-  points: number;
-  powersGranted: string;
-}
-
-const VECNA_TRIALS: VecnaTrial[] = [
-  {
-    id: 1,
-    title: "TRIAL I: MUNICIPAL TELEMETRY & MKULTRA",
-    subtitle: "CIVIC DISTRICT · POWER SURGE FREQUENCY",
-    category: "TELEMETRY BREACH",
-    description:
-      "Department of Energy covert psychokinetic trials caused the initial 1983 tear beneath Hawkins. Intercepted power grid telemetry pulses are broadcasting across municipal transformers.",
-    question:
-      "Which classified Department of Energy project resulted in the initial psychokinetic rift and the escape of Subject 011?",
-    options: [
-      { id: "A", text: "Project MKUltra / Sublevel 04" },
-      { id: "B", text: "Operation Paperclip / Echo Division" },
-      { id: "C", text: "Stargate Surveillance Protocol" },
-      { id: "D", text: "Project Blue Book Sub-Archive" },
-    ],
-    correctAnswer: "A",
-    points: 100,
-    powersGranted: "GLITCH · CRT FREAKOUT",
-  },
-  {
-    id: 2,
-    title: "TRIAL II: PRECINCT RF VECTOR TRIANGULATION",
-    subtitle: "HAWKINS POLICE DEPT · CHIEF'S DOSSIER",
-    category: "VECTOR CORRELATION",
-    description:
-      "Police dispatch logs at 22:42, Benny's Diner witness statements at 22:58, and East Hill RF sensor readings at 14.8 MHz confirm an electromagnetic anomaly ground zero.",
-    question:
-      "Triangulate the directional telemetry recordings: what is the epicenter of the electromagnetic breach?",
-    options: [
-      { id: "A", text: "Hawkins National Laboratory (Sublevel 4)" },
-      { id: "B", text: "Cornwallis Municipal Substation" },
-      { id: "C", text: "Roane County Water Tower Reservoir" },
-      { id: "D", text: "Sattler Quarry Abandoned Basin" },
-    ],
-    correctAnswer: "A",
-    points: 150,
-    powersGranted: "SIGNAL JAM · RADIO DISTORTION",
-  },
-  {
-    id: 3,
-    title: "TRIAL III: WALL FREQUENCY COMMUNICATION",
-    subtitle: "BYERS HOUSE · CHRISTMAS LIGHTS ENCODING",
-    category: "ELECTROMAGNETIC ENCODING",
-    description:
-      "Christmas lights arranged across the alphabet wallpaper at the Byers residence pulse without power. Will is transmitting urgent warnings through the wall.",
-    question:
-      "Reconstruct the 5-word scrambled signal into Will's decoded warning message:",
-    options: [
-      { id: "A", text: "DO NOT OPEN THE GATE" },
-      { id: "B", text: "RUN FROM THE SHADOWS" },
-      { id: "C", text: "HE IS HERE WITH US" },
-      { id: "D", text: "CLOSE THE PORTAL NOW" },
-    ],
-    correctAnswer: "A",
-    points: 150,
-    powersGranted: "DISTORT · CLUE OBFUSCATION",
-  },
-  {
-    id: 4,
-    title: "TRIAL IV: LAB MAINFRAME PARITY OVERFLOW",
-    subtitle: "HAWKINS LAB · SUBLEVEL 3 GRID ROUTINE",
-    category: "LOGIC EXECUTION",
-    description:
-      "Hawkins Lab Sublevel 3 telemetry router crashed on an unhandled parity routine. Trace the loop execution: evens double (* 2), odds add 1 (+ 1) for the array [2, 3, 5, 8].",
-    question:
-      "What is the final sum integer output of the parity routine for array [2, 3, 5, 8]?",
-    codeSnippet: `function traceParity(arr) {
-  let total = 0;
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] % 2 === 0) total += arr[i] * 2;
-    else total += arr[i] + 1;
-  }
-  return total;
-}
-console.log(traceParity([2, 3, 5, 8])); // -> 4 + 4 + 6 + 16 = 30`,
-    options: [
-      { id: "A", text: "30" },
-      { id: "B", text: "26" },
-      { id: "C", text: "36" },
-      { id: "D", text: "28" },
-    ],
-    correctAnswer: "A",
-    points: 200,
-    powersGranted: "LOCK · ACCESS DENIED",
-  },
-  {
-    id: 5,
-    title: "TRIAL V: DEEP WOODS PINE RUNES",
-    subtitle: "ROANE COUNTY WOODS · TRAIL 7 HARMONICS",
-    category: "COORDINATE CIPHER",
-    description:
-      "Glowing geometric pine runes are carved into ancient pine tree trunks along Deep Woods Trail 7 leading toward the high-altitude East Hill repeater tower.",
-    question:
-      "Extract the three glowing pine digits left-to-right to lock the harmonic vector coordinates:",
-    options: [
-      { id: "A", text: "Vector 4 · 1 · 7" },
-      { id: "B", text: "Vector 8 · 3 · 4" },
-      { id: "C", text: "Vector 2 · 9 · 5" },
-      { id: "D", text: "Vector 6 · 0 · 1" },
-    ],
-    correctAnswer: "A",
-    points: 200,
-    powersGranted: "TIME FREEZE · DEDUCT 2 MINS",
-  },
-  {
-    id: 6,
-    title: "TRIAL VI: EAST HILL RADIOMETER STATIC",
-    subtitle: "RADIO TOWER · 5-PIN HARMONIC RESONANCE",
-    category: "FREQUENCY ALIGNMENT",
-    description:
-      "The tower's emergency radiometer is scrambled by dimensional static across all 5 frequency channels (Pins 1-5: Alpha, Beta, Gamma, Delta, Epsilon).",
-    question:
-      "What is the 5-digit master override cipher sequence decoded when all 5 radiometer pins resonate at harmony?",
-    options: [
-      { id: "A", text: "8 - 3 - 4 - 7 - 9" },
-      { id: "B", text: "1 - 9 - 8 - 4 - 2" },
-      { id: "C", text: "5 - 7 - 3 - 1 - 9" },
-      { id: "D", text: "4 - 8 - 2 - 6 - 0" },
-    ],
-    correctAnswer: "A",
-    points: 300,
-    powersGranted: "CORRUPT · SYSTEM TAKEOVER",
-  },
-  {
-    id: 7,
-    title: "TRIAL VII: HIVE MIND CONFRONTATION",
-    subtitle: "THE UPSIDE DOWN · SUBJECT 001 REVELATION",
-    category: "ROT13 MIND DECRYPTION",
-    description:
-      "A scrubbed Department of Energy record was recovered from the corrupted red soil. The true identity of Subject 001 was masked using a ROT13 cipher: 'URAEL PERRY'.",
-    question:
-      "Apply the ROT13 decryption on 'URAEL PERRY' to reveal the human origin of Vecna:",
-    options: [
-      { id: "A", text: "HENRY CREEL" },
-      { id: "B", text: "PETER BALLARD" },
-      { id: "C", text: "MARTIN BRENNER" },
-      { id: "D", text: "VICTOR CREEL" },
-    ],
-    correctAnswer: "A",
-    points: 500,
-    powersGranted: "GRANDFATHER CLOCK · GATE MASTERY",
-  },
-];
+export type VecnaTrial = VecnaTrialItem;
 
 export default function VecnaPage() {
   const router = useRouter();
   const [session, setSession] = useState<AuthSession | null>(null);
+
+  // Dynamic Trials State (Fetched from Supabase questions table)
+  const [trials, setTrials] = useState<VecnaTrialItem[]>(CANON_VECNA_TRIALS);
+  const [trialsSource, setTrialsSource] = useState<"supabase" | "canonical">("canonical");
+  const [isLoadingTrials, setIsLoadingTrials] = useState(false);
+  const [syncStatusText, setSyncStatusText] = useState<string | null>(null);
 
   // Active Trial Selection
   const [activeTrialId, setActiveTrialId] = useState<number>(1);
@@ -209,6 +64,30 @@ export default function VecnaPage() {
     radioTower: [{ id: "T05", name: "Signal Seekers", status: "Online" }],
     upsideDown: [{ id: "T06", name: "Hellfire Club", status: "Stuck" }],
   };
+
+  const loadTrialsData = useCallback(async () => {
+    setIsLoadingTrials(true);
+    try {
+      const res = await fetchQuestionsFromSupabase("VECNA");
+      if (res.questions && res.questions.length > 0) {
+        setTrials(res.questions as VecnaTrialItem[]);
+        setTrialsSource(res.source);
+        if (res.source === "supabase") {
+          setSyncStatusText(`SUPABASE CONNECTED (${res.questions.length} TRIALS)`);
+        } else {
+          setSyncStatusText(`CANONICAL VAULT (${res.questions.length} TRIALS)`);
+        }
+      }
+    } catch (e: any) {
+      console.warn("Failed to load Vecna trials:", e);
+    } finally {
+      setIsLoadingTrials(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTrialsData();
+  }, [loadTrialsData]);
 
   useEffect(() => {
     const s = getStoredSession();
@@ -239,7 +118,16 @@ export default function VecnaPage() {
       return;
     }
 
-    if (chosen === trial.correctAnswer) {
+    const cleanChosen = chosen.trim().toUpperCase();
+    const cleanCorrect = (trial.correctAnswer || "").trim().toUpperCase();
+    const matchedOption = trial.options?.find((o) => o.id.toUpperCase() === cleanCorrect);
+
+    const isMatch =
+      cleanChosen === cleanCorrect ||
+      (matchedOption && cleanChosen === matchedOption.text.trim().toUpperCase()) ||
+      (cleanCorrect.length === 1 && cleanChosen === cleanCorrect);
+
+    if (isMatch) {
       sfx("boom");
       setTrialResults((prev) => ({ ...prev, [trial.id]: true }));
       setErrorMessage(null);
@@ -273,7 +161,7 @@ export default function VecnaPage() {
     setIsPowersOpen(false);
   };
 
-  const currentTrial = VECNA_TRIALS.find((t) => t.id === activeTrialId) || VECNA_TRIALS[0];
+  const currentTrial = trials.find((t) => t.id === activeTrialId) || trials[0] || CANON_VECNA_TRIALS[0];
   const isSolved = !!trialResults[currentTrial.id];
 
   return (
@@ -478,16 +366,86 @@ export default function VecnaPage() {
           flex: 1,
         }}
       >
+        {/* Supabase Database Connection Status Banner */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "12px",
+            background: "rgba(18, 4, 8, 0.85)",
+            border: trialsSource === "supabase" ? "1px solid rgba(129, 199, 132, 0.4)" : "1px solid rgba(255, 213, 79, 0.35)",
+            borderRadius: "4px",
+            padding: "10px 18px",
+            marginBottom: "20px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: trialsSource === "supabase" ? "#81c784" : "#ffd54f",
+                boxShadow: `0 0 10px ${trialsSource === "supabase" ? "#81c784" : "#ffd54f"}`,
+                display: "inline-block",
+              }}
+            />
+            <span style={{ fontSize: "12.5px", letterSpacing: "0.12em", fontWeight: "bold" }}>
+              {trialsSource === "supabase" ? (
+                <span style={{ color: "#81c784" }}>
+                  SUPABASE LIVE QUESTIONS TABLE LINKED · {trials.length} VECNA LORE TRIALS LOADED
+                </span>
+              ) : (
+                <span style={{ color: "#ffd54f" }}>
+                  CANONICAL REPOSITORY ACTIVE · {trials.length} VECNA LORE TRIALS READY
+                </span>
+              )}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {syncStatusText && (
+              <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.45)", letterSpacing: "0.1em" }}>
+                {syncStatusText}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                sfx("click");
+                loadTrialsData();
+              }}
+              disabled={isLoadingTrials}
+              style={{
+                background: "rgba(255, 45, 58, 0.15)",
+                color: "#ffcdd2",
+                border: "1px solid rgba(255, 45, 58, 0.4)",
+                padding: "4px 12px",
+                borderRadius: "3px",
+                fontFamily: '"Share Tech Mono", monospace',
+                fontSize: "11.5px",
+                letterSpacing: "0.12em",
+                cursor: isLoadingTrials ? "wait" : "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {isLoadingTrials ? "⟳ SYNCING SUPABASE..." : "⟳ RE-SYNC SUPABASE"}
+            </button>
+          </div>
+        </div>
+
         {/* Trial Tabs Selector */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
             gap: "10px",
             marginBottom: "24px",
           }}
         >
-          {VECNA_TRIALS.map((trial) => {
+          {trials.map((trial) => {
             const isCurrent = activeTrialId === trial.id;
             const isCompleted = !!trialResults[trial.id];
 
@@ -523,7 +481,7 @@ export default function VecnaPage() {
                 <div style={{ fontSize: "10px", color: isCurrent ? "#ff8a80" : "rgba(255,255,255,0.4)" }}>
                   TRIAL {trial.id}
                 </div>
-                <div style={{ marginTop: "3px", textTransform: "uppercase" }}>
+                <div style={{ marginTop: "3px", textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {trial.category.split(" ")[0]}
                 </div>
                 {isCompleted && (

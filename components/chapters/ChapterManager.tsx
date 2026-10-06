@@ -10,6 +10,7 @@ import { getCharacterForChapter } from "@/lib/characters";
 import HopperPoliceReportQuiz from "./HopperPoliceReportQuiz";
 import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
 import PushPin from "../PushPin";
+import NormalCodingConnectionQuiz from "@/components/NormalCodingConnectionQuiz";
 
 export type ChapterId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -963,6 +964,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
 
   const [completionStoryChapterId, setCompletionStoryChapterId] = useState<number | null>(null);
   const isLoreActive = completionStoryChapterId !== null;
+  const [showCodingAnomalies, setShowCodingAnomalies] = useState<boolean>(false);
 
   // Check URL query parameters (e.g. ?chapter=6) to directly open requested chapter
   useEffect(() => {
@@ -1133,9 +1135,17 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
             onSubmitAll={(ans) => handleQuizSubmitAll(currentChapter.id, ans)}
             onOpenLore={() => setActiveLoreChapterId(currentChapter.id)}
             onExitFullScreen={handleBackToBoard}
+            onOpenCodingAnomalies={() => setShowCodingAnomalies(true)}
           />
         )}
       </motion.div>
+
+      {/* Normal Coding Connection Anomalies Overlay */}
+      <AnimatePresence>
+        {showCodingAnomalies && (
+          <NormalCodingConnectionQuiz onClose={() => setShowCodingAnomalies(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

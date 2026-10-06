@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
 import PushPin from "./PushPin";
+import NormalCodingConnectionQuiz from "./NormalCodingConnectionQuiz";
 
 interface InvestigationBoardProps {
   onSelectChapter?: (chapterId: number) => void;
@@ -117,6 +118,7 @@ export default function InvestigationBoard({
 }: InvestigationBoardProps) {
   const { s, score } = useGame();
   const [selectedCardId, setSelectedCardId] = useState<number>(activeChapterId);
+  const [showCodingQuiz, setShowCodingQuiz] = useState<boolean>(false);
 
   // Refs for measuring card positions for the red string overlay
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -405,6 +407,36 @@ export default function InvestigationBoard({
               </div>
             </div>
 
+            {/* Action Button: 12 Coding Connection Questions */}
+            <button
+              id="open-coding-protocol-btn"
+              type="button"
+              onClick={() => {
+                sfx("click");
+                setShowCodingQuiz(true);
+              }}
+              style={{
+                background: "#d91e2b",
+                color: "#ffffff",
+                border: "2px solid #ff4d5a",
+                padding: "10px 18px",
+                borderRadius: "3px",
+                fontFamily: '"Share Tech Mono", monospace',
+                fontSize: "12.5px",
+                fontWeight: 900,
+                letterSpacing: "0.14em",
+                cursor: "pointer",
+                boxShadow: "0 0 16px rgba(217, 30, 43, 0.45), 2px 4px 10px rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                textTransform: "uppercase",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span style={{ fontSize: "15px" }}>⚡</span>
+              <span>CODING PROTOCOL: 12 ANOMALIES</span>
+            </button>
           </div>
         </div>
 
@@ -862,6 +894,12 @@ export default function InvestigationBoard({
             </div>
           </div>
         </div>
+        {/* Normal Screen 12 Coding Connection Questions Modal */}
+        <AnimatePresence>
+          {showCodingQuiz && (
+            <NormalCodingConnectionQuiz onClose={() => setShowCodingQuiz(false)} />
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
