@@ -192,7 +192,7 @@ export default function IntroCutscene({ onComplete }: IntroCutsceneProps) {
                   letterSpacing: ".18em",
                 }}
               >
-                ENTER HAWKINS →
+                ENTER HAWKINS
               </button>
             </motion.div>
           )}

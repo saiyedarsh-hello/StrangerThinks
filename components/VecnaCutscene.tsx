@@ -135,7 +135,7 @@ export default function VecnaCutscene({ onDismiss }: VecnaCutsceneProps) {
               }}
               style={{ fontSize: 22, padding: "16px 36px" }}
             >
-              ENTER VECNA&apos;S MIND →
+              ENTER VECNA&apos;S MIND
             </button>
           </motion.div>
         )}

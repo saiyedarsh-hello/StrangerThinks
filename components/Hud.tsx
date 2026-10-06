@@ -120,9 +120,9 @@ export default function Hud() {
           type="button"
           onClick={() => {
             sfx("click");
-            setViewMode(viewMode === "board" ? "location" : "board");
+            setViewMode("board");
           }}
-          title="Click to toggle Hawkins Investigation Board"
+          title="Return to Hawkins Investigation Board"
           style={{
             background: "transparent",
             border: "none",

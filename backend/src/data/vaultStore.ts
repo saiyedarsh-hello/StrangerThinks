@@ -32,11 +32,11 @@ const teamsMap = new Map<string, TeamRecord>();
 
 // Prepopulate mock/initial tournament teams
 const INITIAL_TEAMS = [
-  { teamId: "T01", teamName: "Stack Smashers", leaderName: "Maya Lin", score: 950, solved: ["ch1-quiz", "ch2-police", "ch3-byers", "ch4-lab", "ch5-forest"] },
-  { teamId: "T02", teamName: "Null Pointers", leaderName: "Aarav Sharma", score: 700, solved: ["ch1-quiz", "ch2-police", "ch3-byers", "ch4-lab"] },
-  { teamId: "T03", teamName: "Byte Busters", leaderName: "Lucas Sinclair", score: 400, solved: ["ch1-quiz", "ch2-police", "ch3-byers"] },
-  { teamId: "T04", teamName: "Hawkins AV Club", leaderName: "Dustin Henderson", score: 250, solved: ["ch1-quiz", "ch2-police"] },
-  { teamId: "T05", teamName: "Radio Static", leaderName: "Will Byers", score: 100, solved: ["ch1-quiz"] },
+  { teamId: "T01", teamName: "Stack Smashers", leaderName: "Maya Lin", score: 250, solved: ["ch1-quiz", "ch2-police", "ch3-byers", "ch4-lab", "ch5-forest"] },
+  { teamId: "T02", teamName: "Null Pointers", leaderName: "Aarav Sharma", score: 200, solved: ["ch1-quiz", "ch2-police", "ch3-byers", "ch4-lab"] },
+  { teamId: "T03", teamName: "Byte Busters", leaderName: "Lucas Sinclair", score: 150, solved: ["ch1-quiz", "ch2-police", "ch3-byers"] },
+  { teamId: "T04", teamName: "Hawkins AV Club", leaderName: "Dustin Henderson", score: 100, solved: ["ch1-quiz", "ch2-police"] },
+  { teamId: "T05", teamName: "Radio Static", leaderName: "Will Byers", score: 50, solved: ["ch1-quiz"] },
   { teamId: "T06", teamName: "Upside Down Recon", leaderName: "Jim Hopper", score: 0, solved: [] },
 ];
 

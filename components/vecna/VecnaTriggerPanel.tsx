@@ -169,7 +169,7 @@ export default function VecnaTriggerPanel({
             gap: "8px",
           }}
         >
-          <span>⚡</span> TRIGGER EVENT
+          TRIGGER EVENT
         </div>
         <div
           style={{
@@ -206,10 +206,10 @@ export default function VecnaTriggerPanel({
             cursor: "pointer",
           }}
         >
-          <option value="all">📍 ALL LOCATIONS (BROADCAST)</option>
+          <option value="all">ALL LOCATIONS (BROADCAST)</option>
           {MAP_LOCATIONS.map((loc) => (
             <option key={loc.id} value={loc.id}>
-              📍 {loc.name}
+              {loc.name}
             </option>
           ))}
         </select>

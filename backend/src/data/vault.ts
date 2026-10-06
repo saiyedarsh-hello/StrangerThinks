@@ -20,7 +20,7 @@ export const SANITIZED_CHAPTERS: SanitizedChapter[] = [
     ],
     bgSrc: "/hawkins-town-bg.jpg",
     taskId: "ch1-quiz",
-    points: 100,
+    points: 50,
     questionPrompt:
       "During the covert November 1983 incident at Hawkins National Laboratory, which classified Department of Energy project resulted in the initial psychokinetic rift and the escape of test subjects?",
     options: [
@@ -44,7 +44,7 @@ export const SANITIZED_CHAPTERS: SanitizedChapter[] = [
     ],
     bgSrc: "/hawkins-police-bg.jpg",
     taskId: "ch2-police",
-    points: 150,
+    points: 50,
     questionPrompt: "WHICH FACILITY SERVES AS THE CONFIRMED EPICENTER OF THE RIFT?",
     options: [
       { id: "A", text: "Hawkins National Laboratory (Sublevel 4)" },
@@ -90,7 +90,7 @@ export const SANITIZED_CHAPTERS: SanitizedChapter[] = [
     ],
     bgSrc: "/hawkins-bg.jpg",
     taskId: "ch3-byers",
-    points: 150,
+    points: 50,
     questionPrompt: "Rearrange the scrambled message cards in order to decode Will's warning from the walls:",
     initialTiles: ["THE", "OPEN", "GATE", "NOT", "DO"],
   },
@@ -108,7 +108,7 @@ export const SANITIZED_CHAPTERS: SanitizedChapter[] = [
     ],
     bgSrc: "/hawkins-lab-bg.jpg",
     taskId: "ch4-lab",
-    points: 200,
+    points: 50,
     questionPrompt:
       "Inspect the accumulator loop routine. Trace the parity logic when given telemetry signals [12, 5, 8, 3, 10]. Enter the calculated output integer to restore the telemetry router.",
     codeSnippet: `function parseTelemetry(signals) {
@@ -140,7 +140,7 @@ console.log(parseTelemetry([12, 5, 8, 3, 10]));`,
     ],
     bgSrc: "/creel-bg.jpg",
     taskId: "ch5-forest",
-    points: 200,
+    points: 50,
     questionPrompt:
       "Flashlights reveal ancient markings carved along Trail 7. Inspect the three marked pines in sequence (West, Central, East). Enter the 3-digit vector code:",
     placeholder: "e.g. 417",
@@ -159,7 +159,7 @@ console.log(parseTelemetry([12, 5, 8, 3, 10]));`,
     ],
     bgSrc: "/hawkins-gate-bg.jpg",
     taskId: "ch6-radio-tower",
-    points: 300,
+    points: 50,
     questionPrompt: "Calibrate the 5 radiometer pins and enter the decrypted 5-digit master access cipher into the keypad.",
   },
   {
@@ -176,7 +176,7 @@ console.log(parseTelemetry([12, 5, 8, 3, 10]));`,
     ],
     bgSrc: "/upsidedown-bg.jpg",
     taskId: "ch7-upsidedown",
-    points: 500,
+    points: 50,
     questionPrompt:
       "Before Dr. Brenner designated him Subject 001 at Hawkins Lab, what was the true human identity of the entity now known as Vecna?",
     options: [
@@ -197,7 +197,7 @@ export const VAULT_SECRETS: Record<string, ChapterVaultSecret> = {
     id: 1,
     taskId: "ch1-quiz",
     type: "quiz",
-    points: 100,
+    points: 50,
     validation: {
       correctOptionId: "A",
       acceptedAnswers: ["A", "Project MKUltra / Sublevel 04"],
@@ -216,7 +216,7 @@ export const VAULT_SECRETS: Record<string, ChapterVaultSecret> = {
     id: 2,
     taskId: "ch2-police",
     type: "case_study",
-    points: 150,
+    points: 50,
     validation: {
       correctOptionId: "A",
       acceptedAnswers: ["A", "Hawkins National Laboratory (Sublevel 4)"],
@@ -235,7 +235,7 @@ export const VAULT_SECRETS: Record<string, ChapterVaultSecret> = {
     id: 3,
     taskId: "ch3-byers",
     type: "rearrange",
-    points: 150,
+    points: 50,
     validation: {
       correctPhrase: "DO NOT OPEN THE GATE",
     },
@@ -253,7 +253,7 @@ export const VAULT_SECRETS: Record<string, ChapterVaultSecret> = {
     id: 4,
     taskId: "ch4-lab",
     type: "code",
-    points: 200,
+    points: 50,
     validation: {
       numericAnswer: 68,
       acceptedAnswers: ["68"],
@@ -272,7 +272,7 @@ export const VAULT_SECRETS: Record<string, ChapterVaultSecret> = {
     id: 5,
     taskId: "ch5-forest",
     type: "forest_runes",
-    points: 200,
+    points: 50,
     validation: {
       codeAnswer: "417",
       acceptedAnswers: ["417", "4-1-7", "4 1 7"],
@@ -291,7 +291,7 @@ export const VAULT_SECRETS: Record<string, ChapterVaultSecret> = {
     id: 6,
     taskId: "ch6-radio-tower",
     type: "radiometer",
-    points: 300,
+    points: 50,
     validation: {
       codeAnswer: "83479",
       acceptedAnswers: ["83479", "8-3-4-7-9", "8 3 4 7 9"],
@@ -310,7 +310,7 @@ export const VAULT_SECRETS: Record<string, ChapterVaultSecret> = {
     id: 7,
     taskId: "ch7-upsidedown",
     type: "final_quiz",
-    points: 500,
+    points: 50,
     validation: {
       correctOptionId: "B",
       acceptedAnswers: ["B", "Henry Creel (Subject 001)"],

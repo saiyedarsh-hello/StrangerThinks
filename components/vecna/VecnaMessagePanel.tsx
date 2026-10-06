@@ -56,7 +56,7 @@ export default function VecnaMessagePanel({
           gap: "8px",
         }}
       >
-        <span style={{ color: "#ff2d3a" }}>📡</span> SEND MESSAGE
+        SEND MESSAGE
       </div>
 
       {/* Target Toggle Tabs (Matches Image 3) */}
@@ -199,7 +199,7 @@ export default function VecnaMessagePanel({
             e.currentTarget.style.color = "#ff4d58";
           }}
         >
-          <span>✈️</span> SEND MESSAGE
+          SEND MESSAGE
         </button>
       </form>
     </div>

@@ -226,34 +226,10 @@ export const CHARACTERS: Record<string, CharacterDef> = {
     title: "UNKNOWN ENTITY · PARALLEL ABYSS",
     location: "upsidedown",
     chapterId: 7,
+    sprite: "/characters/vecna.png",
     themeColor: "#ff2d3a",
     badgeBg: "rgba(255, 45, 58, 0.3)",
-    silhouetteSvg: `
-      <svg viewBox="0 0 32 48" style="shape-rendering: crispEdges; width: 100%; height: 100%;">
-        <rect x="10" y="3" width="12" height="12" fill="#1C0A0E" />
-        <rect x="11" y="4" width="10" height="10" fill="#2D0F14" />
-        <rect x="12" y="8" width="2" height="2" fill="#FFFFFF" />
-        <rect x="18" y="8" width="2" height="2" fill="#FFFFFF" />
-        <rect x="11" y="11" width="10" height="1" fill="#FF2D3A" />
-        <rect x="8" y="15" width="16" height="18" fill="#1C0A0E" />
-        <rect x="10" y="16" width="12" height="16" fill="#2D0F14" />
-        <rect x="13" y="16" width="2" height="16" fill="#FF2D3A" />
-        <rect x="10" y="22" width="12" height="2" fill="#FF2D3A" />
-        <rect x="9" y="27" width="14" height="2" fill="#FF2D3A" />
-        <rect x="4" y="17" width="4" height="18" fill="#1C0A0E" />
-        <rect x="5" y="20" width="2" height="12" fill="#FF2D3A" />
-        <rect x="24" y="17" width="4" height="18" fill="#1C0A0E" />
-        <rect x="25" y="20" width="2" height="12" fill="#FF2D3A" />
-        <rect x="3" y="34" width="4" height="4" fill="#3D1219" />
-        <rect x="25" y="34" width="4" height="4" fill="#3D1219" />
-        <rect x="9" y="33" width="6" height="12" fill="#1C0A0E" />
-        <rect x="11" y="35" width="2" height="8" fill="#FF2D3A" />
-        <rect x="17" y="33" width="6" height="12" fill="#1C0A0E" />
-        <rect x="19" y="35" width="2" height="8" fill="#FF2D3A" />
-        <rect x="7" y="44" width="8" height="4" fill="#0D0406" />
-        <rect x="17" y="44" width="8" height="4" fill="#0D0406" />
-      </svg>
-    `,
+    silhouetteSvg: "",
   },
 };
 

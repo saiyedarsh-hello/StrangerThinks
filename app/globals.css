@@ -5,7 +5,40 @@
             Upside Down = black/crimson + red
    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* â”€â”€â”€ CSS Variables â”€â”€â”€ */
+/* ─── Authentic Stranger Things Font (ITC Benguiat Bold) ─── */
+@font-face {
+  font-family: 'Benguiat Bold';
+  src: url('/fonts/benguiat-bold.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ITC Benguiat';
+  src: url('/fonts/benguiat-bold.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ITC Benguiat Std';
+  src: url('/fonts/benguiat-bold.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Benguiat';
+  src: url('/fonts/benguiat-bold.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── CSS Variables ─── */
 :root {
   --bg:      #05080b;
   --bg2:     #0a1117;
@@ -16,7 +49,7 @@
   --danger:  #ff3b45;
   --line:    rgba(255,180,84,0.28);
   --glow:    none;
-  --font-title: "Playfair Display","Times New Roman",serif;
+  --font-title: "Benguiat Bold", "ITC Benguiat", "ITC Benguiat Std", "Playfair Display", "Times New Roman", serif;
   --font-term:  "VT323","Courier New",monospace;
   --font-mono:  "Share Tech Mono","Courier New",monospace;
 }
@@ -49,7 +82,7 @@ button:hover, .btn:hover, a:hover, input:hover {
   text-shadow: none !important;
   box-shadow: none !important;
 }
-html,body { height: 100%; max-height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; }
+html,body { min-height: 100%; background: var(--bg); color: var(--ink); overflow-x: hidden; overflow-y: auto; }
 body {
   font-family: var(--font-mono);
   transition: background 1.4s ease, color 1.4s ease;

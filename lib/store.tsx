@@ -718,8 +718,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         breakdown: {
           ...p.breakdown,
           [category]: p.breakdown[category] + points,
-          speed: p.breakdown.speed + speedBonus,
-          story: p.breakdown.story + 25,
         },
       };
     });

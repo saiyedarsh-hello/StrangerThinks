@@ -2,12 +2,12 @@ export interface Result { team: string; score: number; time: number; when: numbe
 const KEY = "hawkins-protocol:results";
 
 export const MOCK: Result[] = [
-  { team: "NULL POINTERS", score: 3120, time: 61 * 60, when: 0, mock: true },
-  { team: "STACK SMASHERS", score: 2980, time: 66 * 60, when: 0, mock: true },
-  { team: "RIFT RUNNERS", score: 2710, time: 72 * 60, when: 0, mock: true },
-  { team: "BYTE HUNTERS", score: 2440, time: 78 * 60, when: 0, mock: true },
-  { team: "SEGFAULT SQUAD", score: 2105, time: 81 * 60, when: 0, mock: true },
-  { team: "KERNEL PANIC", score: 1760, time: 85 * 60, when: 0, mock: true },
+  { team: "NULL POINTERS", score: 320, time: 61 * 60, when: 0, mock: true },
+  { team: "STACK SMASHERS", score: 300, time: 66 * 60, when: 0, mock: true },
+  { team: "RIFT RUNNERS", score: 275, time: 72 * 60, when: 0, mock: true },
+  { team: "BYTE HUNTERS", score: 250, time: 78 * 60, when: 0, mock: true },
+  { team: "SEGFAULT SQUAD", score: 210, time: 81 * 60, when: 0, mock: true },
+  { team: "KERNEL PANIC", score: 180, time: 85 * 60, when: 0, mock: true },
 ];
 
 export function loadResults(): Result[] {

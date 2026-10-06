@@ -301,7 +301,7 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
           <StrangerThingsLogo flashLevel={flashLevel} />
         </motion.div>
 
-        {/* SINGLE MINIMAL ENTER BUTTON */}
+        {/* SINGLE MINIMAL ENTER BUTTON (Matches Uploaded Image, No Arrow) */}
         <motion.button
           id="enter-btn"
           initial={{ opacity: 0, y: 15 }}
@@ -309,9 +309,9 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
           transition={{ duration: 1, delay: 0.6 }}
           whileHover={{
             scale: 1.05,
-            backgroundColor: "#b81420",
-            borderColor: "#ff5964",
-            boxShadow: "0 0 24px rgba(230, 26, 40, 0.7), 0 4px 18px rgba(0, 0, 0, 0.9)",
+            backgroundColor: "#7a0a12",
+            borderColor: "#a6121c",
+            boxShadow: "0 0 32px rgba(255, 34, 48, 0.8), inset 0 0 16px rgba(0, 0, 0, 0.5)",
           }}
           whileTap={{ scale: 0.96 }}
           onClick={handleOpenAuth}
@@ -319,27 +319,26 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: "18px",
             marginTop: "36px",
-            padding: "16px 54px",
-            background: "#e61a28",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            border: "1.5px solid #ff4d5a",
+            padding: "16px 58px",
+            background: "#ff2230",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            border: "1.5px solid #ff5964",
+            borderRadius: "2px",
             color: "#ffffff",
             fontFamily:
-              '"ITC Benguiat Std", "Benguiat", "Libre Caslon Display", "Playfair Display", Georgia, serif',
+              '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", "Libre Caslon Display", "Playfair Display", Georgia, serif',
             fontSize: "clamp(17px, 1.9vw, 22px)",
             fontWeight: 900,
             letterSpacing: "0.25em",
             cursor: "pointer",
             boxShadow:
-              "0 4px 20px rgba(0, 0, 0, 0.8), 0 0 14px rgba(230, 26, 40, 0.35)",
+              "0 0 28px rgba(255, 34, 48, 0.65), inset 0 0 14px rgba(255, 255, 255, 0.25)",
             transition: "all 0.3s ease",
           }}
         >
           <span>ENTER</span>
-          <span style={{ fontSize: "1.2em" }}>→</span>
         </motion.button>
       </main>
 
@@ -535,7 +534,7 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
                 >
                   {isAuthenticating
                     ? "AUTHENTICATING..."
-                    : "CONFIRM & ENTER →"}
+                    : "CONFIRM & ENTER"}
                 </button>
 
                 {/* Quick Autofill Chips */}

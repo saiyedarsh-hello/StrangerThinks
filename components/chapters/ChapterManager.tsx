@@ -52,7 +52,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-town-bg.jpg",
     taskId: "ch1-quiz",
-    points: 100,
+    points: 50,
   },
   {
     id: 2,
@@ -76,7 +76,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-police-bg.jpg",
     taskId: "ch2-police",
-    points: 150,
+    points: 50,
   },
   {
     id: 3,
@@ -100,7 +100,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-bg.jpg",
     taskId: "ch3-byers",
-    points: 150,
+    points: 50,
   },
   {
     id: 4,
@@ -124,7 +124,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-lab-bg.jpg",
     taskId: "ch4-lab",
-    points: 200,
+    points: 50,
   },
   {
     id: 5,
@@ -148,7 +148,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/creel-bg.jpg",
     taskId: "ch5-forest",
-    points: 200,
+    points: 50,
   },
   {
     id: 6,
@@ -172,7 +172,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-gate-bg.jpg",
     taskId: "ch6-radio-tower",
-    points: 250,
+    points: 50,
   },
   {
     id: 7,
@@ -196,7 +196,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/upsidedown-bg.jpg",
     taskId: "ch7-upsidedown",
-    points: 500,
+    points: 50,
   },
 ];
 
@@ -245,6 +245,7 @@ const CHAPTER_CHARACTERS: Record<number, { name: string; role: string; sprite?: 
   7: {
     name: "ELEVEN & VECNA",
     role: "THE GATE RIFT · HIVE MIND",
+    sprite: "/characters/vecna.png",
     color: "#ff2d3a",
     story: "The dimensional boundary has collapsed. Spores drift through crimson skies. Decode Experiment 001's scrubbed identity (ROT13) to sever Vecna's psychic hold.",
   },
@@ -489,11 +490,14 @@ function PokemonFireRedBottomDialog({
             justifyContent: "flex-end",
             pointerEvents: "auto",
             cursor: "pointer",
-            filter: `drop-shadow(0 0 16px ${themeCol}90) drop-shadow(0 10px 22px rgba(0,0,0,0.95))`,
+            filter:
+              character.id === "vecna"
+                ? "drop-shadow(0 0 24px rgba(255, 45, 58, 0.85)) drop-shadow(0 14px 28px rgba(0,0,0,0.95))"
+                : `drop-shadow(0 0 16px ${themeCol}90) drop-shadow(0 10px 22px rgba(0,0,0,0.95))`,
           }}
         >
           <motion.div
-            animate={{ y: [0, -4, 0] }}
+            animate={{ y: [0, -6, 0] }}
             transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
             style={{
               display: "flex",
@@ -506,7 +510,10 @@ function PokemonFireRedBottomDialog({
                 src={character.sprite}
                 alt={character.name}
                 style={{
-                  height: "clamp(120px, 22vh, 195px)",
+                  height:
+                    character.id === "vecna"
+                      ? "clamp(160px, 26vh, 230px)"
+                      : "clamp(120px, 22vh, 195px)",
                   width: "auto",
                   imageRendering: "pixelated",
                   display: "block",
@@ -615,30 +622,6 @@ function PokemonFireRedBottomDialog({
                 : `ARCHIVE TRANSMISSION · ${chapter.archiveSector}`}
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {mode === "intro" && (
-                <button
-                  type="button"
-                  onClick={handleAskHint}
-                  style={{
-                    background: isDialogUnlocked ? "rgba(255, 213, 79, 0.2)" : "transparent",
-                    border: isDialogUnlocked ? "1px solid #ffd54f" : "1px solid rgba(255, 255, 255, 0.25)",
-                    color: "#ffd54f",
-                    fontSize: 10,
-                    fontWeight: "bold",
-                    fontFamily: "var(--font-mono)",
-                    letterSpacing: ".1em",
-                    padding: "2px 8px",
-                    borderRadius: 3,
-                    cursor: "pointer",
-                  }}
-                  title="Unlock classified story intel clue (-10 pts)"
-                >
-                  {isDialogUnlocked ? "💡 INTEL (DECRYPTED)" : "🔒 INTEL (-10 PTS)"}
-                </button>
-              )}
-              <span style={{ color: themeCol }}>
-                LOG {lineIdx + 1} / {lines.length}
-              </span>
               <button
                 type="button"
                 onClick={(e) => {
@@ -706,7 +689,7 @@ function PokemonFireRedBottomDialog({
                 gap: 4,
               }}
             >
-              {isTyping ? "[TYPING...]" : isFinalLine ? (mode === "completion" ? "NEXT EPISODE ▶" : "ENTER MISSION ▶") : "[SPACE / CLICK] ▼"}
+              {isTyping ? "[TYPING...]" : isFinalLine ? (mode === "completion" ? "NEXT EPISODE" : "ENTER MISSION") : "[SPACE / CLICK]"}
             </motion.div>
           </div>
         </motion.div>
@@ -863,7 +846,7 @@ function ChapterCompletionView({
               transition: "all 0.15s ease",
             }}
           >
-            NEXT EPISODE →
+            NEXT EPISODE
           </button>
         ) : (
           <div
@@ -997,38 +980,44 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
     const cfg = STAGE_QUIZ_CONFIGS[chapterId];
     if (!cfg) return;
 
-    const allCorrect = cfg.questions.every((q, idx) => answers[idx] === q.correctAnswerId);
     const taskId = CHAPTERS.find((c) => c.id === chapterId)?.taskId || `ch${chapterId}`;
-    const pts = cfg.points || 100;
+    
+    // Each solved question = 5 points (10 questions * 5 = 50 points total per chapter)
+    const questions = cfg.questions || [];
+    let correctCount = 0;
+    questions.forEach((q, idx) => {
+      const chosen = answers[idx] || "A";
+      if (chosen === q.correctAnswerId) {
+        correctCount++;
+      }
+    });
+    const pts = correctCount * 5;
 
-    if (allCorrect) {
-      sfx("ok");
-      const res = await validateChapterOnServer(chapterId, taskId, answers[0] || "A");
-      submitTask(taskId, res?.pointsAwarded || pts, `Chapter ${chapterId} Docket Verified`);
-      setCompletionStoryChapterId(chapterId);
-    } else {
-      sfx("err");
-      setQuizErrorMap((p) => ({ ...p, [chapterId]: true }));
-      setTimeout(() => {
-        setQuizErrorMap((p) => ({ ...p, [chapterId]: false }));
-      }, 1500);
+    sfx("ok");
+    try {
+      await validateChapterOnServer(chapterId, taskId, answers[0] || "A");
+    } catch (e) {
+      // offline fallback
     }
+    submitTask(taskId, pts, `Chapter ${chapterId} Docket Verified (${correctCount}/${questions.length} Solved)`);
+    setCompletionStoryChapterId(chapterId);
   };
 
   return (
     <div
       className="screen"
       style={{
+        minHeight: "100vh",
         height: "100vh",
-        maxHeight: "100vh",
-        overflow: "hidden",
+        overflowY: "auto",
+        overflowX: "hidden",
         position: "relative",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "flex-start",
         paddingTop: "94px",
-        paddingBottom: "14px",
+        paddingBottom: "40px",
         paddingLeft: "clamp(10px, 2vw, 20px)",
         paddingRight: "clamp(10px, 2vw, 20px)",
         boxSizing: "border-box",
@@ -1090,11 +1079,11 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
           width: "min(1240px, 96vw)",
           maxHeight: "calc(100vh - 94px)",
           height: "calc(100vh - 94px)",
-          background: "rgba(10, 5, 10, 0.92)",
+          background: "rgba(10, 5, 10, 0.95)",
           backdropFilter: "blur(14px)",
           WebkitBackdropFilter: "blur(14px)",
-          border: "2px solid #b81d24",
-          boxShadow: "0 0 35px rgba(255, 45, 58, 0.35), inset 0 0 25px rgba(0,0,0,0.85)",
+          border: "none",
+          boxShadow: "0 25px 60px rgba(0,0,0,0.85)",
           borderRadius: 6,
           display: "flex",
           flexDirection: "column",
@@ -1121,6 +1110,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
           />
         ) : (
           <HopperPoliceReportQuiz
+            key={currentChapter.id}
             chapterNumber={currentChapter.id}
             chapterTitle={currentChapter.label}
             sectionTitle={STAGE_QUIZ_CONFIGS[currentChapter.id]?.sectionHeader}

@@ -701,7 +701,7 @@ export default function InvestigationBoard({
                       transition: "all 0.2s ease",
                     }}
                   >
-                    {unlocked ? "ENTER CHAPTER →" : "LOCKED"}
+                    {unlocked ? "ENTER CHAPTER" : "LOCKED"}
                   </button>
                 </motion.div>
               );

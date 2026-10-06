@@ -5,9 +5,10 @@ import { sfx } from "@/lib/audio";
 interface VecnaHeaderProps {
   operatorName: string;
   onLogout: () => void;
+  score?: number;
 }
 
-export default function VecnaHeader({ operatorName, onLogout }: VecnaHeaderProps) {
+export default function VecnaHeader({ operatorName, onLogout, score = 0 }: VecnaHeaderProps) {
   const [timeStr, setTimeStr] = useState("02:17 AM");
 
   useEffect(() => {
@@ -123,6 +124,44 @@ export default function VecnaHeader({ operatorName, onLogout }: VecnaHeaderProps
             }}
           >
             {timeStr}
+          </div>
+        </div>
+
+        {/* Vecna Score Module */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0, 0, 0, 0.75)",
+            border: "1px solid rgba(255, 45, 58, 0.3)",
+            padding: "4px 14px",
+            borderRadius: "4px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "9px",
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "0.25em",
+              color: "rgba(255, 120, 120, 0.8)",
+              textTransform: "uppercase",
+            }}
+          >
+            SCORE
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--font-term)",
+              fontSize: "20px",
+              color: "#ff2d3a",
+              letterSpacing: "0.15em",
+              lineHeight: 1,
+              textShadow: "0 0 10px rgba(255, 45, 58, 0.8)",
+            }}
+          >
+            {String(score).padStart(3, "0")} / 350
           </div>
         </div>
 
