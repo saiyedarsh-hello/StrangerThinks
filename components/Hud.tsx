@@ -52,96 +52,187 @@ export default function Hud() {
 
   return (
     <>
-      <div className="hud">
-        <div className="brand" style={{ letterSpacing: ".2em" }}>
-          THE HAWKINS PROTOCOL
-        </div>
-
-        <button
-          id="hud-evidence-board-btn"
-          type="button"
-          className="btn sm ghost"
-          onClick={() => {
-            sfx("click");
-            setViewMode(viewMode === "board" ? "location" : "board");
-          }}
-          style={{
-            borderColor: viewMode === "board" ? "#d91e2b" : "var(--accent)",
-            color: viewMode === "board" ? "#ff8a80" : "var(--accent)",
-            background: viewMode === "board" ? "rgba(217, 30, 43, 0.18)" : "rgba(255, 180, 84, 0.12)",
-            fontSize: 13,
-            padding: "6px 14px",
-            letterSpacing: ".15em",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            cursor: "pointer",
-            borderRadius: 4,
-            marginLeft: 6,
-          }}
-        >
-          <span>📌 [EVIDENCE BOARD]</span>
-          <span
+      <div
+        className="hud"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px clamp(16px, 2.5vw, 32px)",
+          background: "linear-gradient(180deg, rgba(14, 5, 10, 0.96) 0%, rgba(6, 2, 5, 0.98) 100%)",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+          borderBottom: "1px solid rgba(255, 45, 58, 0.25)",
+          boxShadow: "0 4px 28px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 45, 58, 0.12)",
+          gap: 16,
+          zIndex: 800,
+        }}
+      >
+        {/* Left Side: Navigation / Evidence Board Toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            id="hud-evidence-board-btn"
+            type="button"
+            onClick={() => {
+              sfx("click");
+              setViewMode(viewMode === "board" ? "location" : "board");
+            }}
             style={{
-              fontSize: 11,
-              background: viewMode === "board" ? "#d91e2b" : "var(--accent)",
-              color: "#000",
-              padding: "1px 6px",
-              borderRadius: 2,
-              fontWeight: "bold",
+              borderColor: viewMode === "board" ? "#ff2d3a" : "rgba(255, 180, 84, 0.4)",
+              color: viewMode === "board" ? "#ffffff" : "rgba(255, 255, 255, 0.85)",
+              background:
+                viewMode === "board"
+                  ? "linear-gradient(135deg, rgba(255, 45, 58, 0.25) 0%, rgba(180, 20, 30, 0.15) 100%)"
+                  : "rgba(255, 255, 255, 0.05)",
+              border: viewMode === "board" ? "1px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.16)",
+              fontSize: 12.5,
+              padding: "7px 15px",
+              letterSpacing: ".14em",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 9,
+              cursor: "pointer",
+              borderRadius: 4,
+              fontFamily: "var(--font-mono)",
+              fontWeight: 700,
+              boxShadow: viewMode === "board" ? "0 0 16px rgba(255, 45, 58, 0.35)" : "none",
+              transition: "all 0.18s ease",
             }}
           >
-            {activeChapterId} / 8
-          </span>
-        </button>
+            <span style={{ fontSize: 13 }}>📌</span>
+            <span>EVIDENCE BOARD</span>
+            <span
+              style={{
+                fontSize: 10.5,
+                background: viewMode === "board" ? "#ff2d3a" : "rgba(255, 180, 84, 0.25)",
+                color: viewMode === "board" ? "#000000" : "#ffb454",
+                padding: "2px 7px",
+                borderRadius: 3,
+                fontWeight: 900,
+                letterSpacing: ".08em",
+              }}
+            >
+              {activeChapterId || 1} / 8
+            </span>
+          </button>
+        </div>
 
         <div className="grow" />
 
-        {/* Team Name, ID & Leader Name */}
-        <div className="stat" style={{ minWidth: 150 }}>
-          <small style={{ letterSpacing: ".25em", color: "var(--dim)", fontSize: 11 }}>TEAM / LEADER</small>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginTop: 3 }}>
-            <b style={{ fontSize: 17, color: "#fff", letterSpacing: ".08em" }}>{s.team?.name || "RECON-1"}</b>
-            {s.team?.id && (
-              <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: "bold", background: "rgba(255,180,84,0.12)", padding: "1px 6px", borderRadius: 3, border: "1px solid rgba(255,180,84,0.25)" }}>
-                [{s.team.id}]
+        {/* Right Side: Team Info, Score & Actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: "clamp(12px, 2vw, 24px)" }}>
+          {/* Team Name and Tag Only (No Leader) */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+            <span
+              style={{
+                letterSpacing: ".24em",
+                color: "rgba(255, 180, 84, 0.7)",
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                marginBottom: 2,
+              }}
+            >
+              TEAM
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span
+                style={{
+                  fontSize: "clamp(14px, 1.6vw, 16.5px)",
+                  fontWeight: 800,
+                  color: "#ffffff",
+                  letterSpacing: ".06em",
+                  textShadow: "0 0 10px rgba(255, 255, 255, 0.2)",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {s.team?.name || "RECON-1"}
               </span>
-            )}
-          </div>
-          {s.team?.leaderName && (
-            <div style={{ fontSize: 12, color: "var(--dim)", letterSpacing: ".06em", marginTop: 2 }}>
-              LEADER: <span style={{ color: "#fff" }}>{s.team.leaderName}</span>
+              {s.team?.id && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#ffb454",
+                    fontWeight: 700,
+                    background: "rgba(255, 180, 84, 0.12)",
+                    padding: "1px 6px",
+                    borderRadius: 3,
+                    border: "1px solid rgba(255, 180, 84, 0.3)",
+                    letterSpacing: ".08em",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                >
+                  [{s.team.id}]
+                </span>
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Score Readout */}
-        <div className="stat" style={{ paddingLeft: 12, borderLeft: "1px solid rgba(255,255,255,0.08)" }}>
-          <small style={{ letterSpacing: ".25em", color: "var(--dim)", fontSize: 11 }}>SCORE</small>
-          <b style={{ fontSize: 24, color: "var(--accent)", letterSpacing: ".1em", marginTop: 2 }}>
-            {String(score).padStart(5, "0")}
-          </b>
-        </div>
+          {/* Elegant Vertical Divider */}
+          <div
+            style={{
+              width: 1,
+              height: 28,
+              background: "linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.18), transparent)",
+            }}
+          />
 
-        <button
-          id="player-logout-btn"
-          className="btn sm ghost red"
-          style={{
-            marginLeft: 8,
-            padding: "8px 16px",
-            fontSize: 13,
-            letterSpacing: ".15em",
-            borderRadius: 4,
-            cursor: "pointer",
-          }}
-          onClick={() => {
-            if (confirm("Log out of Hawkins Protocol and return to login screen?")) {
-              logout();
-            }
-          }}
-        >
-          [LOGOUT]
-        </button>
+          {/* Score Display with Shaded Retro Digits */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+            <span
+              style={{
+                letterSpacing: ".24em",
+                color: "rgba(255, 45, 58, 0.75)",
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                marginBottom: 1,
+              }}
+            >
+              SCORE
+            </span>
+            <span
+              style={{
+                fontSize: "clamp(20px, 2.2vw, 24px)",
+                fontWeight: "bold",
+                color: "var(--accent, #ff8a4c)",
+                letterSpacing: ".12em",
+                fontFamily: "var(--font-term), monospace",
+                lineHeight: 1,
+                textShadow: "0 0 12px rgba(255, 138, 76, 0.45)",
+              }}
+            >
+              {String(score).padStart(5, "0")}
+            </span>
+          </div>
+
+          {/* Logout Button */}
+          <button
+            id="player-logout-btn"
+            type="button"
+            className="btn sm ghost red"
+            style={{
+              padding: "7px 16px",
+              fontSize: 11.5,
+              letterSpacing: ".14em",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontFamily: "var(--font-mono)",
+              fontWeight: 700,
+              background: "rgba(255, 45, 58, 0.08)",
+              borderColor: "rgba(255, 45, 58, 0.4)",
+              color: "#ff4d5a",
+              transition: "all 0.15s ease",
+            }}
+            onClick={() => {
+              if (confirm("Log out of Hawkins Protocol and return to login screen?")) {
+                logout();
+              }
+            }}
+          >
+            [LOGOUT]
+          </button>
+        </div>
       </div>
 
       {/* Slide-out Clue Log Drawer */}
