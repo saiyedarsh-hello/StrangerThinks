@@ -58,18 +58,20 @@ export default function Hud() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "10px clamp(16px, 2.5vw, 32px)",
-          background: "linear-gradient(180deg, rgba(14, 5, 10, 0.96) 0%, rgba(6, 2, 5, 0.98) 100%)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          borderBottom: "1px solid rgba(255, 45, 58, 0.25)",
-          boxShadow: "0 4px 28px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 45, 58, 0.12)",
+          padding: "8px clamp(16px, 2.5vw, 32px)",
+          height: 64,
+          background: "linear-gradient(180deg, rgba(16, 4, 10, 0.98) 0%, rgba(6, 2, 5, 0.99) 100%)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderBottom: "1.5px solid rgba(255, 45, 58, 0.35)",
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 45, 58, 0.25)",
           gap: 16,
           zIndex: 800,
+          boxSizing: "border-box",
         }}
       >
-        {/* Left Side: Navigation / Evidence Board Toggle */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {/* Left Side: Crazy Tactile 3D Red Pushpin & Yarn Evidence Board Toggle */}
+        <div style={{ display: "flex", alignItems: "center" }}>
           <button
             id="hud-evidence-board-btn"
             type="button"
@@ -78,114 +80,219 @@ export default function Hud() {
               setViewMode(viewMode === "board" ? "location" : "board");
             }}
             style={{
-              borderColor: viewMode === "board" ? "#ff2d3a" : "rgba(255, 180, 84, 0.4)",
-              color: viewMode === "board" ? "#ffffff" : "rgba(255, 255, 255, 0.85)",
-              background:
-                viewMode === "board"
-                  ? "linear-gradient(135deg, rgba(255, 45, 58, 0.25) 0%, rgba(180, 20, 30, 0.15) 100%)"
-                  : "rgba(255, 255, 255, 0.05)",
-              border: viewMode === "board" ? "1px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.16)",
-              fontSize: 12.5,
-              padding: "7px 15px",
-              letterSpacing: ".14em",
+              position: "relative",
               display: "inline-flex",
               alignItems: "center",
-              gap: 9,
+              gap: 12,
+              padding: "7px 16px 7px 12px",
+              background:
+                viewMode === "board"
+                  ? "linear-gradient(135deg, rgba(220, 20, 35, 0.32) 0%, rgba(100, 10, 20, 0.45) 100%)"
+                  : "linear-gradient(135deg, rgba(25, 10, 18, 0.85) 0%, rgba(12, 4, 8, 0.9) 100%)",
+              border: viewMode === "board" ? "1.5px solid #ff2d3a" : "1px solid rgba(255, 45, 58, 0.3)",
+              borderRadius: 6,
               cursor: "pointer",
-              borderRadius: 4,
-              fontFamily: "var(--font-mono)",
-              fontWeight: 700,
-              boxShadow: viewMode === "board" ? "0 0 16px rgba(255, 45, 58, 0.35)" : "none",
-              transition: "all 0.18s ease",
+              boxShadow:
+                viewMode === "board"
+                  ? "0 0 24px rgba(255, 45, 58, 0.55), inset 0 0 14px rgba(255, 45, 58, 0.25)"
+                  : "0 4px 14px rgba(0, 0, 0, 0.7)",
+              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+              transform: viewMode === "board" ? "scale(1.02)" : "scale(1)",
             }}
           >
-            <span style={{ fontSize: 13 }}>📌</span>
-            <span>EVIDENCE BOARD</span>
-            <span
+            {/* Realistic 3D Angled Red Pushpin with Thread */}
+            <div
               style={{
-                fontSize: 10.5,
-                background: viewMode === "board" ? "#ff2d3a" : "rgba(255, 180, 84, 0.25)",
-                color: viewMode === "board" ? "#000000" : "#ffb454",
-                padding: "2px 7px",
+                position: "relative",
+                width: 24,
+                height: 24,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                style={{
+                  filter: "drop-shadow(0 3px 6px rgba(255, 34, 51, 0.9))",
+                  transform: "rotate(-18deg)",
+                }}
+              >
+                {/* Silver Needle Tip */}
+                <path d="M12 15L7 23L15 17" stroke="#e0e0e0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M11.5 16L8 22" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" />
+                {/* Pin Head Base Rim */}
+                <ellipse cx="14.5" cy="9.5" rx="6.5" ry="4.5" fill="#660000" transform="rotate(-35 14.5 9.5)" />
+                {/* Glossy Red Head Sphere */}
+                <circle cx="12.5" cy="7.5" r="6" fill="url(#hudPinGrad)" />
+                {/* White Gloss Highlight */}
+                <ellipse cx="10.5" cy="5.5" rx="2.5" ry="1.5" fill="#ffffff" opacity="0.85" transform="rotate(-30 10.5 5.5)" />
+                <defs>
+                  <radialGradient id="hudPinGrad" cx="35%" cy="30%" r="70%">
+                    <stop offset="0%" stopColor="#ff5a66" />
+                    <stop offset="50%" stopColor="#ff1726" />
+                    <stop offset="100%" stopColor="#80000a" />
+                  </radialGradient>
+                </defs>
+              </svg>
+
+              {/* Glowing Red Yarn Thread Trailing Off */}
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: -1,
+                  right: -5,
+                  width: 12,
+                  height: 12,
+                  borderBottom: "2px solid #ff2233",
+                  borderRight: "2px solid #ff2233",
+                  borderRadius: "0 0 8px 0",
+                  opacity: 0.85,
+                  filter: "drop-shadow(0 0 4px #ff2233)",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
+
+            {/* Evidence Board Text & Status */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.15 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <span
+                  style={{
+                    fontFamily: "var(--font-term), monospace",
+                    fontSize: 14.5,
+                    fontWeight: 900,
+                    letterSpacing: ".16em",
+                    color: viewMode === "board" ? "#ffffff" : "#ff8a80",
+                    textTransform: "uppercase",
+                    textShadow: viewMode === "board" ? "0 0 12px rgba(255, 45, 58, 0.8)" : "none",
+                  }}
+                >
+                  EVIDENCE PINBOARD
+                </span>
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#ff2233",
+                    boxShadow: "0 0 8px #ff2233",
+                    animation: "pulse 1.4s infinite",
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  fontSize: 10,
+                  fontFamily: "var(--font-mono)",
+                  letterSpacing: ".14em",
+                  color: "rgba(255, 255, 255, 0.45)",
+                  marginTop: 2,
+                }}
+              >
+                HAWKINS INVESTIGATION MATRIX
+              </div>
+            </div>
+
+            {/* Chapter Badge */}
+            <div
+              style={{
+                marginLeft: 4,
+                padding: "2px 8px",
                 borderRadius: 3,
+                background: viewMode === "board" ? "#ff2d3a" : "rgba(255, 45, 58, 0.18)",
+                color: viewMode === "board" ? "#000000" : "#ff8a80",
+                border: "1px solid rgba(255, 45, 58, 0.5)",
+                fontSize: 11,
                 fontWeight: 900,
-                letterSpacing: ".08em",
+                letterSpacing: ".1em",
+                fontFamily: "var(--font-mono)",
+                boxShadow: viewMode === "board" ? "0 0 10px rgba(255, 45, 58, 0.6)" : "none",
               }}
             >
               {activeChapterId || 1} / 8
-            </span>
+            </div>
           </button>
         </div>
 
         <div className="grow" />
 
-        {/* Right Side: Team Info, Score & Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "clamp(12px, 2vw, 24px)" }}>
-          {/* Team Name and Tag Only (No Leader) */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+        {/* Right Side: Team Info (No [T06]), Score & Actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: "clamp(12px, 2.2vw, 28px)" }}>
+          {/* Team Name Only Capsule */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              background: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              padding: "4px 14px",
+              borderRadius: 5,
+            }}
+          >
             <span
               style={{
-                letterSpacing: ".24em",
-                color: "rgba(255, 180, 84, 0.7)",
-                fontSize: 10,
-                fontWeight: 700,
+                letterSpacing: ".26em",
+                color: "#ff9e58",
+                fontSize: 9.5,
+                fontWeight: 900,
                 textTransform: "uppercase",
                 marginBottom: 2,
+                fontFamily: "var(--font-mono)",
               }}
             >
-              TEAM
+              SQUAD / TEAM
             </span>
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span
-                style={{
-                  fontSize: "clamp(14px, 1.6vw, 16.5px)",
-                  fontWeight: 800,
-                  color: "#ffffff",
-                  letterSpacing: ".06em",
-                  textShadow: "0 0 10px rgba(255, 255, 255, 0.2)",
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                {s.team?.name || "RECON-1"}
-              </span>
-              {s.team?.id && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "#ffb454",
-                    fontWeight: 700,
-                    background: "rgba(255, 180, 84, 0.12)",
-                    padding: "1px 6px",
-                    borderRadius: 3,
-                    border: "1px solid rgba(255, 180, 84, 0.3)",
-                    letterSpacing: ".08em",
-                    fontFamily: "var(--font-mono)",
-                  }}
-                >
-                  [{s.team.id}]
-                </span>
-              )}
-            </div>
+            <span
+              style={{
+                fontSize: "clamp(14px, 1.6vw, 17px)",
+                fontWeight: 900,
+                color: "#ffffff",
+                letterSpacing: ".08em",
+                textShadow: "0 0 12px rgba(255, 255, 255, 0.35)",
+                fontFamily: "var(--font-mono)",
+                textTransform: "uppercase",
+              }}
+            >
+              {s.team?.name || "RECON-1"}
+            </span>
           </div>
 
-          {/* Elegant Vertical Divider */}
+          {/* Elegant Vertical Neon Divider */}
           <div
             style={{
               width: 1,
-              height: 28,
-              background: "linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.18), transparent)",
+              height: 32,
+              background: "linear-gradient(180deg, transparent, rgba(255, 45, 58, 0.4), transparent)",
             }}
           />
 
           {/* Score Display with Shaded Retro Digits */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              background: "rgba(0, 0, 0, 0.45)",
+              border: "1px solid rgba(255, 45, 58, 0.2)",
+              padding: "3px 12px",
+              borderRadius: 5,
+            }}
+          >
             <span
               style={{
                 letterSpacing: ".24em",
-                color: "rgba(255, 45, 58, 0.75)",
-                fontSize: 10,
-                fontWeight: 700,
+                color: "rgba(255, 45, 58, 0.85)",
+                fontSize: 9.5,
+                fontWeight: 900,
                 textTransform: "uppercase",
+                fontFamily: "var(--font-mono)",
                 marginBottom: 1,
               }}
             >
@@ -199,7 +306,7 @@ export default function Hud() {
                 letterSpacing: ".12em",
                 fontFamily: "var(--font-term), monospace",
                 lineHeight: 1,
-                textShadow: "0 0 12px rgba(255, 138, 76, 0.45)",
+                textShadow: "0 0 14px rgba(255, 138, 76, 0.6)",
               }}
             >
               {String(score).padStart(5, "0")}
@@ -212,16 +319,17 @@ export default function Hud() {
             type="button"
             className="btn sm ghost red"
             style={{
-              padding: "7px 16px",
-              fontSize: 11.5,
-              letterSpacing: ".14em",
+              padding: "8px 16px",
+              fontSize: 12,
+              letterSpacing: ".15em",
               borderRadius: 4,
               cursor: "pointer",
               fontFamily: "var(--font-mono)",
-              fontWeight: 700,
+              fontWeight: 800,
               background: "rgba(255, 45, 58, 0.08)",
-              borderColor: "rgba(255, 45, 58, 0.4)",
+              borderColor: "rgba(255, 45, 58, 0.45)",
               color: "#ff4d5a",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.6)",
               transition: "all 0.15s ease",
             }}
             onClick={() => {
