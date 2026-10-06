@@ -25,6 +25,9 @@ export interface StageQuizConfig {
   questions: QuizQuestion[];
 }
 
+/**
+ * Default Canonical Chapter Quiz Configs (12 Normal Coding Questions distributed across Chapters 1-7)
+ */
 export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
   1: {
     chapterId: 1,
@@ -34,68 +37,36 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
     points: 100,
     questions: [
       {
-        id: "ch1-q1",
+        id: "Q1",
         itemNumber: 1,
-        subHeader: "ITEM 01: SUBLEVEL 04 ANOMALY",
+        subHeader: "ITEM 01: HAWKINS BY THE NUMBERS",
+        docketTag: "NUMBER CONVERSIONS",
         question:
-          "During the covert November 1983 incident at Hawkins National Laboratory, which classified Department of Energy project resulted in the initial psychokinetic rift and the escape of test subjects?",
+          "Hawkins Lab labelled its subjects with numbers. Convert each Stranger Things number in Column A to its matching value in Column B:\n\nCOLUMN A:\n[1] Eleven's subject number (decimal 11)\n[2] Eight's number + One's number (8 + 1 = 9)\n[3] The year Season 1 is set (1983)\n[4] Eight's number × Eleven's number (8 × 11 = 88)\n\nCOLUMN B:\n[a] 58 (hexadecimal)\n[b] 1011 (binary)\n[c] 7BF (hexadecimal)\n[d] 1001 (binary)",
         options: [
-          { id: "A", text: "Project MKUltra / Sublevel 04" },
-          { id: "B", text: "Operation Paperclip / Echo Division" },
-          { id: "C", text: "Stargate Surveillance Protocol" },
-          { id: "D", text: "Project Blue Book Sub-Archive" },
+          { id: "A", text: "1-b, 2-d, 3-c, 4-a" },
+          { id: "B", text: "1-d, 2-b, 3-a, 4-c" },
+          { id: "C", text: "1-a, 2-c, 3-b, 4-d" },
+          { id: "D", text: "1-c, 2-a, 3-d, 4-b" },
         ],
         correctAnswerId: "A",
-        hint: "Callahan logged unusual psychokinetic activity near Sublevel 4 under MKUltra.",
-        docketTag: "CLASSIFIED DOSSIER",
+        hint: "11 = 1011 in binary; 9 = 1001 in binary; 1983 = 7BF in hex; 88 = 58 in hex.",
       },
       {
-        id: "ch1-q2",
+        id: "Q5",
         itemNumber: 2,
-        subHeader: "ITEM 02: RADIO INTERFERENCE FREQUENCY",
+        subHeader: "ITEM 02: MIND FLAYER VS CYBERSECURITY",
+        docketTag: "CYBER ATTACK VECTORS",
         question:
-          "What radio frequency band was monitored by Hawkins Middle AV Club when receiving the first anomalous subspace broadcast?",
+          "Match each Hawkins threat to the cyber attack it resembles:\n\nCOLUMN A:\n[1] One Mind Flayer remotely controls hundreds of townspeople, who all act on its orders.\n[2] Demodogs swarm Hawkins in such numbers that the town's resources collapse.\n[3] A secret Russian base is hidden beneath what looks like an ordinary shopping mall.\n[4] Vecna silently reads a victim's memories and fears without them realising.\n\nCOLUMN B:\n[a] Ransomware\n[b] Spyware\n[c] Botnet\n[d] Trojan horse\n[e] DDoS attack",
         options: [
-          { id: "A", text: "Heathkit 14.175 MHz CB Band" },
-          { id: "B", text: "98.5 MHz FM Commercial Carrier" },
-          { id: "C", text: "2.4 GHz Microwave Vector" },
-          { id: "D", text: "433 MHz Digital Telemetry Link" },
+          { id: "A", text: "1-c, 2-e, 3-d, 4-b" },
+          { id: "B", text: "1-d, 2-c, 3-e, 4-b" },
+          { id: "C", text: "1-c, 2-a, 3-d, 4-e" },
+          { id: "D", text: "1-e, 2-c, 3-b, 4-d" },
         ],
         correctAnswerId: "A",
-        hint: "Mr. Clarke helped the club assemble the Heathkit ham radio transceiver.",
-        docketTag: "SIGNAL LOG",
-      },
-      {
-        id: "ch1-q3",
-        itemNumber: 3,
-        subHeader: "ITEM 03: MUNICIPAL GRID SURGE",
-        question:
-          "Which municipal utility experienced catastrophic power surging simultaneously with the gate opening?",
-        options: [
-          { id: "A", text: "Roane County Power Grid & North Elm Substation" },
-          { id: "B", text: "Sattler Quarry Water Reservoir" },
-          { id: "C", text: "Cornwallis Telephone Exchange" },
-          { id: "D", text: "Hawkins High Heating Boiler" },
-        ],
-        correctAnswerId: "A",
-        hint: "Deputies noted voltage spikes tracking toward the DOE perimeter line.",
-        docketTag: "POWER TELEMETRY",
-      },
-      {
-        id: "ch1-q4",
-        itemNumber: 4,
-        subHeader: "ITEM 04: SUBJECT 011 PHYSIOLOGY",
-        question:
-          "What physiological indicator consistently accompanied Eleven's remote viewing and sensory deprivation tank sessions?",
-        options: [
-          { id: "A", text: "Unilateral Nasal Hemorrhage (Nosebleed)" },
-          { id: "B", text: "Retinal Color Inversion" },
-          { id: "C", text: "Complete Auditory Silence" },
-          { id: "D", text: "Thermal Body Hypothermia" },
-        ],
-        correctAnswerId: "A",
-        hint: "High psychokinetic output causes blood vessels in the nasal cavity to rupture.",
-        docketTag: "MEDICAL OBSERVATION",
+        hint: "Remote zombie host control = Botnet; resource swarm exhaustion = DDoS; malicious payload inside normal front = Trojan; silent covert surveillance = Spyware.",
       },
     ],
   },
@@ -107,433 +78,603 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
     points: 150,
     questions: [
       {
-        id: "ch2-q1",
+        id: "Q6",
         itemNumber: 1,
-        subHeader: "ITEM 01: ANOMALY EPICENTER",
+        subHeader: "ITEM 01: HAWKINS VERSION CONTROL",
+        docketTag: "GIT WORKFLOW",
         question:
-          "Chief Hopper's incident board correlates witness reports, power station voltage drops, and RF interference. Which facility is the primary epicenter of the anomaly?",
+          "Treat Hawkins as a Git repository. Match each event to the Git command that does the same thing:\n\nCOLUMN A:\n[1] The Upside Down: a parallel version of Hawkins that evolves separately.\n[2] Bringing the parallel world's changes back into the main timeline.\n[3] Saving a snapshot of Hawkins as it is right now, with a note describing it.\n[4] Undoing the last disaster by adding a new change that reverses it, while keeping the history.\n\nCOLUMN B:\n[a] git commit\n[b] git clone\n[c] git revert\n[d] git branch\n[e] git merge",
         options: [
-          { id: "A", text: "Hawkins National Laboratory (Sublevel 4)" },
-          { id: "B", text: "Cornwallis Municipal Substation" },
-          { id: "C", text: "Roane County Water Tower Reservoir" },
-          { id: "D", text: "Sattler Quarry Abandoned Basin" },
+          { id: "A", text: "1-d, 2-e, 3-a, 4-c" },
+          { id: "B", text: "1-d, 2-a, 3-e, 4-c" },
+          { id: "C", text: "1-e, 2-d, 3-a, 4-b" },
+          { id: "D", text: "1-a, 2-e, 3-c, 4-d" },
         ],
         correctAnswerId: "A",
-        hint: "All field vectors and radio recordings converge directly on Hawkins Lab.",
-        docketTag: "GROUND ZERO",
+        hint: "Isolated branch = git branch; reconciling branches = git merge; snapshot = commit; history-preserving undo = git revert.",
       },
       {
-        id: "ch2-q2",
+        id: "Q7",
         itemNumber: 2,
-        subHeader: "ITEM 02: MIRKWOOD ROADWAY RECON",
+        subHeader: "ITEM 02: DECODE THE HELLFIRE CLUB",
+        docketTag: "PYTHON STRING SLICING",
         question:
-          "What vehicle was found abandoned near the Mirkwood perimeter road on the night Will Byers disappeared?",
+          "Dustin wrote Python snippets in his notebook. Match each snippet to the output it prints:\n\nCOLUMN A:\n[1] print(\"STRANGERTHINGS\"[::3])\n[2] print(\"VECNA\"[1:4])\n[3] print(\"MINDFLAYER\"[-5:])\n[4] print(\"ELEVEN\".count(\"E\"))\n\nCOLUMN B:\n[a] 3\n[b] ECN\n[c] SAEHG\n[d] LAYER",
         options: [
-          { id: "A", text: "1980 Ross Apollo Green Bicycle" },
-          { id: "B", text: "1978 Chevy K5 Blazer" },
-          { id: "C", text: "1974 Ford Pinto Hatchback" },
-          { id: "D", text: "1982 Honda Civic Sedan" },
+          { id: "A", text: "1-c, 2-b, 3-d, 4-a" },
+          { id: "B", text: "1-b, 2-c, 3-a, 4-d" },
+          { id: "C", text: "1-c, 2-d, 3-b, 4-a" },
+          { id: "D", text: "1-d, 2-b, 3-c, 4-a" },
         ],
         correctAnswerId: "A",
-        hint: "Found tipped over in the ditch with the headlight still faintly running.",
-        docketTag: "PHYSICAL EVIDENCE",
-      },
-      {
-        id: "ch2-q3",
-        itemNumber: 3,
-        subHeader: "ITEM 03: PERIMETER SLIME RESIDUE",
-        question:
-          "What chemical substance was discovered on the perimeter fences of the Department of Energy facility during morning recon?",
-        options: [
-          { id: "A", text: "Corrosive Biological Slime with Organic Spores" },
-          { id: "B", text: "High-Octane Transformer Dielectric Oil" },
-          { id: "C", text: "Liquid Nitrogen Cooling Residue" },
-          { id: "D", text: "Refined Sulfuric Battery Acid" },
-        ],
-        correctAnswerId: "A",
-        hint: "The biological mucus leaves glowing organic spore residues under UV light.",
-        docketTag: "CHEMICAL BIOHAZARD",
-      },
-      {
-        id: "ch2-q4",
-        itemNumber: 4,
-        subHeader: "ITEM 04: DISPATCH RECON OFFICERS",
-        question:
-          "Which Hawkins Police Department officers assisted Chief Hopper in reviewing the surveillance logs from the main gate checkpoint?",
-        options: [
-          { id: "A", text: "Officer Callahan & Officer Powell" },
-          { id: "B", text: "Agent Frazier & Special Agent Miller" },
-          { id: "C", text: "Sheriff Clark & Deputy Owens" },
-          { id: "D", text: "Officer Bradley & Sergeant Hicks" },
-        ],
-        correctAnswerId: "A",
-        hint: "Callahan and Powell are the two main deputies at the Hawkins precinct.",
-        docketTag: "PERSONNEL RECORD",
+        hint: "[::3] step 3 gives SAEHG; [1:4] slice gives ECN; [-5:] last 5 chars gives LAYER; count of 'E' is 3.",
       },
     ],
   },
   3: {
     chapterId: 3,
     stageName: "BYERS HOUSE",
-    docketNumber: "FORM HPD-03-83 // CLASSIFIED WALL COMMUNICATIONS DOCKET",
-    sectionHeader: "SECTION 03 — FORMAL INQUIRY // BYERS HOUSE COMMUNICATIONS",
+    docketNumber: "FORM HPD-03-83 // CHRISTMAS LIGHTS ENCODING DOCKET",
+    sectionHeader: "SECTION 03 — FORMAL INQUIRY // BYERS RESIDENCE HARMONICS",
     points: 150,
     questions: [
       {
-        id: "ch3-q1",
+        id: "Q9",
         itemNumber: 1,
-        subHeader: "ITEM 01: WALL INTERFACE ARRAY",
+        subHeader: "ITEM 01: HAWKINS OPERATING SYSTEM",
+        docketTag: "OS CONCURRENCY",
         question:
-          "What household decoration did Joyce Byers string across the living room to establish direct alphabetic contact with Will?",
+          "Match each Hawkins scenario to the operating system concept it illustrates:\n\nCOLUMN A:\n[1] Mike, Dustin and Lucas share one walkie-talkie, each getting it for exactly 2 minutes in a fixed rotation.\n[2] Mike holds the compass and waits for Dustin's walkie. Dustin holds the walkie and waits for Mike's compass. Neither lets go.\n[3] Only one kid may press the transmit button on the shared radio at a time. The others must wait until it is released.\n[4] Nancy tracks the monster while Jonathan searches elsewhere, both sharing the same information at the same time.\n\nCOLUMN B:\n[a] Paging\n[b] Mutual exclusion (mutex)\n[c] Multithreading\n[d] Round Robin scheduling\n[e] Deadlock",
         options: [
-          { id: "A", text: "26 Multicolored Christmas String Lights (A through Z)" },
-          { id: "B", text: "Rotary Telephone Handset Bells" },
-          { id: "C", text: "Cassette Tape Magnetic Ribbons" },
-          { id: "D", text: "Flashlight Morse Code Reflectors" },
+          { id: "A", text: "1-d, 2-e, 3-b, 4-c" },
+          { id: "B", text: "1-e, 2-d, 3-c, 4-b" },
+          { id: "C", text: "1-d, 2-b, 3-e, 4-c" },
+          { id: "D", text: "1-b, 2-e, 3-d, 4-a" },
         ],
         correctAnswerId: "A",
-        hint: "Joyce painted 26 English letters on the floral wallpaper beneath each bulb.",
-        docketTag: "INTERFACE SCHEMATIC",
+        hint: "Fixed time slice = Round Robin; circular wait where neither proceeds = Deadlock; exclusive resource lock = Mutex; parallel tasks sharing memory = Multithreading.",
       },
       {
-        id: "ch3-q2",
+        id: "Q11",
         itemNumber: 2,
-        subHeader: "ITEM 02: URGENT WALL CIPHER",
+        subHeader: "ITEM 02: THE SEARCH FOR WILL",
+        docketTag: "SEARCH ALGORITHMS",
         question:
-          "What urgent warning did Will spell out through the wall lights before the Demogorgon burst through the wallpaper?",
+          "Match each search strategy used in Hawkins to the algorithm it represents:\n\nCOLUMN A:\n[1] Hopper checks every house on his list, one after another, from the first.\n[2] Joyce has an alphabetically sorted list of residents. She opens it in the middle and discards the half that cannot contain the name, again and again.\n[3] Dustin enters a tunnel and keeps going as deep as possible before backing up to try another path.\n[4] A search party spreads outward from the Lab in expanding rings, covering everything at one distance before moving further.\n\nCOLUMN B:\n[a] Breadth-First Search (BFS)\n[b] Depth-First Search (DFS)\n[c] Binary Search\n[d] Linear Search",
         options: [
-          { id: "A", text: "R - U - N (RUN)" },
-          { id: "B", text: "H - I - D - E (HIDE)" },
-          { id: "C", text: "H - E - L - P (HELP)" },
-          { id: "D", text: "B - A - C - K (BACK)" },
+          { id: "A", text: "1-d, 2-c, 3-b, 4-a" },
+          { id: "B", text: "1-c, 2-d, 3-a, 4-b" },
+          { id: "C", text: "1-d, 2-b, 3-c, 4-a" },
+          { id: "D", text: "1-a, 2-c, 3-b, 4-d" },
         ],
         correctAnswerId: "A",
-        hint: "Three rapid pulses spelled out the single imperative word to flee.",
-        docketTag: "DECODED TRANSMISSION",
-      },
-      {
-        id: "ch3-q3",
-        itemNumber: 3,
-        subHeader: "ITEM 03: CASSETTE GROUNDING TRACK",
-        question:
-          "Which rock anthem did Jonathan play on his cassette deck in Will's bedroom to keep his spirits grounded?",
-        options: [
-          { id: "A", text: "The Clash — 'Should I Stay or Should I Go'" },
-          { id: "B", text: "Joy Division — 'Atmosphere'" },
-          { id: "C", text: "Echo & the Bunnymen — 'Nocturnal Me'" },
-          { id: "D", text: "Peter Gabriel — 'Heroes'" },
-        ],
-        correctAnswerId: "A",
-        hint: "From Combat Rock (1982), Will sang this track while hiding in Castle Byers.",
-        docketTag: "AUDIO EVIDENCE",
-      },
-      {
-        id: "ch3-q4",
-        itemNumber: 4,
-        subHeader: "ITEM 04: DIMENSIONAL MEMBRANE",
-        question:
-          "What physical barrier anomaly formed behind the wallpaper when Joyce tried to reach through to her son?",
-        options: [
-          { id: "A", text: "A Translucent, Membrane-Like Dimensional Wall" },
-          { id: "B", text: "Solidified Black Obsidian Glass" },
-          { id: "C", text: "An Invisible High-Voltage Electrical Field" },
-          { id: "D", text: "A Vacuum Air Pocket with Freezing Frost" },
-        ],
-        correctAnswerId: "A",
-        hint: "The wall stretched like elastic latex as the Upside Down intersected our world.",
-        docketTag: "ANOMALY ANALYSIS",
+        hint: "One by one = Linear Search; halve sorted data = Binary Search; dive down branch before backtrack = DFS; expanding level rings = BFS.",
       },
     ],
   },
   4: {
     chapterId: 4,
     stageName: "HAWKINS LAB",
-    docketNumber: "FORM HPD-04-83 // CLASSIFIED MAINFRAME ROUTINE DOCKET",
-    sectionHeader: "SECTION 04 — FORMAL INQUIRY // HAWKINS LAB MAINFRAME ROUTINE",
+    docketNumber: "FORM HPD-04-83 // SUBLEVEL 03 MAINFRAME DOCKET",
+    sectionHeader: "SECTION 04 — FORMAL INQUIRY // HAWKINS LAB MAINFRAME",
     points: 200,
     questions: [
       {
-        id: "ch4-q1",
+        id: "Q12",
         itemNumber: 1,
-        subHeader: "ITEM 01: BUFFER PARITY ROUTINE",
+        subHeader: "ITEM 01: HOW FAST IS HAWKINS?",
+        docketTag: "TIME COMPLEXITY (BIG-O)",
         question:
-          "In the Sublevel 3 telemetry router, what parity logic routine stabilized the crashed data packet buffer?",
+          "Match each Hawkins task to its time complexity:\n\nCOLUMN A:\n[1] Taking the top card from the Hellfire Club's deck.\n[2] Reading each of n pages in a notebook exactly once to find a clue.\n[3] Sorting all n of Dustin's trading cards using merge sort.\n[4] Every one of n party members compares notes with every other member.\n\nCOLUMN B:\n[a] O(n²)\n[b] O(2ⁿ)\n[c] O(n log n)\n[d] O(1)\n[e] O(n)",
         options: [
-          { id: "A", text: "Double Even Integers (* 2) and Add 1 to Odds (+ 1)" },
-          { id: "B", text: "Bitwise XOR Shift Right by 2 Bits" },
-          { id: "C", text: "Cyclic Redundancy Check Polynomial 0x1021" },
-          { id: "D", text: "Invert Odd Bytes and Sum Modulo 256" },
+          { id: "A", text: "1-d, 2-e, 3-c, 4-a" },
+          { id: "B", text: "1-e, 2-d, 3-a, 4-c" },
+          { id: "C", text: "1-d, 2-c, 3-e, 4-a" },
+          { id: "D", text: "1-a, 2-e, 3-c, 4-d" },
         ],
         correctAnswerId: "A",
-        hint: "Check the Hawkins Lab telemetry parity script in Sublevel 3.",
-        docketTag: "LOGIC SCHEMATIC",
+        hint: "Top card pop = O(1); single pass = O(n); merge sort = O(n log n); pairwise comparisons = O(n²).",
       },
       {
-        id: "ch4-q2",
+        id: "Q13",
         itemNumber: 2,
-        subHeader: "ITEM 02: LEAD RESEARCH DIRECTOR",
+        subHeader: "ITEM 02: CLASSES OF HAWKINS",
+        docketTag: "OOP CONCEPTS",
         question:
-          "Who was the senior research scientist overseeing Project Indigo and the psychokinetic child experiments at Hawkins Lab?",
+          "Match each Hawkins situation to the Object-Oriented Programming concept it shows:\n\nCOLUMN A:\n[1] Eleven and Kali both have the abilities of the base class 'Test Subject' and add their own.\n[2] The same command attack() produces different results: the Demogorgon bites, the Mind Flayer controls, Vecna curses.\n[3] Dr. Brenner's files can only be reached through authorised channels. The raw data is hidden.\n[4] Dustin tunes Cerebro using a few knobs without knowing how radio waves work inside.\n\nCOLUMN B:\n[a] Abstraction\n[b] Encapsulation\n[c] Inheritance\n[d] Polymorphism",
         options: [
-          { id: "A", text: "Dr. Martin Brenner ('Papa')" },
-          { id: "B", text: "Dr. Sam Owens" },
-          { id: "C", text: "Dr. Alexei" },
-          { id: "D", text: "Agent Connie Frazier" },
+          { id: "A", text: "1-c, 2-d, 3-b, 4-a" },
+          { id: "B", text: "1-d, 2-c, 3-a, 4-b" },
+          { id: "C", text: "1-c, 2-b, 3-d, 4-a" },
+          { id: "D", text: "1-a, 2-d, 3-b, 4-c" },
         ],
         correctAnswerId: "A",
-        hint: "Brenner ran the classified sensory deprivation program throughout the 1970s and 1980s.",
-        docketTag: "DIRECTOR PROFILE",
-      },
-      {
-        id: "ch4-q3",
-        itemNumber: 3,
-        subHeader: "ITEM 03: SENSORY ISOLATION TANK",
-        question:
-          "What isolation apparatus was utilized in Hawkins Lab to amplify test subjects' extra-sensory perception into the Void?",
-        options: [
-          { id: "A", text: "Saline-Filled Sensory Deprivation Immersion Tank" },
-          { id: "B", text: "Hyperbaric Oxygen Compression Chamber" },
-          { id: "C", text: "Faraday Cage Electromagnetic Room" },
-          { id: "D", text: "Sub-Zero Cryogenic Suspension Capsule" },
-        ],
-        correctAnswerId: "A",
-        hint: "Filled with hundreds of pounds of salt to allow complete zero-gravity floatation.",
-        docketTag: "EQUIPMENT LOG",
-      },
-      {
-        id: "ch4-q4",
-        itemNumber: 4,
-        subHeader: "ITEM 04: FIRST GATE INTRUDER",
-        question:
-          "What creature first breached through the dimensional gate following Subject 011's psychic contact in the Void?",
-        options: [
-          { id: "A", text: "The Demogorgon (Flower-Headed Predator)" },
-          { id: "B", text: "The Mind Flayer (Shadow Monster)" },
-          { id: "C", text: "The Demodog Quadruped Pack" },
-          { id: "D", text: "The Meat Puppet Collective" },
-        ],
-        correctAnswerId: "A",
-        hint: "The humanoid creature with petal-like jaw mandibles entered our realm first.",
-        docketTag: "ENTITY IDENTIFICATION",
+        hint: "Subclasses extending base = Inheritance; same method polymorphic dispatch = Polymorphism; restricting direct access = Encapsulation; exposing interface while hiding complexity = Abstraction.",
       },
     ],
   },
   5: {
     chapterId: 5,
-    stageName: "THE FOREST",
-    docketNumber: "FORM HPD-05-83 // CLASSIFIED FOREST RECON DOCKET",
-    sectionHeader: "SECTION 05 — FORMAL INQUIRY // DEEP WOODS RUNIC VECTORS",
+    stageName: "ROANE COUNTY WOODS",
+    docketNumber: "FORM HPD-05-83 // TRAIL 7 COORDINATE CIPHER DOCKET",
+    sectionHeader: "SECTION 05 — FORMAL INQUIRY // ROANE COUNTY WOODS",
     points: 200,
     questions: [
       {
-        id: "ch5-q1",
+        id: "Q14",
         itemNumber: 1,
-        subHeader: "ITEM 01: TREE PORTAL ANOMALY",
+        subHeader: "ITEM 01: WHEN EVERYTHING GOES DARK",
+        docketTag: "SYSTEM ARCHITECTURE",
         question:
-          "What tree landmark in Mirkwood concealed an organic portal into the Upside Down discovered by Nancy Wheeler?",
+          "Name the system-design concept that connects all four clues:\n\n1. Every infected townsperson depends on one central Mind Flayer. If it is disrupted, they all lose control.\n2. If Hawkins Power & Light fails, the entire town goes dark.\n3. A website goes offline because its only server crashed.\n4. A network where every computer connects through one central hub; if the hub fails, nobody can communicate.",
         options: [
-          { id: "A", text: "Hollowed Rotting Sycamore Trunk with Dripping Slime" },
-          { id: "B", text: "Lightning-Struck Charred Pine Tree" },
-          { id: "C", text: "Ancient Oak with Carved Coordinates" },
-          { id: "D", text: "Overgrown Weeping Willow near Sattler Quarry" },
+          { id: "A", text: "Single Point of Failure (SPOF)" },
+          { id: "B", text: "Distributed Hash Consensus" },
+          { id: "C", text: "Load Balanced Proxy Sharding" },
+          { id: "D", text: "Split-Brain Quorum Isolation" },
         ],
         correctAnswerId: "A",
-        hint: "Nancy crawled through the pulsating fleshy opening inside the sycamore base.",
-        docketTag: "PORTAL COORD",
-      },
-      {
-        id: "ch5-q2",
-        itemNumber: 2,
-        subHeader: "ITEM 02: PREDATOR SCENT VECTOR",
-        question:
-          "What behavioral vulnerability was observed when tracking Demogorgon scent signatures through the forest?",
-        options: [
-          { id: "A", text: "Highly Attracted to the Scent of Fresh Blood" },
-          { id: "B", text: "Triggered Exclusively by Ultrasonic Whistles" },
-          { id: "C", text: "Drawn Exclusively to Bright Ultraviolet Light" },
-          { id: "D", text: "Paralyzed by High-Frequency Radio Waves" },
-        ],
-        correctAnswerId: "A",
-        hint: "A single drop of blood cuts through the dimensional barrier like a beacon.",
-        docketTag: "BEHAVIORAL BIO",
-      },
-      {
-        id: "ch5-q3",
-        itemNumber: 3,
-        subHeader: "ITEM 03: RUNIC VECTOR TRIANGULATION",
-        question:
-          "What runic vector pattern was marked on the three perimeter surveillance trees along Trail 7?",
-        options: [
-          { id: "A", text: "Vector 4 - 1 - 7 (North-East Triangulation)" },
-          { id: "B", text: "Vector 9 - 2 - 5 (South-West Convergence)" },
-          { id: "C", text: "Vector 1 - 1 - 0 (Azimuth Dead Reckoning)" },
-          { id: "D", text: "Vector 8 - 3 - 4 (Radial Offset Quadrant)" },
-        ],
-        correctAnswerId: "A",
-        hint: "Extract the glowing red pine runes left-to-right to find vector 4-1-7.",
-        docketTag: "RUNIC VECTOR",
-      },
-      {
-        id: "ch5-q4",
-        itemNumber: 4,
-        subHeader: "ITEM 04: TRAP COUNTERMEASURES",
-        question:
-          "What makeshift countermeasures did Nancy Wheeler and Jonathan Byers prepare at the Byers house to trap the predator?",
-        options: [
-          { id: "A", text: "Bear Trap, Gasoline Fire, and Nail-Studded Bat" },
-          { id: "B", text: "High-Voltage Electrical Cattle Prod & Net" },
-          { id: "C", text: "Liquid Nitrogen Aerosers" },
-          { id: "D", text: "Magnesium Flares and Fireworks Battery" },
-        ],
-        correctAnswerId: "A",
-        hint: "Steve Harrington joined with the nail-spiked Louisville Slugger bat.",
-        docketTag: "TACTICAL DEFENSE",
+        hint: "One single bottleneck whose failure collapses the entire dependent architecture.",
       },
     ],
   },
   6: {
     chapterId: 6,
     stageName: "RADIO TOWER",
-    docketNumber: "FORM HPD-06-83 // CLASSIFIED RADIO TOWER DOCKET",
-    sectionHeader: "SECTION 06 — FORMAL INQUIRY // RADIO FREQUENCY CALIBRATION",
-    points: 250,
+    docketNumber: "FORM HPD-06-83 // 5-PIN HARMONIC RESONANCE DOCKET",
+    sectionHeader: "SECTION 06 — FORMAL INQUIRY // EAST HILL RADIO TOWER",
+    points: 300,
     questions: [
       {
-        id: "ch6-q1",
+        id: "Q15",
         itemNumber: 1,
-        subHeader: "ITEM 01: CEREBRO ANTENNA ARRAY",
+        subHeader: "ITEM 01: THE LAB DOOR CIRCUIT",
+        docketTag: "DIGITAL LOGIC",
         question:
-          "What custom radio apparatus did Dustin Henderson construct on Weathertop to broadcast clear signals to Utah?",
+          "The Hawkins Lab door is controlled by expression: Door = (A AND B) OR ((NOT B) AND C). Where A = keycard valid, B = fingerprint valid, C = emergency override. Name the standard circuit that executes this logic.",
         options: [
-          { id: "A", text: "Cerebro Ham Radio with Directional Antenna Mast" },
-          { id: "B", text: "VHF Military Repeater with Satellite Dish" },
-          { id: "C", text: "Shortwave Tube Transceiver on 50 MHz" },
-          { id: "D", text: "Microwave Dish Link Aimed at Chicago" },
+          { id: "A", text: "2-to-1 Multiplexer (Select Line: B)" },
+          { id: "B", text: "Full Adder Circuit with Carry Flag" },
+          { id: "C", text: "SR Latch Bistable Multivibrator" },
+          { id: "D", text: "3-to-8 Binary Line Decoder" },
         ],
         correctAnswerId: "A",
-        hint: "Dustin hauled the massive battery-powered Cerebro kit up Weathertop hill.",
-        docketTag: "TRANSMITTER SPEC",
+        hint: "If B = 1 output is A; if B = 0 output is C. B selects between inputs A and C.",
       },
       {
-        id: "ch6-q2",
+        id: "Q18",
         itemNumber: 2,
-        subHeader: "ITEM 02: UPSIDE DOWN PROPAGATION LOSS",
+        subHeader: "ITEM 02: DUSTIN TESTS PYTHON",
+        docketTag: "PYTHON TYPE EVALUATION",
         question:
-          "What environmental element in the Upside Down severely disrupts electromagnetic radio wave propagation?",
+          "Dustin tests expressions in Python. Match each expression to the data type it returns:\n\nCOLUMN A:\n[1] type(11 / 2)\n[2] type(11 // 2)\n[3] type(\"11\" + \"2\")\n[4] type(11 > 2)\n\nCOLUMN B:\n[a] bool\n[b] float\n[c] str\n[d] int\n[e] list",
         options: [
-          { id: "A", text: "Toxic Airborne Spores & Localized Electromagnetic Storms" },
-          { id: "B", text: "Total Absence of Atmospheric Nitrogen" },
-          { id: "C", text: "Constant Sub-Zero Temperature Inversions" },
-          { id: "D", text: "Heavy Radioactive Gamma Decay Fields" },
+          { id: "A", text: "1-b, 2-d, 3-c, 4-a" },
+          { id: "B", text: "1-d, 2-b, 3-c, 4-a" },
+          { id: "C", text: "1-b, 2-d, 3-a, 4-c" },
+          { id: "D", text: "1-a, 2-d, 3-c, 4-b" },
         ],
         correctAnswerId: "A",
-        hint: "Particles suspended in the air generate continuous electrostatic bursts.",
-        docketTag: "PROPAGATION PHYSICS",
-      },
-      {
-        id: "ch6-q3",
-        itemNumber: 3,
-        subHeader: "ITEM 03: RADIOMETER PIN HARMONICS",
-        question:
-          "How many pins must be aligned on the Hawkins Radiometer to calibrate the subspace resonance circuit?",
-        options: [
-          { id: "A", text: "5 Harmonic Resonance Calibration Pins" },
-          { id: "B", text: "3 Low-Frequency Quartz Crystals" },
-          { id: "C", text: "8 Parity Check Switch Relays" },
-          { id: "D", text: "12 Dual-Tone Multi-Frequency Diodes" },
-        ],
-        correctAnswerId: "A",
-        hint: "Calibrate all 5 pins on the tower radiometer to clear the distortion meter.",
-        docketTag: "INSTRUMENT CALIBRATION",
-      },
-      {
-        id: "ch6-q4",
-        itemNumber: 4,
-        subHeader: "ITEM 04: PLANCK'S CONSTANT RELAY",
-        question:
-          "What mathematical constant was relayed via Cerebro from Utah to unlock the Russian subterranean vault?",
-        options: [
-          { id: "A", text: "Planck's Constant: 6.62607004 (or 6.62607015)" },
-          { id: "B", text: "Euler's Number: 2.71828182" },
-          { id: "C", text: "Fine Structure Constant: 0.00729735" },
-          { id: "D", text: "Speed of Light in Vacuum: 299792458" },
-        ],
-        correctAnswerId: "A",
-        hint: "Suzie required Dustin to sing 'The NeverEnding Story' before giving Planck's constant.",
-        docketTag: "CIPHER CODE",
+        hint: "Division / yields float (5.5); floor // yields int (5); string concat yields str ('112'); comparison yields bool (True).",
       },
     ],
   },
   7: {
     chapterId: 7,
-    stageName: "THE GATE RIFT",
-    docketNumber: "FORM HPD-07-83 // CLASSIFIED GATE RIFT DOCKET",
-    sectionHeader: "SECTION 07 — FORMAL INQUIRY // THE GATEWAY RIFT & VECNA CIPHER",
+    stageName: "THE UPSIDE DOWN",
+    docketNumber: "FORM HPD-07-83 // SUBJECT 001 CLASSIFIED DOSSIER",
+    sectionHeader: "SECTION 07 — FINAL INQUIRY // THE UPSIDE DOWN DIMENSION",
     points: 500,
     questions: [
       {
-        id: "ch7-q1",
+        id: "Q20",
         itemNumber: 1,
-        subHeader: "ITEM 01: EXPERIMENT 001 TRUE IDENTITY",
+        subHeader: "ITEM 01: DEBUGGING THE LAB",
+        docketTag: "DEBUGGING & ERROR TYPES",
         question:
-          "What scrubbed identity was decrypted from the 1959 Creel House incident as the true identity of Experiment 001?",
+          "Match each Python snippet to the error or bug it produces. Assume Eleven has not been defined anywhere:\n\nCOLUMN A:\n[1] print(\"Hawkins\n[2] print(10 / 0)\n[3] print(3 + 5) # area of a 3 x 5 rectangle\n[4] print(Eleven)\n\nCOLUMN B:\n[a] NameError\n[b] Logic error\n[c] SyntaxError\n[d] TypeError\n[e] ZeroDivisionError",
         options: [
-          { id: "A", text: "Henry Creel (Peter Ballard / Vecna)" },
-          { id: "B", text: "Victor Creel" },
-          { id: "C", text: "Dr. Martin Brenner" },
-          { id: "D", text: "Billy Hargrove" },
+          { id: "A", text: "1-c, 2-e, 3-b, 4-a" },
+          { id: "B", text: "1-c, 2-e, 3-a, 4-b" },
+          { id: "C", text: "1-e, 2-c, 3-b, 4-a" },
+          { id: "D", text: "1-b, 2-a, 3-c, 4-e" },
         ],
         correctAnswerId: "A",
-        hint: "Applying ROT13 decryption on 'URAEL PERRY' reveals Henry Creel's name.",
-        docketTag: "SUBJECT 001",
+        hint: "Unclosed string quote = SyntaxError; dividing by zero = ZeroDivisionError; calculating 3+5 instead of 3*5 = Logic error; undefined variable = NameError.",
       },
+    ],
+  },
+};
+
+/**
+ * Dynamically assign fetched questions into StageQuizConfig structure for Chapters 1-7
+ */
+export function buildStageQuizConfigsFromQuestions(
+  fetchedQuestions: any[]
+): Record<number, StageQuizConfig> {
+  if (!fetchedQuestions || fetchedQuestions.length === 0) {
+    return STAGE_QUIZ_CONFIGS;
+  }
+
+  // Pre-configured stage templates
+  const result: Record<number, StageQuizConfig> = JSON.parse(JSON.stringify(STAGE_QUIZ_CONFIGS));
+
+  // Mapping rules: distribute questions across the 7 chapters
+  const chapterMapping: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
+
+  fetchedQuestions.forEach((q, idx) => {
+    // If q specifies chapter_id, use it
+    if (q.chapter_id && chapterMapping[q.chapter_id]) {
+      chapterMapping[q.chapter_id].push(q);
+    } else {
+      let ch = Math.min(7, Math.floor(idx / 2) + 1);
+      chapterMapping[ch].push(q);
+    }
+  });
+
+  for (let ch = 1; ch <= 7; ch++) {
+    const list = chapterMapping[ch];
+    if (list && list.length > 0) {
+      result[ch].questions = list.map((item, itemIdx) => {
+        let optionsList: QuizOption[] = [];
+
+        // Parse options if provided
+        if (Array.isArray(item.options) && item.options.length > 0) {
+          optionsList = item.options.map((opt: any, oIdx: number) => {
+            if (typeof opt === "string") {
+              const match = opt.match(/^([A-D])[\).\s]+(.*)$/i);
+              return match
+                ? { id: match[1].toUpperCase(), text: match[2] }
+                : { id: String.fromCharCode(65 + oIdx), text: opt };
+            }
+            return {
+              id: String(opt.id || String.fromCharCode(65 + oIdx)).toUpperCase(),
+              text: String(opt.text || ""),
+            };
+          });
+        } else if (item.correctAnswer || item.correct_answer) {
+          const ans = item.correctAnswer || item.correct_answer;
+          optionsList = [
+            { id: "A", text: ans },
+            { id: "B", text: "Alternative permutation B" },
+            { id: "C", text: "Alternative permutation C" },
+            { id: "D", text: "Alternative permutation D" },
+          ];
+        }
+
+        // Build question prompt with Column A & B if present
+        let fullPrompt = item.prompt || item.question || "Classified docket telemetry inquiry";
+        if (item.columnA && item.columnA.length > 0 && !fullPrompt.includes("COLUMN A")) {
+          const colAText = item.columnA.map((a: any) => `[${a.id}] ${a.text}`).join("\n");
+          const colBText = (item.columnB || []).map((b: any) => `[${b.id}] ${b.text}`).join("\n");
+          fullPrompt += `\n\nCOLUMN A:\n${colAText}\n\nCOLUMN B:\n${colBText}`;
+        }
+
+        return {
+          id: String(item.id || item.question_id || `ch${ch}-q${itemIdx + 1}`),
+          itemNumber: itemIdx + 1,
+          subHeader: `ITEM 0${itemIdx + 1}: ${(item.title || item.category || "CLASSIFIED ANOMALY").toUpperCase()}`,
+          docketTag: item.category || "TELEMETRY",
+          question: fullPrompt,
+          options:
+            optionsList.length > 0
+              ? optionsList
+              : STAGE_QUIZ_CONFIGS[ch]?.questions[itemIdx]?.options || [
+                  { id: "A", text: "Option A" },
+                  { id: "B", text: "Option B" },
+                  { id: "C", text: "Option C" },
+                  { id: "D", text: "Option D" },
+                ],
+          correctAnswerId: String(item.correctAnswerId || item.correct_answer || "A").trim().toUpperCase(),
+          hint: item.hint || "",
+        };
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 13 Vecna Lore Questions as StageQuizConfig for Vecna Screen Chapters/Trials
+ */
+export const VECNA_STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
+  1: {
+    chapterId: 1,
+    stageName: "COUNSELOR ARCHIVE",
+    docketNumber: "VECNA TRIAL 01 // PSYCHOLOGICAL PROFILER",
+    sectionHeader: "INQUIRY 01 — VECNA VICTIMS // HIGH SCHOOL COUNSELOR",
+    points: 100,
+    questions: [
       {
-        id: "ch7-q2",
-        itemNumber: 2,
-        subHeader: "ITEM 02: PSYCHIC TRANCE COUNTERMEASURE",
-        question:
-          "What musical melody successfully broke Vecna's psychic trance curse for Max Mayfield in the Mind Lair?",
+        id: "V1",
+        itemNumber: 1,
+        subHeader: "ITEM 01: COUNSELOR DESIGNATION",
+        question: "What was the name of the counselor who studied the psychological condition of several Vecna victims?",
         options: [
-          { id: "A", text: "Kate Bush — 'Running Up That Hill (A Deal with God)'" },
-          { id: "B", text: "The Police — 'Every Breath You Take'" },
-          { id: "C", text: "Cyndi Lauper — 'Time After Time'" },
-          { id: "D", text: "New Order — 'Blue Monday'" },
+          { id: "A", text: "Ms. Kelley" },
+          { id: "B", text: "Ms. Holland" },
+          { id: "C", text: "Ms. Cunningham" },
+          { id: "D", text: "Ms. Owens" },
         ],
         correctAnswerId: "A",
-        hint: "Playing Max's favorite cassette track created a red exit portal out of the mindscape.",
-        docketTag: "AUDIO LIFELINE",
+        hint: "Max and Chrissy both had confidential sessions in her office.",
       },
+    ],
+  },
+  2: {
+    chapterId: 2,
+    stageName: "SOVIET INFILTRATION",
+    docketNumber: "VECNA TRIAL 02 // CHERRY SLURPEE CYPHER",
+    sectionHeader: "INQUIRY 02 — RUSSIAN KEY // UNDERGROUND DRILL FACILITY",
+    points: 100,
+    questions: [
       {
-        id: "ch7-q3",
-        itemNumber: 3,
-        subHeader: "ITEM 03: VECNA'S MINDSCAPE ANCHOR",
-        question:
-          "What architectural relic from Henry Creel's childhood home anchors Vecna's mindscape and chiming curse?",
+        id: "V2",
+        itemNumber: 1,
+        subHeader: "ITEM 01: RUSSIAN SCIENTIST",
+        question: "What was the name of the Russian scientist who loved cherry Slurpees?",
         options: [
-          { id: "A", text: "Four-Chime Ornate Rosewood Grandfather Clock" },
-          { id: "B", text: "Stained Glass Attic Rose Window" },
-          { id: "C", text: "Black-Widow Spider Breeding Terrarium" },
-          { id: "D", text: "Basement Iron Furnace Door" },
+          { id: "A", text: "Yuri" },
+          { id: "B", text: "Alexei" },
+          { id: "C", text: "Grigori" },
+          { id: "D", text: "Dmitri" },
         ],
-        correctAnswerId: "A",
-        hint: "Four heavy chimes herald the victim's psychic trance and gate opening.",
-        docketTag: "CURSE ARTIFACT",
+        correctAnswerId: "B",
+        hint: "He defected with Hopper and Joyce before the carnival.",
       },
+    ],
+  },
+  3: {
+    chapterId: 3,
+    stageName: "PALACE ARCADE",
+    docketNumber: "VECNA TRIAL 03 // ARCADE TELEMETRY",
+    sectionHeader: "INQUIRY 03 — HIGH SCORE BREACH // MADMAX INCIDENT",
+    points: 120,
+    questions: [
       {
-        id: "ch7-q4",
-        itemNumber: 4,
-        subHeader: "ITEM 04: SEVERING THE PSYCHIC HIVE-LINK",
-        question:
-          "What synchronized strategy permanently fractures Vecna's psychic link and seals the dimensional rift?",
+        id: "V3",
+        itemNumber: 1,
+        subHeader: "ITEM 01: ARCADE GAME",
+        question: "Which arcade game was Dustin playing when he discovered that someone had beaten his high score?",
         options: [
-          { id: "A", text: "Physical Attack in the Upside Down + Psychic Anchor Sever in the Void" },
-          { id: "B", text: "High-Voltage Electromagnetic EMP Pulse on Hawkins Substation" },
-          { id: "C", text: "Flooding Hawkins Lab Sublevels with Liquid Nitrogen" },
-          { id: "D", text: "Detonating Underground Gas Pipelines Beneath Mirkwood" },
+          { id: "A", text: "Dig Dug" },
+          { id: "B", text: "Dragon's Lair" },
+          { id: "C", text: "Centipede" },
+          { id: "D", text: "Galaga" },
         ],
         correctAnswerId: "A",
-        hint: "A coordinated multi-realm assault in Hawkins, the Upside Down, and Eleven's psychic void.",
-        docketTag: "FINAL VICTORY PROTOCOL",
+        hint: "Max took the #1 spot on the leaderboard in this game.",
+      },
+    ],
+  },
+  4: {
+    chapterId: 4,
+    stageName: "CHICAGO VIGILANTES",
+    docketNumber: "VECNA TRIAL 04 // SUBJECT 008 CREW",
+    sectionHeader: "INQUIRY 04 — OUTCAST PREDATORS // ILLUSION CREW",
+    points: 120,
+    questions: [
+      {
+        id: "V4",
+        itemNumber: 1,
+        subHeader: "ITEM 01: GANG LEADER",
+        question: "What was the name of Kali's gang leader?",
+        options: [
+          { id: "A", text: "Axel" },
+          { id: "B", text: "Funshine" },
+          { id: "C", text: "Mick" },
+          { id: "D", text: "Dottie" },
+        ],
+        correctAnswerId: "A",
+        hint: "The aggressive punk with the spider face mask.",
+      },
+    ],
+  },
+  5: {
+    chapterId: 5,
+    stageName: "HAWKINS MIDDLE",
+    docketNumber: "VECNA TRIAL 05 // SCIENCE MENTOR",
+    sectionHeader: "INQUIRY 05 — THEORETICAL PHYSICS // THE CURIOUS FELLOW",
+    points: 140,
+    questions: [
+      {
+        id: "V5",
+        itemNumber: 1,
+        subHeader: "ITEM 01: SCIENCE TEACHER",
+        question: "What is the name of the teacher who helps the kids understand the science behind the Upside Down?",
+        options: [
+          { id: "A", text: "Scott Clarke" },
+          { id: "B", text: "Sam Owens" },
+          { id: "C", text: "Martin Brenner" },
+          { id: "D", text: "Bob Newby" },
+        ],
+        correctAnswerId: "A",
+        hint: "He runs the AV Club and builds the Heathkit radio.",
+      },
+    ],
+  },
+  6: {
+    chapterId: 6,
+    stageName: "THE TIGHTROPE",
+    docketNumber: "VECNA TRIAL 06 // DIMENSIONAL PHYSICS",
+    sectionHeader: "INQUIRY 06 — THE FLEA AND THE ACROBAT // PARALLEL REALMS",
+    points: 150,
+    questions: [
+      {
+        id: "V6",
+        itemNumber: 1,
+        subHeader: "ITEM 01: ANALOGY CONCEPT",
+        question: "Which scientific concept does Mr. Clarke use to explain how the Upside Down might be accessed?",
+        options: [
+          { id: "A", text: "The Flea and the Acrobat" },
+          { id: "B", text: "Quantum Entanglement" },
+          { id: "C", text: "The Butterfly Effect" },
+          { id: "D", text: "String Theory" },
+        ],
+        correctAnswerId: "A",
+        hint: "A tightrope walker is bound to 1D, but a flea walks on the underside.",
+      },
+    ],
+  },
+  7: {
+    chapterId: 7,
+    stageName: "RUSSIAN CIPHER",
+    docketNumber: "VECNA TRIAL 07 // STARCOURT TRANSMISSION",
+    sectionHeader: "INQUIRY 07 — SCOOPS TROOP // CODE TRANSLATION",
+    points: 180,
+    questions: [
+      {
+        id: "V7",
+        itemNumber: 1,
+        subHeader: "ITEM 01: STEVE'S MISUNDERSTANDING",
+        question: "What does Steve Harrington initially think Robin is trying to tell him when she translates the Russian message?",
+        options: [
+          { id: "A", text: "That she likes him" },
+          { id: "B", text: "That the Russians are watching them" },
+          { id: "C", text: "That the mall is closing" },
+          { id: "D", text: "That Dustin is in danger" },
+        ],
+        correctAnswerId: "A",
+        hint: "Steve misreads the conversation in the back of Scoops Ahoy.",
+      },
+    ],
+  },
+  8: {
+    chapterId: 8,
+    stageName: "LOVER'S LAKE",
+    docketNumber: "VECNA TRIAL 08 // WATER GATE ABYSS",
+    sectionHeader: "INQUIRY 08 — AQUATIC RIFT // WATER GATE EXPLORATION",
+    points: 180,
+    questions: [
+      {
+        id: "V8",
+        itemNumber: 1,
+        subHeader: "ITEM 01: GATE DISCOVERY",
+        question: "Which character discovers the underwater entrance to the Upside Down at Lover's Lake?",
+        options: [
+          { id: "A", text: "Steve Harrington" },
+          { id: "B", text: "Eddie Munson" },
+          { id: "C", text: "Dustin Henderson" },
+          { id: "D", text: "Nancy Wheeler" },
+        ],
+        correctAnswerId: "A",
+        hint: "He dives in with a flashlight and gets pulled through the gate.",
+      },
+    ],
+  },
+  9: {
+    chapterId: 9,
+    stageName: "HAWKINS LAB",
+    docketNumber: "VECNA TRIAL 09 // MKULTRA PATIENT ZERO",
+    sectionHeader: "INQUIRY 09 — TERRY IVES DOSSIER // DOE PSYCHOTROPIC LAB",
+    points: 200,
+    questions: [
+      {
+        id: "V9",
+        itemNumber: 1,
+        subHeader: "ITEM 01: FACILITY IDENTIFIER",
+        question: "What is the exact name of the facility where Eleven's mother, Terry Ives, was subjected to experiments?",
+        options: [
+          { id: "A", text: "Hawkins National Laboratory" },
+          { id: "B", text: "Hawkins Research Center" },
+          { id: "C", text: "Hawkins Energy Facility" },
+          { id: "D", text: "Indiana National Laboratory" },
+        ],
+        correctAnswerId: "A",
+        hint: "The DOE headquarters outside Hawkins.",
+      },
+    ],
+  },
+  10: {
+    chapterId: 10,
+    stageName: "SISTER REVELATION",
+    docketNumber: "VECNA TRIAL 10 // ILLUSION SUBJECT",
+    sectionHeader: "INQUIRY 10 — SUBJECT DESIGNATION // RAINBOW ROOM",
+    points: 200,
+    questions: [
+      {
+        id: "V10",
+        itemNumber: 1,
+        subHeader: "ITEM 01: NUMBER DESIGNATION",
+        question: "What number was Kali Prasad, the girl with illusion abilities, known by?",
+        options: [
+          { id: "A", text: "006" },
+          { id: "B", text: "007" },
+          { id: "C", text: "008" },
+          { id: "D", text: "009" },
+        ],
+        correctAnswerId: "C",
+        hint: "Tattooed on her right wrist in Hawkins Lab.",
+      },
+    ],
+  },
+  11: {
+    chapterId: 11,
+    stageName: "STARCOURT MALL",
+    docketNumber: "VECNA TRIAL 11 // CORPORATE FRONT",
+    sectionHeader: "INQUIRY 11 — SOVIET CONDUIT // COMMERCIAL ENTITY",
+    points: 250,
+    questions: [
+      {
+        id: "V11",
+        itemNumber: 1,
+        subHeader: "ITEM 01: CORPORATE ENTITY",
+        question: "What is the name of the company that owns the Hawkins Starcourt Mall?",
+        options: [
+          { id: "A", text: "Starcourt Industries" },
+          { id: "B", text: "Starcourt Corporation" },
+          { id: "C", text: "Starcourt Holdings" },
+          { id: "D", text: "Starcourt Enterprises" },
+        ],
+        correctAnswerId: "B",
+        hint: "The exact legal corporate name on the mall blueprints.",
+      },
+    ],
+  },
+  12: {
+    chapterId: 12,
+    stageName: "CORRODED COFFIN",
+    docketNumber: "VECNA TRIAL 12 // HELLFIRE GUITAR",
+    sectionHeader: "INQUIRY 12 — UNDERGROUND METAL // EDDIE'S BAND",
+    points: 250,
+    questions: [
+      {
+        id: "V12",
+        itemNumber: 1,
+        subHeader: "ITEM 01: BAND NAME",
+        question: "What was the name of Eddie Munson's band?",
+        options: [
+          { id: "A", text: "Corroded Coffin" },
+          { id: "B", text: "Hellfire" },
+          { id: "C", text: "The Upside Down" },
+          { id: "D", text: "Hawkins Metal" },
+        ],
+        correctAnswerId: "A",
+        hint: "Printed on Eddie's guitar pick and demo tape.",
+      },
+    ],
+  },
+  13: {
+    chapterId: 13,
+    stageName: "ROOFTOP CONCERT",
+    docketNumber: "VECNA TRIAL 13 // THE MOST METAL CONCERT",
+    sectionHeader: "INQUIRY 13 — DEMOBAT DISTRACTION // CREEL HOUSE DEFENSE",
+    points: 300,
+    questions: [
+      {
+        id: "V13",
+        itemNumber: 1,
+        subHeader: "ITEM 01: GUITAR TRACK",
+        question: "Which song does Eddie Munson play on guitar in the Upside Down?",
+        options: [
+          { id: "A", text: "Master of Puppets" },
+          { id: "B", text: "Enter Sandman" },
+          { id: "C", text: "Run to the Hills" },
+          { id: "D", text: "The Trooper" },
+        ],
+        correctAnswerId: "A",
+        hint: "Metallica's 1986 thrash metal anthem.",
       },
     ],
   },

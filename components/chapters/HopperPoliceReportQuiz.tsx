@@ -338,34 +338,6 @@ export default function HopperPoliceReportQuiz({
             <span>CASE BRIEFING</span>
           </button>
 
-          {/* 12 Coding Connection Anomalies Button */}
-          {onOpenCodingAnomalies && (
-            <button
-              type="button"
-              onClick={onOpenCodingAnomalies}
-              style={{
-                padding: "8px 12px",
-                background: "#d91e2b",
-                color: "#ffffff",
-                border: "1.5px solid #ff4d5a",
-                borderRadius: 4,
-                fontFamily: "'Share Tech Mono', monospace",
-                fontWeight: 800,
-                fontSize: 11,
-                letterSpacing: ".12em",
-                cursor: "pointer",
-                boxShadow: "0 0 12px rgba(217, 30, 43, 0.45)",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-              title="Open the 12 Hawkins Coding & Logic Connection Anomalies"
-            >
-              <span>⚡</span>
-              <span>12 CODING ANOMALIES</span>
-            </button>
-          )}
-
           {/* Case Points Badge */}
           <div
             style={{
@@ -619,17 +591,19 @@ export default function HopperPoliceReportQuiz({
 
             <div
               style={{
-                fontSize: "clamp(15px, 1.65vw, 18px)",
+                fontSize: "clamp(14px, 1.55vw, 17px)",
                 lineHeight: 1.6,
                 color: "#18120d",
                 fontWeight: "bold",
                 background: "rgba(255, 255, 255, 0.45)",
-                padding: "14px 18px",
+                padding: "16px 20px",
                 border: "1px solid #c9bda4",
                 borderRadius: 2,
+                whiteSpace: "pre-wrap",
+                fontFamily: "'Share Tech Mono', monospace",
               }}
             >
-              &quot;{currentQ.question}&quot;
+              {currentQ.question}
             </div>
 
             {currentQ.hint && (() => {

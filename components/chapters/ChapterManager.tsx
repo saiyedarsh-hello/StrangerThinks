@@ -8,7 +8,8 @@ import Radiometer from "../Radiometer";
 import { validateChapterOnServer } from "@/lib/api";
 import { getCharacterForChapter } from "@/lib/characters";
 import HopperPoliceReportQuiz from "./HopperPoliceReportQuiz";
-import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
+import { STAGE_QUIZ_CONFIGS, buildStageQuizConfigsFromQuestions, StageQuizConfig } from "@/lib/chapterQuestions";
+import { fetchNormalQuestions } from "@/lib/supabaseService";
 import PushPin from "../PushPin";
 import NormalCodingConnectionQuiz from "@/components/NormalCodingConnectionQuiz";
 
@@ -966,6 +967,24 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
   const isLoreActive = completionStoryChapterId !== null;
   const [showCodingAnomalies, setShowCodingAnomalies] = useState<boolean>(false);
 
+  // Dynamic Chapter Questions (from Supabase or canonical coding set)
+  const [quizConfigs, setQuizConfigs] = useState<Record<number, StageQuizConfig>>(STAGE_QUIZ_CONFIGS);
+
+  useEffect(() => {
+    async function loadDynamicQuestions() {
+      try {
+        const fetched = await fetchNormalQuestions();
+        if (fetched && fetched.length > 0) {
+          const mapped = buildStageQuizConfigsFromQuestions(fetched);
+          setQuizConfigs(mapped);
+        }
+      } catch (err) {
+        console.warn("Failed to load dynamic chapter questions:", err);
+      }
+    }
+    loadDynamicQuestions();
+  }, []);
+
   // Check URL query parameters (e.g. ?chapter=6) to directly open requested chapter
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -997,7 +1016,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
   const [quizErrorMap, setQuizErrorMap] = useState<Record<number, boolean>>({});
 
   const handleQuizSubmitAll = async (chapterId: ChapterId, answers: Record<number, string>) => {
-    const cfg = STAGE_QUIZ_CONFIGS[chapterId];
+    const cfg = quizConfigs[chapterId] || STAGE_QUIZ_CONFIGS[chapterId];
     if (!cfg) return;
 
     const allCorrect = cfg.questions.every((q, idx) => answers[idx] === q.correctAnswerId);
@@ -1127,15 +1146,14 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
           <HopperPoliceReportQuiz
             chapterNumber={currentChapter.id}
             chapterTitle={currentChapter.label}
-            sectionTitle={STAGE_QUIZ_CONFIGS[currentChapter.id]?.sectionHeader}
-            formDocket={STAGE_QUIZ_CONFIGS[currentChapter.id]?.docketNumber}
-            questions={STAGE_QUIZ_CONFIGS[currentChapter.id]?.questions}
-            points={STAGE_QUIZ_CONFIGS[currentChapter.id]?.points || currentChapter.points}
+            sectionTitle={quizConfigs[currentChapter.id]?.sectionHeader}
+            formDocket={quizConfigs[currentChapter.id]?.docketNumber}
+            questions={quizConfigs[currentChapter.id]?.questions}
+            points={quizConfigs[currentChapter.id]?.points || currentChapter.points}
             error={quizErrorMap[currentChapter.id]}
             onSubmitAll={(ans) => handleQuizSubmitAll(currentChapter.id, ans)}
             onOpenLore={() => setActiveLoreChapterId(currentChapter.id)}
             onExitFullScreen={handleBackToBoard}
-            onOpenCodingAnomalies={() => setShowCodingAnomalies(true)}
           />
         )}
       </motion.div>

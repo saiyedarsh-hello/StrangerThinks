@@ -566,17 +566,39 @@ export default function VecnaPage() {
             {currentTrial.description}
           </div>
 
-          {/* Question Text */}
+          {/* Section Subheader */}
           <div
             style={{
-              fontSize: "16px",
-              fontWeight: "bold",
-              color: "#ffffff",
-              marginBottom: "16px",
-              lineHeight: "1.4",
+              fontSize: "12px",
+              fontWeight: 900,
+              color: "#ff4d5a",
+              letterSpacing: ".16em",
+              fontFamily: '"Share Tech Mono", monospace',
+              textTransform: "uppercase",
+              marginBottom: "8px",
             }}
           >
-            {currentTrial.question}
+            SECTION 0{currentTrial.id} — FORMAL INQUIRY // {currentTrial.category} · [{currentTrial.id} OF {trials.length}]:
+          </div>
+
+          {/* Question Text Box */}
+          <div
+            style={{
+              fontSize: "clamp(15px, 1.6vw, 17px)",
+              lineHeight: 1.6,
+              color: "#ffffff",
+              fontWeight: "bold",
+              background: "rgba(255, 45, 58, 0.08)",
+              border: "1px solid rgba(255, 45, 58, 0.35)",
+              borderLeft: "4px solid #ff2d3a",
+              padding: "16px 20px",
+              borderRadius: "3px",
+              marginBottom: "20px",
+              whiteSpace: "pre-wrap",
+              fontFamily: '"Share Tech Mono", monospace',
+            }}
+          >
+            &quot;{currentTrial.question}&quot;
           </div>
 
           {/* Code Snippet (if any) */}
@@ -599,52 +621,82 @@ export default function VecnaPage() {
             </div>
           )}
 
+          {/* Options Header */}
+          <div
+            style={{
+              fontSize: "11px",
+              color: "rgba(255, 200, 200, 0.6)",
+              letterSpacing: ".12em",
+              marginBottom: "12px",
+              textTransform: "uppercase",
+            }}
+          >
+            [SELECT APPLICABLE CLASSIFIED DOSSIER ENTRY BELOW]:
+          </div>
+
           {/* Multiple Choice Options */}
           {currentTrial.options && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "12px", marginBottom: "24px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "26px" }}>
               {currentTrial.options.map((opt) => {
                 const isSelected = selectedAnswers[currentTrial.id] === opt.id;
                 return (
-                  <button
+                  <div
                     key={opt.id}
-                    type="button"
                     onClick={() => handleSelectOption(currentTrial.id, opt.id)}
                     style={{
-                      padding: "14px 18px",
-                      textAlign: "left",
-                      background: isSelected ? "rgba(255, 45, 58, 0.25)" : "rgba(0, 0, 0, 0.65)",
-                      border: isSelected ? "2px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.15)",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      color: isSelected ? "#ff2d3a" : "rgba(255, 255, 255, 0.85)",
-                      fontSize: "14px",
-                      fontFamily: '"Share Tech Mono", monospace',
                       display: "flex",
                       alignItems: "center",
-                      gap: "12px",
-                      transition: "all 0.18s ease",
+                      gap: "14px",
+                      padding: "13px 18px",
+                      background: isSelected ? "rgba(255, 45, 58, 0.22)" : "rgba(10, 3, 6, 0.7)",
+                      border: isSelected ? "2px solid #ff2d3a" : "1px solid rgba(255, 45, 58, 0.25)",
+                      borderRadius: "3px",
+                      cursor: "pointer",
+                      transition: "all 0.14s ease",
+                      boxShadow: isSelected ? "0 0 14px rgba(255, 45, 58, 0.3)" : "none",
                     }}
                   >
-                    <span
+                    <div
                       style={{
-                        width: "28px",
-                        height: "28px",
-                        borderRadius: "3px",
-                        border: isSelected ? "2px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.3)",
+                        width: "24px",
+                        height: "24px",
+                        border: isSelected ? "2px solid #ff2d3a" : "2px solid rgba(255, 255, 255, 0.4)",
                         background: isSelected ? "#ff2d3a" : "transparent",
-                        color: isSelected ? "#000" : "#fff",
+                        color: isSelected ? "#000" : "transparent",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: "12px",
-                        fontWeight: "bold",
+                        fontSize: "14px",
+                        fontWeight: 900,
+                        fontFamily: "'Courier New', monospace",
                         flexShrink: 0,
+                        borderRadius: "2px",
                       }}
                     >
-                      {opt.id}
-                    </span>
-                    <span>{opt.text}</span>
-                  </button>
+                      {isSelected ? "✓" : ""}
+                    </div>
+
+                    <div style={{ flex: 1, display: "flex", alignItems: "baseline", gap: "10px" }}>
+                      <span
+                        style={{
+                          fontWeight: 900,
+                          color: isSelected ? "#ff4d5a" : "rgba(255, 255, 255, 0.8)",
+                          fontSize: "14.5px",
+                        }}
+                      >
+                        [{opt.id}]
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "14px",
+                          color: isSelected ? "#ffffff" : "rgba(255, 220, 225, 0.85)",
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        {opt.text}
+                      </span>
+                    </div>
+                  </div>
                 );
               })}
             </div>
