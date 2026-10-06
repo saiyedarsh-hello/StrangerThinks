@@ -1027,7 +1027,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "flex-start",
-        paddingTop: "78px",
+        paddingTop: "94px",
         paddingBottom: "14px",
         paddingLeft: "clamp(10px, 2vw, 20px)",
         paddingRight: "clamp(10px, 2vw, 20px)",

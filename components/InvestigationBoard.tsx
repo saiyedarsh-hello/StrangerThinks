@@ -176,7 +176,7 @@ export default function InvestigationBoard({
         overflowY: "auto",
         overflowX: "hidden",
         background: "radial-gradient(circle at 50% 40%, #362216 0%, #1e110a 70%, #0d0603 100%)",
-        padding: "86px 28px 120px 28px",
+        padding: "114px 28px 120px 28px",
         boxSizing: "border-box",
         fontFamily: '"Share Tech Mono", monospace',
         color: "#212121",
