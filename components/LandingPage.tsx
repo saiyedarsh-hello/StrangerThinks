@@ -257,16 +257,14 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
         background: "#05080b",
       }}
     >
-      {/* Cinematic Photorealistic Hawkins Road Background */}
+      {/* Cinematic Photorealistic Pumpkin Patch & High-Intensity Red Lightning Background */}
       <CinematicBackground
-        src="/hawkins-town-bg.jpg"
+        src="/pumpkin-patch-bg-hd.jpg"
+        videoSrc="/stranger-things-bg.mp4"
         particles="none"
-        vignette="medium"
-        overlayOpacity={0.42}
+        vignette="none"
+        overlayOpacity={1.0}
       />
-
-      {/* Realistic Procedural Red Lightning & Embers Canvas (Layered behind text) */}
-      <RedLightningCanvas density="normal" onFlash={(intensity) => setFlashLevel(intensity)} />
 
       {/* Subtle Atmospheric Dark Vignette Layer */}
       <div
@@ -275,7 +273,7 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
           zIndex: 3,
           pointerEvents: "none",
           background:
-            "radial-gradient(circle at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.78) 100%), linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 50%, rgba(0,0,0,0.85) 100%)",
+            "radial-gradient(circle at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.62) 100%), linear-gradient(180deg, rgba(0,0,0,0.25) 0%, transparent 45%, rgba(0,0,0,0.68) 100%)",
         }}
       />
 

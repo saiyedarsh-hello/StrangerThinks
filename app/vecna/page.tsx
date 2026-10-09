@@ -22,6 +22,7 @@ import VecnaTriggerPanel, { TriggerAction } from "@/components/vecna/VecnaTrigge
 import VecnaMessagePanel from "@/components/vecna/VecnaMessagePanel";
 import VecnaStoryDialog from "@/components/vecna/VecnaStoryDialog";
 import VecnaChaptersModal from "@/components/vecna/VecnaChaptersModal";
+import QuestionTypeRenderer from "@/components/chapters/QuestionTypeRenderer";
 import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
 
 interface VecnaTrial {
@@ -39,87 +40,78 @@ interface VecnaTrial {
 const VECNA_TRIALS: VecnaTrial[] = [
   {
     id: 1,
-    shortName: "TELEMETRY",
-    title: "MUNICIPAL TELEMETRY & MKULTRA",
-    subtitle: "CIVIC DISTRICT // POWER SURGE FREQUENCY",
-    category: "TELEMETRY BREACH",
+    shortName: "STAGE 1",
+    title: "STAGE 1: QUIZ-TYPE QUESTIONS",
+    subtitle: "HAWKINS CHRONICLES // SERIES LORE & LOGIC",
+    category: "SERIES KNOWLEDGE",
     description:
-      "Department of Energy covert psychokinetic trials caused the initial 1983 tear beneath Hawkins. Intercepted power grid telemetry pulses are broadcasting across municipal transformers.",
+      "Multiple-choice questions testing lore, logic, and timeline understanding across the Hawkins dimension.",
     points: 50,
     powersGranted: "GLITCH · CRT FREAKOUT",
   },
   {
     id: 2,
-    shortName: "VECTOR",
-    title: "PRECINCT RF VECTOR TRIANGULATION",
-    subtitle: "HAWKINS POLICE DEPT // CHIEF'S DOSSIER",
-    category: "VECTOR CORRELATION",
+    shortName: "STAGE 2",
+    title: "STAGE 2: CONNECTION QUESTIONS",
+    subtitle: "RELATIONSHIP CORRELATION // MATCH CLUES & ARTIFACTS",
+    category: "RELATIONSHIP MAPPING",
     description:
-      "Police dispatch logs at 22:42, Benny's Diner witness statements at 22:58, and East Hill RF sensor readings at 14.8 MHz confirm an electromagnetic anomaly ground zero.",
+      "Match related clues, characters, locations, objects, or concepts by identifying their deep relationships.",
     points: 50,
     powersGranted: "SIGNAL JAM · RADIO DISTORTION",
   },
   {
     id: 3,
-    shortName: "ELECTROMAGNETIC",
-    title: "WALL FREQUENCY COMMUNICATION",
-    subtitle: "BYERS HOUSE // CHRISTMAS LIGHTS ENCODING",
-    category: "ELECTROMAGNETIC ENCODING",
+    shortName: "STAGE 3",
+    title: "STAGE 3: REARRANGE QUESTIONS",
+    subtitle: "SEQUENCE RESTORATION // SCRAMBLED WORDS, STATEMENTS & CODE",
+    category: "SEQUENCE RESTORATION",
     description:
-      "Christmas lights arranged across the alphabet wallpaper at the Byers residence pulse without power. Will is transmitting urgent warnings through the wall.",
+      "Arrange scrambled words, sentences, codes, steps, or clues in the correct order to reveal hidden intelligence.",
     points: 50,
     powersGranted: "DISTORT · CLUE OBFUSCATION",
   },
   {
     id: 4,
-    shortName: "LOGIC",
-    title: "LAB MAINFRAME PARITY OVERFLOW",
-    subtitle: "HAWKINS LAB // SUBLEVEL 3 GRID ROUTINE",
-    category: "LOGIC EXECUTION",
+    shortName: "STAGE 4",
+    title: "STAGE 4: CASE STUDY QUESTIONS",
+    subtitle: "INVESTIGATIVE FORENSICS // SITUATION ANALYSIS",
+    category: "INVESTIGATIVE ANALYSIS",
     description:
-      "Hawkins Lab Sublevel 3 telemetry router crashed on an unhandled parity routine. Trace the loop execution: evens double (* 2), odds add 1 (+ 1) for the array [2, 3, 5, 8].",
+      "Analyze a given situation report or set of clues, examine evidence logs, and draw forensic conclusions.",
     points: 50,
     powersGranted: "LOCK · ACCESS DENIED",
-    codeSnippet: `function traceParity(arr) {
-  let total = 0;
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] % 2 === 0) total += arr[i] * 2;
-    else total += arr[i] + 1;
-  }
-  return total;
-}
-console.log(traceParity([2, 3, 5, 8])); // -> 4 + 4 + 6 + 16 = 30`,
   },
   {
     id: 5,
-    shortName: "COORDINATE",
-    title: "DEEP WOODS PINE RUNES",
-    subtitle: "ROANE COUNTY WOODS // TRAIL 7 HARMONICS",
-    category: "COORDINATE CIPHER",
+    shortName: "STAGE 5",
+    title: "STAGE 5: DEEP WOODS RECON",
+    subtitle: "ROANE COUNTY WOODS // PINE RUNES",
+    category: "FIELD INVESTIGATION",
     description:
-      "Glowing geometric pine runes are carved into ancient pine tree trunks along Deep Woods Trail 7 leading toward the high-altitude East Hill repeater tower.",
+      "Field investigation into deep woods anomalies, coordinate markers, and dimensional boundaries.",
     points: 50,
     powersGranted: "TIME FREEZE · DEDUCT 2 MINS",
   },
   {
     id: 6,
-    shortName: "FREQUENCY",
-    title: "EAST HILL RADIOMETER STATIC",
-    subtitle: "RADIO TOWER // 5-PIN HARMONIC RESONANCE",
-    category: "FREQUENCY ALIGNMENT",
+    shortName: "STAGE 6",
+    title: "STAGE 6: RADIO TRANSMISSION",
+    subtitle: "SIGNAL INTELLIGENCE // MORSE, BINARY & CIPHERS",
+    category: "SIGNAL DECODING",
     description:
-      "The tower's emergency radiometer is scrambled by dimensional static across all 5 frequency channels (Pins 1-5: Alpha, Beta, Gamma, Delta, Epsilon).",
+      "Decode hidden messages or signals using methods such as Morse code, binary sequences, or audio ciphers.",
     points: 50,
-    powersGranted: "CORRUPT · SYSTEM TAKEOVER",
+    powersGranted: "FREQUENCY SHIFT · STATIC SURGE",
   },
   {
     id: 7,
-    shortName: "ROT13",
-    title: "HIVE MIND CONFRONTATION",
-    subtitle: "THE UPSIDE DOWN // SUBJECT 001 REVELATION",
-    category: "ROT13 MIND DECRYPTION",
+    shortName: "STAGE 7",
+    title: "STAGE 7: LAB-TYPE TASKS",
+    subtitle: "HAWKINS LAB EXPERIMENTAL TERMINAL // SYSTEM CHALLENGES",
+    category: "TECHNICAL EXPERIMENTS",
     description:
-      "A scrubbed Department of Energy record was recovered from the corrupted red soil. The true identity of Subject 001 was masked using a ROT13 cipher: 'URAEL PERRY'.",
+      "Interactive technical challenges involving logical sequences, system operations, bug fixing, and data analysis.",
     points: 50,
     powersGranted: "GRANDFATHER CLOCK · GATE MASTERY",
   },
@@ -216,11 +208,11 @@ export default function VecnaPage() {
 
     let chosen = selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`];
     if (!chosen) {
-      // In demo mode: auto-select Option A if user clicks submit without clicking option
-      chosen = "A";
+      // In demo mode: auto-select correct answer if user clicks verify without clicking option
+      chosen = currentQuestion.correctAnswerId;
       setSelectedAnswers((prev) => ({
         ...prev,
-        [`${currentTrial.id}-${activeQuestionIdx}`]: "A",
+        [`${currentTrial.id}-${activeQuestionIdx}`]: currentQuestion.correctAnswerId,
       }));
     }
 
@@ -714,19 +706,24 @@ export default function VecnaPage() {
           </div>
         </div>
 
-        {/* ─── MAIN CONSOLE CARD (MATCHING IMAGE 2 EXACTLY) ─── */}
+        {/* ─── MAIN CONSOLE CARD (OLD CLASSIC PAPER DOSSIER — VECNA THEMED) ─── */}
         <motion.div
           key={`${currentTrial.id}-${activeQuestionIdx}`}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
           style={{
-            background: "rgba(10, 2, 4, 0.94)",
-            border: "2px solid #ff2d3a",
+            background: "#f4eedf",
+            backgroundImage: "radial-gradient(#e4dac2 1.2px, transparent 1.2px)",
+            backgroundSize: "16px 16px",
+            border: "2.5px solid #8f231e",
             borderRadius: "4px",
             boxShadow:
-              "0 0 32px rgba(255, 45, 58, 0.25), inset 0 0 30px rgba(255, 45, 58, 0.05)",
-            padding: "32px 36px",
+              "0 14px 44px rgba(0, 0, 0, 0.8), inset 0 0 50px rgba(140, 35, 30, 0.1)",
+            padding: "26px 30px",
+            color: "#1c140e",
+            boxSizing: "border-box",
+            position: "relative",
           }}
         >
           {/* Card Header: Trial Index, Title, Subtitle & Bounty */}
@@ -735,30 +732,55 @@ export default function VecnaPage() {
               display: "flex",
               alignItems: "stretch",
               justifyContent: "space-between",
-              borderBottom: "1px solid rgba(255, 45, 58, 0.35)",
-              paddingBottom: "18px",
-              marginBottom: "22px",
+              borderBottom: "2px solid #8f231e",
+              paddingBottom: "16px",
+              marginBottom: "20px",
               flexWrap: "wrap",
               gap: "16px",
             }}
           >
             {/* Left Header Section */}
-            <div style={{ flex: 1, minWidth: "280px" }}>
+            <div style={{ flex: 1, minWidth: "260px" }}>
+              <div
+                style={{
+                  display: "inline-block",
+                  fontSize: "10px",
+                  fontFamily: "'Courier New', monospace",
+                  fontWeight: 900,
+                  color: "#8f231e",
+                  letterSpacing: ".15em",
+                  marginBottom: "4px",
+                  borderBottom: "1px dashed #8f231e",
+                  paddingBottom: "2px",
+                }}
+              >
+                [VECNA PROTOCOL DOSSIER // STAGE {currentTrial.id} OF 7 · LEVEL {activeQuestionIdx + 1} OF 10]
+              </div>
               <h2
                 style={{
                   fontFamily:
                     '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", "Libre Caslon Display", "Playfair Display", Georgia, serif',
-                  fontSize: "clamp(24px, 2.6vw, 36px)",
+                  fontSize: "clamp(22px, 2.4vw, 32px)",
                   fontWeight: 900,
-                  color: "#ff2d3a",
-                  letterSpacing: "0.06em",
-                  margin: "0",
-                  textShadow: "0 0 14px rgba(255, 45, 58, 0.6)",
+                  color: "#8f231e",
+                  letterSpacing: "0.05em",
+                  margin: "2px 0 4px 0",
                   textTransform: "uppercase",
                 }}
               >
                 {currentTrial.title}
               </h2>
+              <div
+                style={{
+                  fontFamily: "'Courier New', monospace",
+                  fontSize: "12px",
+                  color: "#544336",
+                  letterSpacing: "0.06em",
+                  fontWeight: 700,
+                }}
+              >
+                {currentTrial.subtitle}
+              </div>
             </div>
 
             {/* Right Header Section: Psychic Bounty */}
@@ -768,17 +790,18 @@ export default function VecnaPage() {
                 flexDirection: "column",
                 justifyContent: "center",
                 textAlign: "right",
-                borderLeft: "1.5px solid #ff2d3a",
-                paddingLeft: "26px",
+                borderLeft: "2px solid #8f231e",
+                paddingLeft: "20px",
                 minWidth: "160px",
               }}
             >
               <div
                 style={{
-                  fontSize: "11px",
-                  color: "rgba(255, 200, 200, 0.65)",
-                  letterSpacing: "0.2em",
-                  fontWeight: "bold",
+                  fontSize: "10.5px",
+                  color: "#8f231e",
+                  letterSpacing: "0.15em",
+                  fontWeight: 900,
+                  fontFamily: "'Courier New', monospace",
                   textTransform: "uppercase",
                 }}
               >
@@ -788,23 +811,23 @@ export default function VecnaPage() {
                 style={{
                   fontFamily:
                     '"ITC Benguiat Std", "Benguiat", "Libre Caslon Display", Georgia, serif',
-                  fontSize: "28px",
+                  fontSize: "26px",
                   fontWeight: 900,
-                  color: "#ff2d3a",
-                  marginTop: "2px",
-                  textShadow: "0 0 12px rgba(255, 45, 58, 0.6)",
-                  letterSpacing: "0.05em",
+                  color: "#8f231e",
+                  marginTop: "1px",
+                  letterSpacing: "0.04em",
                 }}
               >
                 +5 PTS
               </div>
               <div
                 style={{
-                  fontFamily: '"Share Tech Mono", monospace',
-                  fontSize: "10.5px",
-                  color: "rgba(255, 180, 180, 0.75)",
+                  fontFamily: "'Courier New', monospace",
+                  fontSize: "11px",
+                  color: "#47382d",
+                  fontWeight: 700,
                   marginTop: "3px",
-                  letterSpacing: "0.08em",
+                  letterSpacing: "0.06em",
                 }}
               >
                 TRIAL: {currentTrialScore}/50 PTS · TOTAL: {totalVecnaScore}/350 PTS
@@ -812,134 +835,14 @@ export default function VecnaPage() {
             </div>
           </div>
 
-          {/* Question Row: Two Digit Index (01) + Separator + Question Text */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "16px",
-              marginBottom: "22px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "22px",
-                fontWeight: 900,
-                color: "#ff2d3a",
-                letterSpacing: "0.08em",
-                lineHeight: "1.2",
-                flexShrink: 0,
-              }}
-            >
-              {String(activeQuestionIdx + 1).padStart(2, "0")}
-            </div>
-
-            <div
-              style={{
-                width: "1.5px",
-                minHeight: "26px",
-                background: "rgba(255, 45, 58, 0.45)",
-                margin: "0 4px",
-                flexShrink: 0,
-              }}
+          {/* Specialized Interactive Question Formation */}
+          <div style={{ marginBottom: "22px" }}>
+            <QuestionTypeRenderer
+              question={currentQuestion}
+              selectedAnswer={selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]}
+              onSelectOption={(optId) => handleSelectOption(currentTrial.id, activeQuestionIdx, optId)}
+              isVecnaMode={true}
             />
-
-            <div
-              style={{
-                fontFamily:
-                  '"ITC Benguiat Std", "Benguiat", "Libre Caslon Display", Georgia, serif',
-                fontSize: "17.5px",
-                fontWeight: 700,
-                color: "#fce4ec",
-                lineHeight: "1.45",
-                letterSpacing: "0.02em",
-              }}
-            >
-              {currentQuestion.question}
-            </div>
-          </div>
-
-          {/* Code Snippet (if any) */}
-          {currentTrial.codeSnippet && activeQuestionIdx === 0 && (
-            <div
-              style={{
-                background: "#050103",
-                border: "1px solid rgba(255, 45, 58, 0.35)",
-                padding: "16px",
-                borderRadius: "4px",
-                fontFamily: '"Share Tech Mono", monospace',
-                fontSize: "13.5px",
-                color: "#ffcdd2",
-                whiteSpace: "pre-wrap",
-                marginBottom: "20px",
-                lineHeight: "1.45",
-              }}
-            >
-              {currentTrial.codeSnippet}
-            </div>
-          )}
-
-          {/* Options: Full-Width Stacked Rows (Matching Image 2) */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "26px" }}>
-            {currentQuestion.options.map((opt) => {
-              const isSelected =
-                selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`] === opt.id;
-
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => handleSelectOption(currentTrial.id, activeQuestionIdx, opt.id)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "12px 18px",
-                    background: isSelected ? "rgba(36, 6, 12, 0.9)" : "rgba(14, 3, 6, 0.72)",
-                    border: isSelected ? "1.5px solid #ff2d3a" : "1px solid rgba(255, 45, 58, 0.22)",
-                    borderRadius: "4px",
-                    boxShadow: isSelected
-                      ? "0 0 16px rgba(255, 45, 58, 0.4), inset 0 0 8px rgba(255, 45, 58, 0.15)"
-                      : "none",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                    textAlign: "left",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: isSelected ? "rgba(255, 45, 58, 0.25)" : "rgba(25, 5, 10, 0.6)",
-                      border: isSelected ? "1.5px solid #ff2d3a" : "1px solid rgba(255, 45, 58, 0.35)",
-                      borderRadius: "2px",
-                      color: isSelected ? "#ff2d3a" : "#ff8a93",
-                      fontFamily: '"Share Tech Mono", monospace',
-                      fontSize: "14px",
-                      fontWeight: "bold",
-                      marginRight: "18px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {opt.id}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: '"Share Tech Mono", monospace',
-                      fontSize: "14px",
-                      color: isSelected ? "#ffffff" : "rgba(250, 235, 238, 0.85)",
-                      fontWeight: isSelected ? 700 : 400,
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    {opt.text}
-                  </span>
-                </button>
-              );
-            })}
           </div>
 
           {/* Feedback Messages */}
@@ -951,14 +854,15 @@ export default function VecnaPage() {
                 exit={{ opacity: 0 }}
                 style={{
                   padding: "10px 14px",
-                  background: "rgba(255, 45, 58, 0.2)",
-                  border: "1px solid #ff2d3a",
-                  borderRadius: "4px",
-                  color: "#ff2d3a",
+                  background: "rgba(184, 29, 36, 0.12)",
+                  border: "1.5px solid #8f231e",
+                  borderRadius: "3px",
+                  color: "#8f231e",
+                  fontFamily: "'Courier New', monospace",
                   fontSize: "13px",
                   textAlign: "center",
-                  fontWeight: "bold",
-                  letterSpacing: "0.1em",
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
                   marginBottom: "18px",
                 }}
               >
@@ -973,14 +877,15 @@ export default function VecnaPage() {
                 exit={{ opacity: 0 }}
                 style={{
                   padding: "10px 14px",
-                  background: "rgba(129, 199, 132, 0.2)",
-                  border: "1px solid #81c784",
-                  borderRadius: "4px",
-                  color: "#81c784",
+                  background: "rgba(46, 105, 48, 0.12)",
+                  border: "1.5px solid #2e6930",
+                  borderRadius: "3px",
+                  color: "#2e6930",
+                  fontFamily: "'Courier New', monospace",
                   fontSize: "13px",
                   textAlign: "center",
-                  fontWeight: "bold",
-                  letterSpacing: "0.1em",
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
                   marginBottom: "18px",
                 }}
               >
@@ -997,8 +902,8 @@ export default function VecnaPage() {
               justifyContent: "space-between",
               flexWrap: "wrap",
               gap: "14px",
-              paddingTop: "12px",
-              borderTop: "1px solid rgba(255, 45, 58, 0.2)",
+              paddingTop: "16px",
+              borderTop: "1.5px solid #c9bda4",
             }}
           >
             {/* Level Stepper Buttons */}
@@ -1008,14 +913,15 @@ export default function VecnaPage() {
                 onClick={handlePrevLevel}
                 disabled={activeQuestionIdx === 0}
                 style={{
-                  padding: "6px 12px",
-                  background: activeQuestionIdx === 0 ? "rgba(255,255,255,0.05)" : "rgba(255, 45, 58, 0.15)",
-                  color: activeQuestionIdx === 0 ? "rgba(255,255,255,0.3)" : "#ff8a93",
-                  border: "1px solid rgba(255, 45, 58, 0.35)",
+                  padding: "8px 14px",
+                  background: activeQuestionIdx === 0 ? "rgba(0,0,0,0.06)" : "#e6dcc6",
+                  color: activeQuestionIdx === 0 ? "rgba(0,0,0,0.3)" : "#2a1e15",
+                  border: "1.5px solid #9c8973",
                   borderRadius: "3px",
                   cursor: activeQuestionIdx === 0 ? "not-allowed" : "pointer",
-                  fontFamily: '"Share Tech Mono", monospace',
+                  fontFamily: "'Courier New', monospace",
                   fontSize: "12px",
+                  fontWeight: 800,
                   letterSpacing: "0.1em",
                 }}
               >
@@ -1025,7 +931,9 @@ export default function VecnaPage() {
               <span
                 style={{
                   fontSize: "12px",
-                  color: "rgba(255, 200, 200, 0.7)",
+                  fontFamily: "'Courier New', monospace",
+                  color: "#47382d",
+                  fontWeight: 800,
                   letterSpacing: "0.1em",
                 }}
               >
@@ -1037,23 +945,24 @@ export default function VecnaPage() {
                 onClick={handleNextLevel}
                 disabled={activeQuestionIdx === totalQuestionsForTrial - 1}
                 style={{
-                  padding: "6px 12px",
+                  padding: "8px 14px",
                   background:
                     activeQuestionIdx === totalQuestionsForTrial - 1
-                      ? "rgba(255,255,255,0.05)"
-                      : "rgba(255, 45, 58, 0.15)",
+                      ? "rgba(0,0,0,0.06)"
+                      : "#e6dcc6",
                   color:
                     activeQuestionIdx === totalQuestionsForTrial - 1
-                      ? "rgba(255,255,255,0.3)"
-                      : "#ff8a93",
-                  border: "1px solid rgba(255, 45, 58, 0.35)",
+                      ? "rgba(0,0,0,0.3)"
+                      : "#2a1e15",
+                  border: "1.5px solid #9c8973",
                   borderRadius: "3px",
                   cursor:
                     activeQuestionIdx === totalQuestionsForTrial - 1
                       ? "not-allowed"
                       : "pointer",
-                  fontFamily: '"Share Tech Mono", monospace',
+                  fontFamily: "'Courier New', monospace",
                   fontSize: "12px",
+                  fontWeight: 800,
                   letterSpacing: "0.1em",
                 }}
               >
@@ -1068,23 +977,24 @@ export default function VecnaPage() {
                 type="button"
                 onClick={handleVerifyCurrentQuestion}
                 style={{
-                  background: isQuestionSolved ? "#81c784" : "#ff2d3a",
-                  color: "#000000",
-                  fontFamily: '"Share Tech Mono", monospace',
-                  fontSize: "14px",
+                  background: isQuestionSolved ? "#2e6930" : "#8f231e",
+                  color: "#ffffff",
+                  fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                  fontSize: "13.5px",
                   fontWeight: 900,
                   letterSpacing: "0.14em",
-                  padding: "12px 28px",
+                  padding: "12px 26px",
                   border: "none",
                   borderRadius: "3px",
                   cursor: "pointer",
                   boxShadow: isQuestionSolved
-                    ? "0 0 16px rgba(129, 199, 132, 0.55)"
-                    : "0 0 16px rgba(255, 45, 58, 0.55)",
+                    ? "0 3px 12px rgba(46, 105, 48, 0.45)"
+                    : "0 3px 12px rgba(143, 35, 30, 0.45)",
                   transition: "all 0.2s ease",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "6px",
+                  gap: "8px",
+                  textTransform: "uppercase",
                 }}
               >
                 {isQuestionSolved ? (
@@ -1098,7 +1008,9 @@ export default function VecnaPage() {
                     <span>✓ ALL 10 LEVELS CLEARED (50/50 PTS)</span>
                   )
                 ) : (
-                  <span>TRANSMIT VECNA OVERRIDE (+5 PTS) →</span>
+                  <>
+                    <span>⚡ VERIFY LEVEL OVERRIDE (+5 PTS)</span>
+                  </>
                 )}
               </button>
             </div>

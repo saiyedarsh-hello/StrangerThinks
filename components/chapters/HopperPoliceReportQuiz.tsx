@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { sfx } from "@/lib/audio";
 import { useGame } from "@/lib/store";
 import { QuizQuestion, STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
+import QuestionTypeRenderer from "./QuestionTypeRenderer";
 
 interface HopperPoliceReportQuizProps {
   chapterNumber?: number;
@@ -150,7 +151,7 @@ export default function HopperPoliceReportQuiz({
     const completeAnswers: Record<number, string> = { ...selectedAnswers };
     for (let i = 0; i < totalQuestions; i++) {
       if (!completeAnswers[i]) {
-        completeAnswers[i] = "A";
+        completeAnswers[i] = questions[i]?.correctAnswerId || "A";
       }
     }
     setSelectedAnswers(completeAnswers);
@@ -530,20 +531,13 @@ export default function HopperPoliceReportQuiz({
             transition={{ duration: 0.2 }}
             style={{ marginBottom: 14 }}
           >
-            <div
-              style={{
-                fontSize: "clamp(14px, 1.4vw, 16.5px)",
-                lineHeight: 1.5,
-                color: "#18120d",
-                fontWeight: "bold",
-                background: "rgba(255, 255, 255, 0.45)",
-                padding: "10px 16px",
-                border: "1px solid #c9bda4",
-                borderRadius: 2,
-              }}
-            >
-              &quot;{currentQ.question}&quot;
-            </div>
+            {/* Specialized Question Formation by Stage */}
+            <QuestionTypeRenderer
+              question={currentQ}
+              selectedAnswer={currentSelectedOption}
+              onSelectOption={(optId) => handleOptionClick(optId)}
+              isVecnaMode={false}
+            />
 
             {currentQ.hint && (() => {
               const currentHintKey = currentQ.id || `ch${chapterNumber}-q${currentIdx + 1}`;
@@ -725,101 +719,6 @@ export default function HopperPoliceReportQuiz({
           </motion.div>
         </AnimatePresence>
 
-        {/* ─── CLASSIFIED PROJECT OPTIONS (POLICE CHECKBOXES) ─── */}
-        <div style={{ marginBottom: 14 }}>
-          <div
-            style={{
-              fontSize: 10.5,
-              color: "#6e6051",
-              letterSpacing: ".12em",
-              marginBottom: 8,
-              textTransform: "uppercase",
-            }}
-          >
-            [SELECT APPLICABLE CLASSIFIED DOSSIER ENTRY BELOW]:
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {currentQ.options.map((opt) => {
-              const isSelected = currentSelectedOption === opt.id;
-              return (
-                <div
-                  key={opt.id}
-                  onClick={() => handleOptionClick(opt.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "8px 14px",
-                    background: isSelected ? "#e2d2bb" : "rgba(255,255,255,0.4)",
-                    border: isSelected ? "2px solid #b81d24" : "1px solid #c7bca7",
-                    borderRadius: 2,
-                    cursor: "pointer",
-                    transition: "all 0.14s ease",
-                    boxShadow: isSelected ? "inset 0 0 10px rgba(184, 29, 36, 0.08)" : "none",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 26,
-                      height: 26,
-                      border: isSelected ? "2px solid #b81d24" : "2px solid #4a3e33",
-                      background: isSelected ? "#b81d24" : "#f7f2e7",
-                      color: isSelected ? "#fff" : "transparent",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 15,
-                      fontWeight: 900,
-                      fontFamily: "'Courier New', monospace",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {isSelected ? "✓" : ""}
-                  </div>
-
-                  <div style={{ flex: 1, display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span
-                      style={{
-                        fontWeight: 900,
-                        color: isSelected ? "#b81d24" : "#2d231b",
-                        fontSize: 15,
-                      }}
-                    >
-                      [{opt.id}]
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "clamp(13.5px, 1.4vw, 16px)",
-                        color: isSelected ? "#110b07" : "#30261e",
-                        fontWeight: isSelected ? 800 : 600,
-                        letterSpacing: ".02em",
-                      }}
-                    >
-                      {opt.text}
-                    </span>
-                  </div>
-
-                  {isSelected && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: "#b81d24",
-                        fontWeight: 900,
-                        letterSpacing: ".15em",
-                        fontFamily: "'Benguiat Bold', serif",
-                        border: "1px solid #b81d24",
-                        padding: "2px 6px",
-                      }}
-                    >
-                      RECORDED
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         {/* ─── UNANSWERED WARNING PROMPT ─── */}
         <AnimatePresence>
