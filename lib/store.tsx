@@ -319,6 +319,38 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
     setHydrated(true);
+
+    // Validate live session with server
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated && data.team) {
+          const sData: AuthSession = {
+            role: "PLAYER",
+            teamName: data.team.teamName,
+            leaderName: data.team.squadLeader,
+            teamId: data.team.id,
+          };
+          saveSession(sData);
+          setSession(sData);
+          setS((prev) => ({
+            ...prev,
+            phase: "play",
+            team: {
+              ...prev.team,
+              id: data.team.id,
+              name: data.team.teamName,
+              leaderName: data.team.squadLeader,
+              members: [data.team.squadLeader],
+            },
+          }));
+        } else if (!data.authenticated && currentSession?.role === "PLAYER") {
+          clearSession();
+          setSession(null);
+          setS((prev) => ({ ...prev, phase: "login" }));
+        }
+      })
+      .catch(() => {});
   }, [isGame]);
 
   // Persist to localStorage
@@ -931,13 +963,35 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
     clearSession();
     setSession(null);
     reset();
     setS({ ...INITIAL, phase: "login", introSeen: false });
     sfx("click");
   }, [reset]);
+
+  // Periodic session heartbeat & presence refresh
+  useEffect(() => {
+    if (!session || session.role !== "PLAYER") return;
+
+    const interval = setInterval(() => {
+      fetch("/api/auth/session")
+        .then((res) => {
+          if (res.status === 401) {
+            say("HAWKINS COMMAND: SESSION TERMINATED BY ADMINISTRATOR");
+            sfx("err");
+            logout();
+          }
+        })
+        .catch(() => {});
+    }, 25000);
+
+    return () => clearInterval(interval);
+  }, [session, logout, say]);
 
   const endCutscene = useCallback(() => setCutscene(null), []);
   const setSoundOn = useCallback((b: boolean) => setSoundOnState(b), []);

@@ -174,10 +174,13 @@ export interface AdminLeaderboardItem {
   currentStage?: number;
   stageTimes?: Record<string, number>;
   isOnline?: boolean;
+  hasSession?: boolean;
+  isIdle?: boolean;
+  lastHeartbeatMinutesAgo?: number | null;
   solvedCount: number;
   completedTasks: string[];
   lastSubmissionTime: string;
-  status: "ACTIVE" | "COMPLETED" | "IDLE";
+  status: "ACTIVE" | "COMPLETED" | "IDLE" | "OFFLINE";
 }
 
 export async function adminLogin(passkey: string): Promise<{ success: boolean; token?: string; error?: string; message?: string }> {
@@ -270,10 +273,13 @@ export async function fetchAdminLeaderboard(_token?: string): Promise<{ success:
         currentStage: t.currentStage,
         stageTimes: t.stageTimes,
         isOnline: t.isOnline,
+        hasSession: t.hasSession,
+        isIdle: t.isIdle,
+        lastHeartbeatMinutesAgo: t.lastHeartbeatMinutesAgo,
         solvedCount: t.submissionsCount || 0,
         completedTasks: [],
         lastSubmissionTime: t.lastHeartbeat ? new Date(t.lastHeartbeat).toLocaleTimeString() : "OFFLINE",
-        status: t.isOnline ? "ACTIVE" : "IDLE",
+        status: t.isOnline ? "ACTIVE" : (t.hasSession ? "IDLE" : "OFFLINE"),
       }));
       return { success: true, leaderboard: items };
     }
@@ -289,6 +295,18 @@ export async function forceLogoutTeam(teamId: string): Promise<{ success: boolea
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ teamId }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false };
+  }
+}
+
+export async function resetAllSessions(): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch("/api/admin/teams/reset-all-sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
     });
     return await res.json();
   } catch (err) {

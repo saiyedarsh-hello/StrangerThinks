@@ -65,19 +65,29 @@ export async function POST(req: NextRequest) {
     // 3. Strict Single Active Session Enforcement
     const { data: existingSession } = await supabaseAdmin
       .from("active_sessions")
-      .select("session_id, created_at, last_heartbeat")
+      .select("session_id, session_token, created_at, last_heartbeat")
       .eq("team_id", team.team_id)
       .single();
 
     if (existingSession) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "ALREADY_LOGGED_IN",
-          message: "This team is already logged in on another device. Only one device per squad is authorized. Please logout from the other device or contact an administrator.",
-        },
-        { status: 409 }
-      );
+      const incomingCookieToken = req.cookies.get("hawkins_session_token")?.value;
+      const isSameDevice = incomingCookieToken && incomingCookieToken === existingSession.session_token;
+      const elapsedHeartbeatMs = Date.now() - new Date(existingSession.last_heartbeat).getTime();
+      const isStale = elapsedHeartbeatMs > 15 * 60 * 1000; // 15 minutes of zero heartbeats
+
+      if (isSameDevice || isStale) {
+        // Recycle session on same device or abandoned session
+        await supabaseAdmin.from("active_sessions").delete().eq("session_id", existingSession.session_id);
+      } else {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "ALREADY_LOGGED_IN",
+            message: "This team is already logged in on another device. Only one device per squad is authorized. Please logout from the other device or contact an administrator.",
+          },
+          { status: 409 }
+        );
+      }
     }
 
     // 4. Create New Authenticated Session

@@ -37,8 +37,12 @@ export async function GET(_req: NextRequest) {
     const now = Date.now();
     const result = (teams || []).map((t, idx) => {
       const sess = sessionMap.get(t.team_id);
+      const hasSession = !!sess;
+      const lastHeartbeatMs = sess?.last_heartbeat ? now - new Date(sess.last_heartbeat).getTime() : null;
       // Online if heartbeat was in last 2 minutes
-      const isOnline = !!sess && (now - new Date(sess.last_heartbeat).getTime() < 2 * 60 * 1000);
+      const isOnline = hasSession && lastHeartbeatMs !== null && lastHeartbeatMs < 2 * 60 * 1000;
+      const isIdle = hasSession && !isOnline;
+      const lastHeartbeatMinutesAgo = lastHeartbeatMs !== null ? Math.floor(lastHeartbeatMs / 60000) : null;
 
       return {
         rank: idx + 1,
@@ -51,7 +55,10 @@ export async function GET(_req: NextRequest) {
         currentStage: t.current_stage,
         stageTimes: t.stage_times || {},
         status: t.status,
+        hasSession,
         isOnline,
+        isIdle,
+        lastHeartbeatMinutesAgo,
         sessionId: sess?.session_id,
         loginTime: sess?.created_at,
         lastHeartbeat: sess?.last_heartbeat,

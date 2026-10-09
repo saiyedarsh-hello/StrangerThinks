@@ -1340,6 +1340,39 @@ export default function AdminPage() {
                   <span>REGISTER SQUAD</span>
                 </button>
 
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm("⚠️ FORCE RESET ALL ACTIVE SESSIONS?\n\nThis will invalidate all current participant login sessions and immediately unlock all squads across the event.\n\nAre you sure you want to proceed?")) {
+                      const res = await fetch("/api/admin/teams/reset-all-sessions", { method: "POST" });
+                      const d = await res.json();
+                      if (d.success) {
+                        alert("✅ All active squad sessions have been purged. All accounts are now available.");
+                        loadData();
+                      } else {
+                        alert("Failed to reset sessions: " + (d.error || "Unknown error"));
+                      }
+                    }
+                  }}
+                  style={{
+                    padding: "8px 14px",
+                    fontSize: 12,
+                    letterSpacing: ".08em",
+                    backgroundColor: "rgba(255, 45, 58, 0.15)",
+                    border: "1px solid #ff2d3a",
+                    color: "#ff2d3a",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span>🔓</span>
+                  <span>RESET ALL SESSIONS</span>
+                </button>
+
                 <input
                   type="text"
                   placeholder="Filter by team or leader..."
@@ -1447,19 +1480,50 @@ export default function AdminPage() {
                           <span style={{ color: "#555566", fontSize: 12, marginLeft: 6 }}>({item.solvedCount} solves)</span>
                         </td>
                         <td style={{ padding: "14px 16px" }}>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              padding: "3px 8px",
-                              borderRadius: 3,
-                              fontWeight: "bold",
-                              backgroundColor: item.isOnline ? "rgba(54, 224, 196, 0.15)" : "rgba(255, 255, 255, 0.05)",
-                              color: item.isOnline ? "#36e0c4" : "#777788",
-                              border: item.isOnline ? "1px solid rgba(54, 224, 196, 0.3)" : "1px solid rgba(255, 255, 255, 0.1)",
-                            }}
-                          >
-                            {item.isOnline ? "● ONLINE" : "○ OFFLINE"}
-                          </span>
+                          {item.isOnline ? (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: "3px 8px",
+                                borderRadius: 3,
+                                fontWeight: "bold",
+                                backgroundColor: "rgba(54, 224, 196, 0.15)",
+                                color: "#36e0c4",
+                                border: "1px solid rgba(54, 224, 196, 0.3)",
+                              }}
+                            >
+                              ● ONLINE
+                            </span>
+                          ) : item.hasSession ? (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: "3px 8px",
+                                borderRadius: 3,
+                                fontWeight: "bold",
+                                backgroundColor: "rgba(255, 180, 84, 0.15)",
+                                color: "#ffb454",
+                                border: "1px solid rgba(255, 180, 84, 0.3)",
+                              }}
+                              title={`Active session in DB. Heartbeat: ${item.lastHeartbeatMinutesAgo ?? "?"}m ago`}
+                            >
+                              ⏳ LOCKED ({item.lastHeartbeatMinutesAgo ?? 0}m)
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                padding: "3px 8px",
+                                borderRadius: 3,
+                                fontWeight: "bold",
+                                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                                color: "#777788",
+                                border: "1px solid rgba(255, 255, 255, 0.1)",
+                              }}
+                            >
+                              ○ AVAILABLE
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: "14px 16px", textAlign: "right" }}>
                           <span style={{ fontSize: 16, fontWeight: "bold", color: "#ffb454" }}>{item.score} PTS</span>
