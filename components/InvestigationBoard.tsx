@@ -180,7 +180,6 @@ export default function InvestigationBoard({
   );
 
   const handleCardClick = (card: CaseCardData) => {
-    if (!isChapterUnlocked(card.id)) return;
     sfx("click");
     setSelectedCardId(card.id);
     if (onSelectChapter) {
@@ -545,20 +544,20 @@ export default function InvestigationBoard({
                     // Re-measure after each card mounts
                     if (el) requestAnimationFrame(updatePinPoints);
                   }}
-                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                  whileHover={{ y: -5, scale: 1.01, transition: { duration: 0.18 } }}
                   onClick={() => handleCardClick(card)}
                   style={{
                     position: "relative",
-                    background: unlocked ? "#f7f1e5" : "#ded6c8",
+                    background: "#f7f1e5",
                     borderRadius: "2px",
                     padding: "16px",
                     boxShadow: isSelected
-                      ? "0 0 0 2px #d91e2b, 4px 8px 20px rgba(0,0,0,0.6)"
+                      ? "0 0 0 2px #d91e2b, 4px 8px 22px rgba(0,0,0,0.65)"
                       : "3px 6px 16px rgba(0,0,0,0.5)",
                     border: "1px solid #c9beae",
-                    cursor: unlocked ? "pointer" : "not-allowed",
+                    cursor: "pointer",
                     transform: `rotate(${idx % 2 === 0 ? "-0.8deg" : "0.8deg"})`,
-                    transition: "box-shadow 0.2s ease",
+                    transition: "box-shadow 0.2s ease, transform 0.2s ease",
                     display: "flex",
                     flexDirection: "column",
                     minHeight: "380px",
@@ -567,7 +566,7 @@ export default function InvestigationBoard({
                   {/* Top Pushpin */}
                   <div style={{ position: "absolute", top: "-13px", right: "16px" }}>
                     <PushPin
-                      color={unlocked ? (idx % 3 === 0 ? "#d32f2f" : idx % 3 === 1 ? "#c62828" : "#b71c1c") : "#607d8b"}
+                      color={idx % 3 === 0 ? "#d32f2f" : idx % 3 === 1 ? "#c62828" : "#b71c1c"}
                       size={25}
                       angle={idx % 2 === 0 ? -12 : 10}
                     />
@@ -577,7 +576,7 @@ export default function InvestigationBoard({
                   <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "12px" }}>
                     <div
                       style={{
-                        background: unlocked ? "#d91e2b" : "#7d6b63",
+                        background: isChapterCleared(card.id) ? "#2e7d32" : "#d91e2b",
                         color: "#ffffff",
                         fontWeight: 900,
                         fontSize: "14px",
@@ -617,7 +616,7 @@ export default function InvestigationBoard({
                     </div>
                   </div>
 
-                  {/* Image Container with Lock Overlay */}
+                  {/* Image Container */}
                   <div
                     style={{
                       position: "relative",
@@ -636,31 +635,9 @@ export default function InvestigationBoard({
                         width: "100%",
                         height: "100%",
                         objectFit: "cover",
-                        filter: unlocked ? "brightness(0.9) contrast(1.1)" : "brightness(0.4) grayscale(0.8)",
+                        filter: "brightness(0.9) contrast(1.1)",
                       }}
                     />
-
-                    {/* Locked Badge if not unlocked */}
-                    {!unlocked && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          background: "rgba(10, 5, 5, 0.7)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "8px",
-                          color: "#e09060",
-                          fontFamily: '"Share Tech Mono", monospace',
-                          fontSize: "14px",
-                          fontWeight: "bold",
-                          letterSpacing: "0.15em",
-                        }}
-                      >
-                        <span>🔒</span> LOCKED
-                      </div>
-                    )}
                   </div>
 
                   {/* Checkpoints / Evidence List */}
@@ -669,13 +646,13 @@ export default function InvestigationBoard({
                       flex: 1,
                       fontSize: "13px",
                       lineHeight: "1.6",
-                      color: unlocked ? "#3a3028" : "#6a6058",
+                      color: "#3a3028",
                       marginBottom: "14px",
                     }}
                   >
                     {card.checkpoints.map((item, cIdx) => (
                       <div key={cIdx} style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-                        <span style={{ color: unlocked ? "#d91e2b" : "#888" }}>•</span>
+                        <span style={{ color: "#d91e2b" }}>•</span>
                         <span>{item}</span>
                       </div>
                     ))}
@@ -705,10 +682,9 @@ export default function InvestigationBoard({
                     </div>
                   )}
 
-                  {/* Action Button: [ ENTER CHAPTER → ] or [ REVISIT (CLEARED) ] or [ LOCKED ] */}
+                  {/* Action Button: [ ENTER CHAPTER → ] or [ REVISIT (CLEARED) ] */}
                   <button
                     type="button"
-                    disabled={!unlocked}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCardClick(card);
@@ -716,11 +692,7 @@ export default function InvestigationBoard({
                     style={{
                       width: "100%",
                       padding: "10px 14px",
-                      background: isChapterCleared(card.id)
-                        ? "#2e7d32"
-                        : unlocked
-                        ? "#d91e2b"
-                        : "#8f8275",
+                      background: isChapterCleared(card.id) ? "#2e7d32" : "#d91e2b",
                       color: "#ffffff",
                       fontFamily: '"Share Tech Mono", monospace',
                       fontSize: "13px",
@@ -728,18 +700,12 @@ export default function InvestigationBoard({
                       letterSpacing: "0.15em",
                       border: "none",
                       borderRadius: "2px",
-                      cursor: unlocked ? "pointer" : "not-allowed",
-                      boxShadow: unlocked
-                        ? "0 2px 8px rgba(0, 0, 0, 0.35)"
-                        : "none",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 8px rgba(217, 30, 43, 0.45)",
                       transition: "all 0.2s ease",
                     }}
                   >
-                    {isChapterCleared(card.id)
-                      ? "✓ REVISIT (CLEARED)"
-                      : unlocked
-                      ? "ENTER CHAPTER"
-                      : `🔒 LOCKED (STAGE ${card.id - 1})`}
+                    {isChapterCleared(card.id) ? "✓ REVISIT (CLEARED)" : "ENTER CHAPTER"}
                   </button>
                 </motion.div>
               );
