@@ -77,6 +77,9 @@ export default function AdminPage() {
   });
   const [isUpdatingEvent, setIsUpdatingEvent] = useState(false);
 
+  // 45-second auto-refresh timer state
+  const [autoRefreshSec, setAutoRefreshSec] = useState<number>(45);
+
   // Bulk Import Modal State
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState("");
@@ -247,6 +250,7 @@ export default function AdminPage() {
     } catch {}
 
     setLoading(false);
+    setAutoRefreshSec(45);
   }, [token, leaderboard.length]);
 
   // Initial fetch, Telemetry Bus, and Realtime Subscription
@@ -390,26 +394,19 @@ export default function AdminPage() {
       loadData();
     });
 
-    // 3. Fallback background polling every 3.5 seconds
-    const pollInterval = setInterval(() => {
-      getSupabaseLeaderboard()
-        .then((res) => {
-          if (res.success && res.leaderboard && res.leaderboard.length > 0) {
-            setLeaderboard((prev) => {
-              // Only overwrite if scores or rankings changed
-              const isDifferent =
-                res.leaderboard!.length !== prev.length ||
-                res.leaderboard!.some((item, i) => prev[i]?.teamId !== item.teamId || prev[i]?.score !== item.score);
-              return isDifferent ? res.leaderboard! : prev;
-            });
-            setConnStatus(getConnectionStatus(res.leaderboard.length));
-          }
-        })
-        .catch(() => {});
-    }, 3500);
+    // 3. Automated 45-second background refresh cycle
+    const autoRefreshTimer = setInterval(() => {
+      setAutoRefreshSec((prev) => {
+        if (prev <= 1) {
+          loadData();
+          return 45;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     return () => {
-      clearInterval(pollInterval);
+      clearInterval(autoRefreshTimer);
       unsubTelemetry();
       unsubLiveScores();
       unsubscribeLb();
@@ -1013,25 +1010,40 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             type="button"
-            onClick={loadData}
+            onClick={() => {
+              setAutoRefreshSec(45);
+              loadData();
+            }}
             disabled={loading}
             style={{
-              padding: "7px 18px",
-              fontSize: 13,
+              padding: "7px 16px",
+              fontSize: 12,
               letterSpacing: ".06em",
-              backgroundColor: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.15)",
-              color: "#ffffff",
+              backgroundColor: "rgba(54, 224, 196, 0.12)",
+              border: "1px solid rgba(54, 224, 196, 0.35)",
+              color: "#36e0c4",
               borderRadius: 4,
               cursor: "pointer",
-              fontWeight: 500,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
               transition: "all 0.15s ease",
             }}
+            title="Auto-refreshes every 45s. Click to force instant refresh."
           >
-            {loading ? "Refreshing..." : "Refresh"}
+            <span
+              style={{
+                display: "inline-block",
+                animation: loading ? "spin 1s linear infinite" : "none",
+              }}
+            >
+              ⟳
+            </span>
+            <span>{loading ? "SYNCING..." : `AUTO-SYNC (${autoRefreshSec}s)`}</span>
           </button>
         </div>
       </header>
@@ -1290,7 +1302,23 @@ export default function AdminPage() {
                     <span style={{ fontWeight: 600 }}>LIVE REALTIME SYNC</span>
                   </div>
                   <span style={{ color: "#777788" }}>
-                    · Scores update and standings re-rank dynamically as teams solve or points are overridden. Total squads: {leaderboard.length}
+                    · Scores update and standings re-rank dynamically as teams solve or points are overridden.
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      padding: "2px 8px",
+                      borderRadius: 3,
+                      backgroundColor: "rgba(54, 224, 196, 0.1)",
+                      border: "1px solid rgba(54, 224, 196, 0.25)",
+                      color: "#36e0c4",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    ⏱ AUTO-REFRESH: {autoRefreshSec}s
+                  </span>
+                  <span style={{ color: "#555566", fontSize: 11 }}>
+                    (Total squads: {leaderboard.length})
                   </span>
                 </div>
               </div>
