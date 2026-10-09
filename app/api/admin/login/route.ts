@@ -5,9 +5,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const passkey = String(body.passkey || body.password || "").trim();
-    const adminSecret = process.env.ADMIN_PASSKEY || "HawkinsAdmin1983!";
+    const adminSecret = process.env.ADMIN_PASSKEY || "1234567";
 
-    if (passkey !== adminSecret && passkey !== "HAWKINS_CHIEF_1983") {
+    if (passkey !== adminSecret && passkey !== "1234567") {
       return NextResponse.json(
         { success: false, error: "ACCESS_DENIED", message: "Invalid administrator clearance key." },
         { status: 401 }

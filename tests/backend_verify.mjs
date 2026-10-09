@@ -166,7 +166,7 @@ async function runTests() {
   const adminLoginRes = await fetch(`${BASE_URL}/api/admin/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ passkey: "HawkinsAdmin1983!" }),
+    body: JSON.stringify({ passkey: "1234567" }),
   });
   const adminLoginData = await adminLoginRes.json();
   console.log("Status:", adminLoginRes.status, "| Success:", adminLoginData.success);
