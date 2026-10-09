@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/store";
@@ -7,7 +7,7 @@ import { sfx } from "@/lib/audio";
 import { authenticateTeamWithSupabase } from "@/lib/supabaseService";
 import { saveSession } from "@/lib/config";
 import CinematicBackground from "./CinematicBackground";
-import RedLightningCanvas from "./RedLightningCanvas";
+import IntroLightning, { unlockAudio } from "./IntroLightning";
 
 interface LandingPageProps {
   onEnterVecna?: () => void;
@@ -18,7 +18,7 @@ interface LandingPageProps {
  */
 function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
   const fontStack =
-    '"ITC Benguiat Std", "Benguiat", "Libre Caslon Display", "Playfair Display", Georgia, serif';
+    '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", "Libre Caslon Display", "Playfair Display", Georgia, serif';
 
   const barShadow =
     flashLevel > 0
@@ -189,6 +189,39 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
   const [errorMessage, setErrorMessage] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
+  type Phase = "storm" | "title" | "ready";
+  const [phase, setPhase] = useState<Phase>("storm");
+  const titleIn = phase === "title" || phase === "ready";
+
+  // Seamless audio unlock on first user click or keypress
+  useEffect(() => {
+    const handleGesture = () => {
+      unlockAudio();
+      setSoundOn(true);
+    };
+    window.addEventListener("click", handleGesture, { once: true });
+    window.addEventListener("keydown", handleGesture, { once: true });
+    return () => {
+      window.removeEventListener("click", handleGesture);
+      window.removeEventListener("keydown", handleGesture);
+    };
+  }, [setSoundOn]);
+
+  // Robust safety fallback: ensure storm transitions to title even if tab was backgrounded or delayed
+  useEffect(() => {
+    if (phase !== "storm") return;
+    const fallback = setTimeout(() => {
+      setPhase("title");
+    }, 1200);
+    return () => clearTimeout(fallback);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "title") return;
+    const t = setTimeout(() => setPhase("ready"), 1200);
+    return () => clearTimeout(t);
+  }, [phase]);
+
   const handleOpenAuth = () => {
     sfx("click");
     setSoundOn(true);
@@ -246,6 +279,7 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
   return (
     <div
       className="screen"
+      onClick={phase === "storm" ? () => setPhase("title") : undefined}
       style={{
         minHeight: "100vh",
         display: "flex",
@@ -254,26 +288,45 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
         alignItems: "center",
         position: "relative",
         overflow: "hidden",
-        background: "#05080b",
+        background: "#000000",
       }}
     >
-      {/* Cinematic Photorealistic Hawkins Road Background */}
-      <CinematicBackground
-        src="/hawkins-town-bg.jpg"
-        particles="none"
-        vignette="medium"
-        overlayOpacity={0.42}
-      />
+      {/* Town background: pure black during storm, smoothly fades in when title lands */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: titleIn ? 1 : 0,
+          transition: "opacity 1.2s ease",
+          pointerEvents: "none",
+        }}
+      >
+        <CinematicBackground
+          src="/hawkins-town-bg.jpg"
+          particles="none"
+          vignette="medium"
+          overlayOpacity={0.42}
+        />
+      </div>
 
-      {/* Realistic Procedural Red Lightning & Embers Canvas (Layered behind text) */}
-      <RedLightningCanvas density="normal" onFlash={(intensity) => setFlashLevel(intensity)} />
+      {/* Intro storm: EXACTLY 4 clean red bolts on pure black background */}
+      {phase === "storm" && (
+        <IntroLightning
+          active={true}
+          climaxAt={200}
+          onFlash={(i) => setFlashLevel(i)}
+          onClimax={() => setPhase("title")}
+        />
+      )}
 
-      {/* Subtle Atmospheric Dark Vignette Layer */}
+      {/* Subtle Atmospheric Dark Vignette Layer: smoothly fades in after title lands */}
       <div
         className="layer"
         style={{
           zIndex: 3,
           pointerEvents: "none",
+          opacity: titleIn ? 1 : 0,
+          transition: "opacity 1.5s ease",
           background:
             "radial-gradient(circle at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.78) 100%), linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 50%, rgba(0,0,0,0.85) 100%)",
         }}
@@ -294,9 +347,31 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
         }}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.2, delay: 0.2 }}
+          initial={{ opacity: 0, scale: 0.05 }}
+          animate={
+            titleIn
+              ? {
+                  opacity: [0, 1, 1, 1, 1, 1, 1],
+                  scale: [0.05, 1.25, 0.92, 1.06, 0.97, 1.02, 1],
+                  filter: [
+                    "blur(14px)",
+                    "blur(0px)",
+                    "blur(0px)",
+                    "blur(0px)",
+                    "blur(0px)",
+                    "blur(0px)",
+                    "blur(0px)",
+                  ],
+                  x: [0, -12, 9, -5, 3, -1, 0],
+                  y: [0, 7, -5, 3, -2, 1, 0],
+                }
+              : { opacity: 0, scale: 0.05 }
+          }
+          transition={{
+            duration: 1.3,
+            times: [0, 0.28, 0.48, 0.65, 0.8, 0.92, 1],
+            ease: "easeOut",
+          }}
         >
           <StrangerThingsLogo flashLevel={flashLevel} />
         </motion.div>
@@ -305,8 +380,8 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
         <motion.button
           id="enter-btn"
           initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.6 }}
+          animate={phase === "ready" ? { opacity: 1, y: 0 } : { opacity: 0, y: 15 }}
+          transition={{ duration: 0.6 }}
           whileHover={{
             scale: 1.05,
             backgroundColor: "#7a0a12",
@@ -333,6 +408,7 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
             fontWeight: 900,
             letterSpacing: "0.25em",
             cursor: "pointer",
+            pointerEvents: phase === "ready" ? "auto" : "none",
             boxShadow:
               "0 0 28px rgba(255, 34, 48, 0.65), inset 0 0 14px rgba(255, 255, 255, 0.25)",
             transition: "all 0.3s ease",

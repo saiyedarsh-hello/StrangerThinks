@@ -416,6 +416,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         sfx("ok");
         say(`AWARDED +${m.points} TEAMWORK BY ${m.operatorName || "ORGANIZER"}`);
       }
+
+      if (m.type === "force_logout") {
+        say("HAWKINS COMMAND: SESSION TERMINATED BY ADMINISTRATOR");
+        sfx("err");
+        logout();
+      }
     });
 
     const beat = setInterval(() => {

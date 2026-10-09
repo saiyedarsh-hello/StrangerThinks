@@ -982,24 +982,32 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
 
     const taskId = CHAPTERS.find((c) => c.id === chapterId)?.taskId || `ch${chapterId}`;
     
-    // Each solved question = 5 points (10 questions * 5 = 50 points total per chapter)
+    // Submit each question securely to server (Trusted validation against database)
     const questions = cfg.questions || [];
     let correctCount = 0;
-    questions.forEach((q, idx) => {
+    let totalPointsAwarded = 0;
+
+    for (let idx = 0; idx < questions.length; idx++) {
+      const q = questions[idx];
       const chosen = answers[idx] || "A";
-      if (chosen === q.correctAnswerId) {
-        correctCount++;
+      try {
+        const res = await fetch("/api/questions/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ questionId: q.id, answer: chosen }),
+        });
+        const data = await res.json();
+        if (data.success && data.isCorrect) {
+          correctCount++;
+          totalPointsAwarded += (data.pointsAwarded !== undefined ? data.pointsAwarded : 5);
+        }
+      } catch (err) {
+        console.warn("[SUBMIT FAILED]", err);
       }
-    });
-    const pts = correctCount * 5;
+    }
 
     sfx("ok");
-    try {
-      await validateChapterOnServer(chapterId, taskId, answers[0] || "A");
-    } catch (e) {
-      // offline fallback
-    }
-    submitTask(taskId, pts, `Chapter ${chapterId} Docket Verified (${correctCount}/${questions.length} Solved)`);
+    submitTask(taskId, totalPointsAwarded, `Chapter ${chapterId} Docket Verified (${correctCount}/${questions.length} Solved)`);
     setCompletionStoryChapterId(chapterId);
   };
 

@@ -24,8 +24,9 @@ export default function Home() {
   }, [hydrated, session]);
 
   if (!hydrated) {
-    return <div style={{ minHeight: "100vh", background: "#000" }} />;
+    return <LandingPage onEnterVecna={() => setShowVecnaChosen(true)} />;
   }
+
 
   // Vecna Entry Screen (Image 2) when user has Vecna role
   if (showVecnaChosen || (session && session.role === "VECNA")) {

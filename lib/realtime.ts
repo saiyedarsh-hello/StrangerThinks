@@ -1,21 +1,15 @@
 /**
  * THE HAWKINS PROTOCOL - REALTIME ADAPTER
  * 
- * Central event bus coordinating Player Website <-> Vecna Control.
- * 
- * Default Implementation: HTML5 BroadcastChannel ("hawkins-protocol").
- * Works instantly across browser tabs on the same origin without external servers.
- * 
- * Running the real event across separate laptops:
- * When running an in-person tournament where players and organizers are on different laptops,
- * switch the adapter backend below to Firebase Realtime Database or Supabase Realtime
- * using the provided stubs.
+ * Central event bus coordinating Player Laptops <-> Vecna Control <-> Admin Console.
+ * Powered by Supabase Realtime Broadcast Channels (supports 70+ separate laptops simultaneously).
  */
 
 import { CONFIG } from "./config";
 import { StageId } from "./stages";
 import { LocationId } from "./tasks";
 import { SabKind } from "./store";
+import { createClient } from "@supabase/supabase-js";
 
 export type StoryEventType =
   | "gate_open"
@@ -48,19 +42,22 @@ export interface PresencePayload {
 
 export interface SabotagePayload {
   type: "sabotage";
+  id?: number;
   kind: SabKind | "GLITCH";
-  target: string; // team name or "all"
+  target: string; // teamId or "all"
   pinIndex?: number;
   message?: string;
+  duration?: number;
   operatorId?: string;
   operatorName?: string;
+  until?: number;
   ts?: number;
 }
 
 export interface StoryEventPayload {
   type: "story_event";
   event: StoryEventType;
-  target: string; // team name or "all"
+  target: string; // teamId or "all"
   operatorId?: string;
   operatorName?: string;
   ts?: number;
@@ -70,7 +67,7 @@ export interface ChallengeLockPayload {
   type: "challenge_lock";
   challengeId: string;
   locked: boolean;
-  target: string; // team name or "all"
+  target: string;
   operatorId?: string;
   operatorName?: string;
   ts?: number;
@@ -85,10 +82,21 @@ export interface AwardPayload {
   ts?: number;
 }
 
-export interface OperatorAssignmentPayload {
-  type: "operator_assignment";
-  assignments: Record<string, { active: boolean; teams: string[] }>;
-  operatorName?: string;
+export interface ForceLogoutPayload {
+  type: "force_logout";
+  target: string; // teamId or "all"
+  ts?: number;
+}
+
+export interface ScoreUpdatePayload {
+  type: "SCORE_UPDATE";
+  teamId?: string;
+  teamName?: string;
+  newScore?: number;
+  delta?: number;
+  chapterId?: number;
+  taskId?: string;
+  source?: string;
   ts?: number;
 }
 
@@ -98,61 +106,101 @@ export type RealtimeMessage =
   | StoryEventPayload
   | ChallengeLockPayload
   | AwardPayload
-  | OperatorAssignmentPayload;
+  | ForceLogoutPayload
+  | ScoreUpdatePayload;
 
 type Handler = (msg: RealtimeMessage) => void;
 
-let channelInstance: BroadcastChannel | null = null;
 const subscribers = new Set<Handler>();
 
-function getBroadcastChannel(): BroadcastChannel | null {
-  if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") {
-    return null;
+// Supabase Realtime Client
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://pxlbktdaldicbtrtbqxu.supabase.co";
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4bGJrdGRhbGRpY2J0cnRicXh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExODc0MzgsImV4cCI6MjEwNjc2MzQzOH0.obE1WiSJyMPrZYYwtBSTL9mkxksK-yr5dP6pm53Ty9A";
+
+let supabaseClient: any = null;
+let realtimeChannel: any = null;
+let localBroadcastChannel: BroadcastChannel | null = null;
+
+function initRealtime() {
+  if (typeof window === "undefined") return;
+
+  // 1. Local HTML5 BroadcastChannel for intra-browser messaging
+  if (!localBroadcastChannel && "BroadcastChannel" in window) {
+    try {
+      localBroadcastChannel = new BroadcastChannel(CONFIG.BROADCAST_CHANNEL);
+      localBroadcastChannel.onmessage = (event) => {
+        if (event.data) dispatchToSubscribers(event.data);
+      };
+    } catch {}
   }
-  if (!channelInstance) {
-    channelInstance = new BroadcastChannel(CONFIG.BROADCAST_CHANNEL);
-    channelInstance.onmessage = (event) => {
-      if (event.data) {
-        subscribers.forEach((fn) => {
-          try {
-            fn(event.data);
-          } catch (err) {
-            console.error("[Realtime] Handler error:", err);
+
+  // 2. Supabase Realtime for cross-laptop messaging
+  if (!supabaseClient) {
+    try {
+      supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+      realtimeChannel = supabaseClient.channel("hawkins-protocol", {
+        config: { broadcast: { ack: false, self: false } },
+      });
+
+      realtimeChannel
+        .on("broadcast", { event: "message" }, ({ payload }: { payload: RealtimeMessage }) => {
+          if (payload) dispatchToSubscribers(payload);
+        })
+        .on("broadcast", { event: "sabotage" }, ({ payload }: { payload: RealtimeMessage }) => {
+          if (payload) dispatchToSubscribers(payload);
+        })
+        .on("broadcast", { event: "force_logout" }, ({ payload }: { payload: RealtimeMessage }) => {
+          if (payload) dispatchToSubscribers(payload);
+        })
+        .subscribe((status: string) => {
+          if (status === "SUBSCRIBED") {
+            console.log("[Realtime] Connected to Hawkins Supabase Realtime mesh!");
           }
         });
-      }
-    };
+    } catch (e) {
+      console.warn("[Realtime] Supabase Realtime init error:", e);
+    }
   }
-  return channelInstance;
+}
+
+function dispatchToSubscribers(msg: RealtimeMessage) {
+  subscribers.forEach((fn) => {
+    try {
+      fn(msg);
+    } catch (err) {
+      console.error("[Realtime] Subscriber error:", err);
+    }
+  });
 }
 
 /**
- * Publish an event to the realtime bus
+ * Publish an event to all connected laptops
  */
 export function publish(msg: RealtimeMessage): void {
   const stampedMsg = { ...msg, ts: msg.ts || Date.now() };
 
-  // 1. BroadcastChannel dispatch
-  const ch = getBroadcastChannel();
-  if (ch) {
+  // Dispatch locally in current window
+  dispatchToSubscribers(stampedMsg);
+
+  // Dispatch via local BroadcastChannel
+  if (localBroadcastChannel) {
     try {
-      ch.postMessage(stampedMsg);
-    } catch (err) {
-      console.error("[Realtime] Publish error:", err);
-    }
+      localBroadcastChannel.postMessage(stampedMsg);
+    } catch {}
   }
 
-  // Also dispatch locally to subscribers in the same window context
-  subscribers.forEach((fn) => {
+  // Broadcast to other laptops via Supabase Realtime
+  if (realtimeChannel) {
     try {
-      fn(stampedMsg);
+      realtimeChannel.send({
+        type: "broadcast",
+        event: "message",
+        payload: stampedMsg,
+      });
     } catch (err) {
-      console.error("[Realtime] Local subscriber error:", err);
+      console.warn("[Realtime] Supabase broadcast error:", err);
     }
-  });
-
-  // 2. External Provider Hook (e.g. Firebase or Supabase):
-  // publishToExternalBackend(stampedMsg);
+  }
 }
 
 /**
@@ -160,7 +208,7 @@ export function publish(msg: RealtimeMessage): void {
  */
 export function subscribe(handler: Handler): () => void {
   subscribers.add(handler);
-  getBroadcastChannel(); // Ensure channel is listening
+  initRealtime();
   return () => {
     subscribers.delete(handler);
   };
@@ -175,46 +223,3 @@ export function presence(data: Omit<PresencePayload, "type">): void {
     ...data,
   });
 }
-
-/* =========================================================================
- * BACKEND ADAPTER STUBS FOR MULTI-DEVICE TOURNAMENTS
- * =========================================================================
- * When running across separate laptops, configure one of the options below:
- *
- * OPTION A: SUPABASE REALTIME
- * -------------------------------------------------------------------------
- * 1. npm install @supabase/supabase-js
- * 2. Create a Supabase project at https://supabase.com
- * 3. Initialize:
- *
- *    import { createClient } from "@supabase/supabase-js";
- *    const supabase = createClient("https://XYZ.supabase.co", "ANON_KEY");
- *    const room = supabase.channel("hawkins-protocol");
- *    room.on("broadcast", { event: "event" }, ({ payload }) => {
- *      subscribers.forEach(fn => fn(payload));
- *    }).subscribe();
- *
- *    function publishToExternalBackend(msg) {
- *      room.send({ type: "broadcast", event: "event", payload: msg });
- *    }
- *
- * OPTION B: FIREBASE REALTIME DATABASE
- * -------------------------------------------------------------------------
- * 1. npm install firebase
- * 2. Create a Firebase project at https://console.firebase.google.com
- * 3. Initialize:
- *
- *    import { initializeApp } from "firebase/app";
- *    import { getDatabase, ref, push, onChildAdded } from "firebase/database";
- *    const app = initializeApp({ databaseURL: "https://XYZ.firebaseio.com" });
- *    const db = getDatabase(app);
- *    const eventsRef = ref(db, "events");
- *    onChildAdded(eventsRef, (snapshot) => {
- *      const data = snapshot.val();
- *      subscribers.forEach(fn => fn(data));
- *    });
- *
- *    function publishToExternalBackend(msg) {
- *      push(eventsRef, msg);
- *    }
- * ========================================================================= */

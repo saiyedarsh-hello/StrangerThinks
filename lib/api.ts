@@ -166,9 +166,14 @@ export interface AdminChapterData {
 export interface AdminLeaderboardItem {
   rank: number;
   teamId: string;
+  username?: string;
+  password?: string;
   teamName: string;
   leaderName: string;
   score: number;
+  currentStage?: number;
+  stageTimes?: Record<string, number>;
+  isOnline?: boolean;
   solvedCount: number;
   completedTasks: string[];
   lastSubmissionTime: string;
@@ -177,14 +182,14 @@ export interface AdminLeaderboardItem {
 
 export async function adminLogin(passkey: string): Promise<{ success: boolean; token?: string; error?: string; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/admin/login`, {
+    const res = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passkey }),
     });
     return await res.json();
   } catch (err) {
-    return { success: false, error: "BACKEND_OFFLINE", message: "Security backend is offline. Ensure it is running on port 5000." };
+    return { success: false, error: "SERVER_OFFLINE", message: "Mainframe unreachable." };
   }
 }
 
@@ -249,12 +254,74 @@ export async function resetAdminChapters(token: string): Promise<{ success: bool
   }
 }
 
-export async function fetchAdminLeaderboard(token: string): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
+export async function fetchAdminLeaderboard(_token?: string): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/admin/leaderboard`, {
+    const res = await fetch("/api/admin/teams");
+    const data = await res.json();
+    if (data.success && Array.isArray(data.teams)) {
+      const items: AdminLeaderboardItem[] = data.teams.map((t: any) => ({
+        rank: t.rank,
+        teamId: t.teamId,
+        username: t.username,
+        password: t.password,
+        teamName: t.teamName,
+        leaderName: t.leaderName,
+        score: t.score,
+        currentStage: t.currentStage,
+        stageTimes: t.stageTimes,
+        isOnline: t.isOnline,
+        solvedCount: t.submissionsCount || 0,
+        completedTasks: [],
+        lastSubmissionTime: t.lastHeartbeat ? new Date(t.lastHeartbeat).toLocaleTimeString() : "OFFLINE",
+        status: t.isOnline ? "ACTIVE" : "IDLE",
+      }));
+      return { success: true, leaderboard: items };
+    }
+    return { success: false, error: data.error || "FETCH_FAILED" };
+  } catch (err) {
+    return { success: false, error: "SERVER_OFFLINE" };
+  }
+}
+
+export async function forceLogoutTeam(teamId: string): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await fetch("/api/admin/teams/force-logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamId }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false };
+  }
+}
+
+export async function importTeamsFromCsvOrJson(payload: { csv?: string; teams?: any[] }): Promise<{ success: boolean; message?: string; importedCount?: number }> {
+  try {
+    const res = await fetch("/api/admin/teams/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false };
+  }
+}
+
+export async function updateAdminTeamScore(
+  teamId: string,
+  score: number,
+  token: string = "HAWKINS_CHIEF_1983"
+): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/leaderboard/score`, {
+      method: "POST",
       headers: {
+        "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
       },
+      body: JSON.stringify({ teamId, score: Number(score) }),
     });
     return await res.json();
   } catch (err) {

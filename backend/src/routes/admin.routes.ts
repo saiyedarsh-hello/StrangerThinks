@@ -7,6 +7,7 @@ import {
   deleteAdminChapter,
   resetAdminChapters,
   getAdminLeaderboard,
+  updateAdminTeamScore,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -19,6 +20,7 @@ router.use(requireAdmin);
 
 // Live tournament leaderboard
 router.get("/leaderboard", getAdminLeaderboard);
+router.post("/leaderboard/score", updateAdminTeamScore);
 
 // Question Vault Configuration (CRUD)
 router.get("/chapters", getAdminChapters);

@@ -293,17 +293,30 @@ export default function VecnaPage() {
       message,
       ts: Date.now(),
     });
+    // Persist in database
+    fetch("/api/vecna/sabotage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target, kind: "MESSAGE", message, duration: 45 }),
+    }).catch(() => {});
     setIsMessageOpen(false);
   };
 
   const handleExecuteTrigger = (action: TriggerAction) => {
     sfx("boom");
+    const kind = (action.id === "RADIO_DISTORTION" ? "SIGNAL_JAM" : action.id) as any;
     publish({
       type: "sabotage",
-      kind: (action.id === "RADIO_DISTORTION" ? "SIGNAL_JAM" : action.id) as any,
+      kind,
       target: selectedLocation,
       ts: Date.now(),
     });
+    // Persist in database
+    fetch("/api/vecna/sabotage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target: selectedLocation, kind, duration: 45 }),
+    }).catch(() => {});
     setIsPowersOpen(false);
   };
 
