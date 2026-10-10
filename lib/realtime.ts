@@ -121,6 +121,17 @@ let supabaseClient: any = null;
 let realtimeChannel: any = null;
 let localBroadcastChannel: BroadcastChannel | null = null;
 
+export type RealtimeSocketLike = {
+  on: (event: string, handler: (...args: any[]) => void) => void;
+  off: (event: string, handler: (...args: any[]) => void) => void;
+  emit?: (event: string, payload: any) => void;
+  connected?: boolean;
+};
+
+export function getSocket(): RealtimeSocketLike | null {
+  return null;
+}
+
 function initRealtime() {
   if (typeof window === "undefined") return;
 

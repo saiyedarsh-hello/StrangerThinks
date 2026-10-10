@@ -61,7 +61,7 @@ The Hawkins Protocol features **ONE single shared login screen at `/`** that rou
 
 > [!WARNING]
 > **SECURITY NOTICE:**
-> Credentials defined in client code are visible in the browser JavaScript bundle. This is fine for an in-person event, LAN tournament, or local demonstration. However, for any public internet deployment, move credential verification to a server-side check (e.g., an authenticated API route handler / Supabase Auth / server database).
+> Credentials defined in client code are visible in the browser JavaScript bundle. This is fine for an in-person event, LAN tournament, or local demonstration. However, for any public internet deployment, move credential verification to the server-side check (e.g., our authenticated Express backend + TiDB Distributed SQL database).
 
 All credentials and game configurations are centralized in [`lib/config.ts`](file:///c:/Users/MUSKAN/Downloads/hawkins-protocol/hawkins-protocol/lib/config.ts):
 
@@ -152,25 +152,31 @@ All player <-> Vecna Control messaging flows through `lib/realtime.ts`:
 For single-machine demos and testing across multiple browser tabs or windows on the same origin, the native `BroadcastChannel` API (`hawkins-protocol`) requires zero setup, zero external dependencies, and delivers zero-latency instant messaging.
 
 ### Running the Real Event Across Devices
-In a physical live event or tournament where players and organizers operate on **separate laptops/machines**, browser tabs cannot communicate via `BroadcastChannel`. For multi-laptop tournaments, swap the backend in `lib/realtime.ts` to either **Supabase Realtime** or **Firebase Realtime Database** using the pre-configured stubs:
+In a physical live event or tournament where players and organizers operate on **separate laptops/machines**, multi-laptop synchronization is handled automatically by the **Socket.io engine on port 5000** backed by **TiDB Distributed SQL**.
 
-#### Option A: Supabase Realtime (Recommended)
-1. Run: `npm install @supabase/supabase-js`
-2. Create a Supabase project at [https://supabase.com](https://supabase.com)
-3. In `lib/realtime.ts`, activate the Supabase stub:
-```typescript
-import { createClient } from "@supabase/supabase-js";
-const supabase = createClient("https://XYZ.supabase.co", "ANON_KEY");
-const room = supabase.channel("hawkins-protocol");
-
-room.on("broadcast", { event: "event" }, ({ payload }) => {
-  subscribers.forEach((fn) => fn(payload));
-}).subscribe();
-
-function publishToExternalBackend(msg) {
-  room.send({ type: "broadcast", event: "event", payload: msg });
-}
-```
+#### TiDB Database Configuration & Schema
+1. Configure your TiDB Cloud Serverless or local instance credentials in `backend/.env`:
+   ```bash
+   TIDB_HOST=127.0.0.1
+   TIDB_PORT=4000
+   TIDB_USER=root
+   TIDB_PASSWORD=
+   TIDB_DATABASE=stranger_thinks
+   TIDB_SSL=false
+   ```
+   Or use a unified connection URL:
+   ```bash
+   TIDB_DATABASE_URL=mysql://<user>:<password>@<host>:4000/stranger_thinks?ssl={"rejectUnauthorized":true}
+   ```
+2. Run database migration & seeding:
+   ```bash
+   cd backend
+   npm run db:init
+   ```
+3. Start the secure backend:
+   ```bash
+   npm run dev
+   ```
 
 #### Option B: Firebase Realtime Database
 1. Run: `npm install firebase`

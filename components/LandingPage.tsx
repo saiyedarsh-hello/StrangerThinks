@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
-import { authenticateTeamWithSupabase } from "@/lib/supabaseService";
+import { authenticateTeamWithTiDB } from "@/lib/tidbService";
 import { saveSession } from "@/lib/config";
 import CinematicBackground from "./CinematicBackground";
 import IntroLightning, { unlockAudio } from "./IntroLightning";
@@ -242,7 +242,7 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
     setError(false);
 
     try {
-      const authResult = await authenticateTeamWithSupabase(teamName, leaderName);
+      const authResult = await authenticateTeamWithTiDB(teamName, leaderName);
 
       if (authResult.success) {
         setError(false);
