@@ -12,13 +12,13 @@ import {
   AdminLeaderboardItem,
 } from "@/lib/api";
 import {
-  getSupabaseLeaderboard,
-  getSupabaseChapters,
-  updateSupabaseChapter,
-  deleteSupabaseChapter,
-  subscribeToSupabaseLeaderboard,
-  registerTeamInSupabase,
-} from "@/lib/supabaseService";
+  getTiDBLeaderboard,
+  getTiDBChapters,
+  updateTiDBChapter,
+  deleteTiDBChapter,
+  subscribeToTiDBLeaderboard,
+  registerTeamInTiDB,
+} from "@/lib/tidbService";
 import { sfx } from "@/lib/audio";
 
 export default function AdminPage() {
@@ -34,7 +34,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<"supabase" | "backend" | "syncing">("syncing");
+  const [dataSource, setDataSource] = useState<"tidb" | "backend" | "syncing">("syncing");
 
   // New squad creation modal state
   const [showAddTeamModal, setShowAddTeamModal] = useState(false);
@@ -84,31 +84,31 @@ export default function AdminPage() {
     }
   }, []);
 
-  // 3. LOAD DATA (Supabase First with Backend Fallback)
+  // 3. LOAD DATA (TiDB First with Backend Fallback)
   const loadData = useCallback(async () => {
     setLoading(true);
-    let loadedFromSupabase = false;
+    let loadedFromTiDB = false;
 
-    // Try Supabase first
+    // Try TiDB first
     try {
-      const [sbLb, sbCh] = await Promise.all([
-        getSupabaseLeaderboard(),
-        getSupabaseChapters(),
+      const [tdbLb, tdbCh] = await Promise.all([
+        getTiDBLeaderboard(token || undefined),
+        getTiDBChapters(token || undefined),
       ]);
 
-      if (sbLb.success && sbLb.leaderboard && sbLb.leaderboard.length > 0) {
-        setLeaderboard(sbLb.leaderboard);
-        loadedFromSupabase = true;
+      if (tdbLb.success && tdbLb.leaderboard && tdbLb.leaderboard.length > 0) {
+        setLeaderboard(tdbLb.leaderboard);
+        loadedFromTiDB = true;
       }
-      if (sbCh.success && sbCh.chapters && sbCh.chapters.length > 0) {
-        setChapters(sbCh.chapters);
-        loadedFromSupabase = true;
+      if (tdbCh.success && tdbCh.chapters && tdbCh.chapters.length > 0) {
+        setChapters(tdbCh.chapters);
+        loadedFromTiDB = true;
       }
     } catch (e) {
-      console.warn("[ADMIN] Supabase initial query fallback:", e);
+      console.warn("[ADMIN] TiDB initial query fallback:", e);
     }
 
-    // If Supabase tables were empty or pending seed, query backend service
+    // If TiDB tables were empty or pending seed, query backend service
     const activeToken = token || "HAWKINS_CHIEF_1983";
     try {
       const [beLb, beCh] = await Promise.all([
@@ -117,16 +117,16 @@ export default function AdminPage() {
       ]);
 
       if (beLb.success && beLb.leaderboard && beLb.leaderboard.length > 0) {
-        setLeaderboard((prev) => (loadedFromSupabase && prev.length > 0 ? prev : beLb.leaderboard!));
+        setLeaderboard((prev) => (loadedFromTiDB && prev.length > 0 ? prev : beLb.leaderboard!));
       }
       if (beCh.success && beCh.chapters && beCh.chapters.length > 0) {
-        setChapters((prev) => (loadedFromSupabase && prev.length > 0 ? prev : beCh.chapters!));
+        setChapters((prev) => (loadedFromTiDB && prev.length > 0 ? prev : beCh.chapters!));
       }
 
-      setDataSource(loadedFromSupabase ? "supabase" : "backend");
+      setDataSource(loadedFromTiDB ? "tidb" : "backend");
     } catch (e) {
       console.warn("[ADMIN] Backend fetch failed:", e);
-      if (loadedFromSupabase) setDataSource("supabase");
+      if (loadedFromTiDB) setDataSource("tidb");
     }
 
     setLoading(false);
@@ -136,9 +136,9 @@ export default function AdminPage() {
   useEffect(() => {
     loadData();
 
-    // Subscribe to Supabase real-time updates for teams
-    const unsubscribe = subscribeToSupabaseLeaderboard(() => {
-      console.log("[ADMIN] Real-time Supabase update received!");
+    // Subscribe to TiDB real-time updates for teams
+    const unsubscribe = subscribeToTiDBLeaderboard(() => {
+      console.log("[ADMIN] Real-time TiDB update received!");
       loadData();
     });
 
@@ -174,12 +174,13 @@ export default function AdminPage() {
     localStorage.removeItem("hawkins_admin_token");
   };
 
-  // Register squad in Supabase
+  // Register squad in TiDB
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTeamName.trim() || !newLeaderName.trim()) return;
     setIsCreatingTeam(true);
-    const res = await registerTeamInSupabase(newTeamName.trim(), newLeaderName.trim(), Number(newTeamScore));
+    const activeToken = token || "HAWKINS_CHIEF_1983";
+    const res = await registerTeamInTiDB(newTeamName.trim(), newLeaderName.trim(), Number(newTeamScore), activeToken);
     setIsCreatingTeam(false);
 
     if (res.success) {
@@ -188,11 +189,11 @@ export default function AdminPage() {
       setNewTeamName("");
       setNewLeaderName("");
       setNewTeamScore(0);
-      setStatusMessage(`Squad "${newTeamName}" registered in Supabase. They can now log in immediately!`);
+      setStatusMessage(`Squad "${newTeamName}" registered in TiDB database. They can now log in immediately!`);
       loadData();
     } else {
       sfx("err");
-      alert(res.error || "Failed to register squad in Supabase.");
+      alert(res.error || "Failed to register squad in TiDB.");
     }
   };
 
@@ -207,7 +208,7 @@ export default function AdminPage() {
     setEditLoreText(ch.archiveLines ? ch.archiveLines.join("\n") : "");
   };
 
-  // Save chapter edit to BOTH Supabase and backend
+  // Save chapter edit to BOTH TiDB and backend
   const handleSaveChapter = async () => {
     if (!editingChapter) return;
     setIsSaving(true);
@@ -220,12 +221,10 @@ export default function AdminPage() {
       archiveLines: editLoreText.split("\n").filter((l) => l.trim().length > 0),
     };
 
-    // 1. Update Supabase
-    await updateSupabaseChapter(editingChapter.id, payload);
-
-    // 2. Update Backend
     const activeToken = token || "HAWKINS_CHIEF_1983";
-    const res = await updateAdminChapter(editingChapter.id, payload, activeToken);
+    // 1. Update TiDB & Backend
+    await updateTiDBChapter(editingChapter.id, payload, activeToken);
+    await updateAdminChapter(editingChapter.id, payload, activeToken);
 
     setIsSaving(false);
     sfx("ok");
@@ -243,7 +242,7 @@ export default function AdminPage() {
 
     setChapters((prev) => prev.map((c) => (c.id === editingChapter.id ? updatedChapter : c)));
     setEditingChapter(null);
-    setStatusMessage(`Chapter ${editingChapter.id} successfully updated across Supabase & backend vault.`);
+    setStatusMessage(`Chapter ${editingChapter.id} successfully updated across TiDB & backend vault.`);
     setTimeout(() => setStatusMessage(null), 4000);
   };
 
@@ -251,8 +250,8 @@ export default function AdminPage() {
   const handleDeleteChapter = async (id: number) => {
     if (!confirm(`Are you sure you want to purge Chapter ${id} from active tournament challenges?`)) return;
 
-    await deleteSupabaseChapter(id);
     const activeToken = token || "HAWKINS_CHIEF_1983";
+    await deleteTiDBChapter(id, activeToken);
     await deleteAdminChapter(id, activeToken);
 
     sfx("click");
@@ -349,7 +348,7 @@ export default function AdminPage() {
               margin: "0 0 24px 0",
             }}
           >
-            Connected to Supabase PostgreSQL & Hawkins Security Mainframe. Enter master passkey to access tournament controls.
+            Connected to TiDB Distributed SQL & Hawkins Security Mainframe. Enter master passkey to access tournament controls.
           </p>
 
           <form onSubmit={handleLogin}>
@@ -495,7 +494,7 @@ export default function AdminPage() {
               HAWKINS PROTOCOL · COMMAND CONSOLE
             </div>
             <div style={{ fontSize: 11, color: "#777788", letterSpacing: ".1em", display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ color: "#36e0c4" }}>● SUPABASE ACTIVE</span>
+              <span style={{ color: "#36e0c4" }}>● TIDB ACTIVE</span>
               <span>·</span>
               <span style={{ color: "#ffb454" }}>● BACKEND PORT 5000</span>
               <span>·</span>
@@ -658,7 +657,7 @@ export default function AdminPage() {
                   Active Tournament Standings
                 </h2>
                 <div style={{ fontSize: 12, color: "#777788" }}>
-                  Real-time Supabase sync enabled. Live scores update on decryption. Total teams registered: {leaderboard.length}
+                  Real-time TiDB sync enabled. Live scores update on decryption. Total teams registered: {leaderboard.length}
                 </div>
               </div>
 
@@ -811,7 +810,7 @@ export default function AdminPage() {
                   Question Vault & Cryptographic Secrets
                 </h2>
                 <div style={{ fontSize: 12, color: "#777788" }}>
-                  All questions and answer keys stored here are verified purely server-side. Edits persist to Supabase & backend.
+                  All questions and answer keys stored here are verified purely server-side. Edits persist to TiDB & backend.
                 </div>
               </div>
 
@@ -990,7 +989,7 @@ export default function AdminPage() {
 
               {chapters.length === 0 && (
                 <div style={{ padding: "40px", textAlign: "center", color: "#666" }}>
-                  {loading ? "Loading chapters from Supabase..." : "No chapters found. Click 'Reset to Canon Defaults' to load the standard 7 chapters."}
+                  {loading ? "Loading chapters from TiDB..." : "No chapters found. Click 'Reset to Canon Defaults' to load the standard 7 chapters."}
                 </div>
               )}
             </div>
@@ -1034,7 +1033,7 @@ export default function AdminPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
                 <span style={{ fontSize: 11, letterSpacing: ".15em", color: "#ff2d3a", fontWeight: "bold" }}>
-                  VAULT CONFIGURATION · SUPABASE SYNC
+                  VAULT CONFIGURATION · TIDB SYNC
                 </span>
                 <h3 style={{ fontSize: 19, color: "#ffffff", margin: "4px 0 0 0" }}>
                   Edit Chapter {editingChapter.id} : {editingChapter.archiveTitle}
@@ -1232,7 +1231,7 @@ export default function AdminPage() {
                   cursor: "pointer",
                 }}
               >
-                {isSaving ? "SAVING TO SUPABASE..." : "SAVE CHANGES"}
+                {isSaving ? "SAVING TO TIDB..." : "SAVE CHANGES"}
               </button>
             </div>
           </div>
@@ -1240,7 +1239,7 @@ export default function AdminPage() {
       )}
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 4. REGISTER SQUAD MODAL (SUPABASE) */}
+      {/* 4. REGISTER SQUAD MODAL (TIDB) */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       {showAddTeamModal && (
         <div
@@ -1273,7 +1272,7 @@ export default function AdminPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
                 <span style={{ fontSize: 11, letterSpacing: ".15em", color: "#36e0c4", fontWeight: "bold" }}>
-                  SUPABASE POSTGRESQL · SQUAD ROSTER
+                  TIDB DISTRIBUTED SQL · SQUAD ROSTER
                 </span>
                 <h3 style={{ fontSize: 19, color: "#ffffff", margin: "4px 0 0 0" }}>
                   Register New Tournament Squad
@@ -1399,7 +1398,7 @@ export default function AdminPage() {
                     cursor: "pointer",
                   }}
                 >
-                  {isCreatingTeam ? "SAVING TO SUPABASE..." : "REGISTER TO DATABASE"}
+                  {isCreatingTeam ? "SAVING TO TIDB..." : "REGISTER TO DATABASE"}
                 </button>
               </div>
             </form>

@@ -1,17 +1,24 @@
+import http from "http";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
-import chaptersRouter from "./routes/chapters.routes";
-import radiometerRouter from "./routes/radiometer.routes";
-import adminRouter from "./routes/admin.routes";
-
-dotenv.config();
+import { ENV } from "./config/env";
+import authRoutes from "./routes/auth.routes";
+import chaptersRoutes from "./routes/chapters.routes";
+import tasksRoutes from "./routes/tasks.routes";
+import radiometerRoutes from "./routes/radiometer.routes";
+import leaderboardRoutes from "./routes/leaderboard.routes";
+import adminRoutes from "./routes/admin.routes";
+import vecnaRoutes from "./routes/vecna.routes";
+import specGameRoutes from "./routes/specGame.routes";
+import { socketService } from "./services/socket.service";
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
+const server = http.createServer(app);
 
-// Middlewares
+// Initialize Realtime Socket.io
+socketService.init(server);
+
+// Configure Global Middlewares
 app.use(
   cors({
     origin: true,
@@ -34,14 +41,21 @@ app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "ONLINE",
     sector: "HAWKINS_MAINFRAME_BACKEND",
+    database: "TIDB_DISTRIBUTED_SQL",
     timestamp: new Date().toISOString(),
+    version: "2.0.0",
   });
 });
 
 // Mount Routes
-app.use("/api/chapters", chaptersRouter);
-app.use("/api/radiometer", radiometerRouter);
-app.use("/api/admin", adminRouter);
+app.use("/api/auth", authRoutes);
+app.use("/api/chapters", chaptersRoutes);
+app.use("/api/tasks", tasksRoutes);
+app.use("/api/radiometer", radiometerRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/vecna", vecnaRoutes);
+app.use("/api", specGameRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {
@@ -54,7 +68,7 @@ app.use((_req: Request, res: Response) => {
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("[SERVER ERROR]", err);
+  console.error("[SERVER UNHANDLED ERROR]", err);
   res.status(500).json({
     success: false,
     error: "INTERNAL_SERVER_ERROR",
@@ -62,18 +76,20 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
-// Start Server with high-concurrency settings (handles 100+ simultaneous requests)
-const server = app.listen(Number(PORT), "0.0.0.0", () => {
+// Start Server with high-concurrency settings
+server.listen(ENV.PORT, "0.0.0.0", () => {
   console.log(`======================================================`);
-  console.log(`★ HAWKINS PROTOCOL SECURITY BACKEND ONLINE ★`);
-  console.log(`Listening on http://localhost:${PORT} and http://127.0.0.1:${PORT}`);
+  console.log(`★ HAWKINS PROTOCOL SECURITY BACKEND V2 ONLINE ★`);
+  console.log(`Listening on http://localhost:${ENV.PORT} and http://127.0.0.1:${ENV.PORT}`);
+  console.log(`Database Engine: TiDB Serverless / Distributed SQL`);
+  console.log(`WebSocket Engine: Socket.io on port ${ENV.PORT}`);
   console.log(`Security Vault Status: ENCRYPTED & ISOLATED`);
   console.log(`Concurrency Capacity: 5,000 max connections`);
-  console.log(`CORS Allowed Origin: * (dynamic reflection)`);
+  console.log(`CORS Allowed Origin: *`);
   console.log(`======================================================`);
 });
 
-// Configure server connection pool for high concurrency
+// High concurrency socket tuning
 server.maxConnections = 5000;
 server.keepAliveTimeout = 65000;
 server.headersTimeout = 66000;

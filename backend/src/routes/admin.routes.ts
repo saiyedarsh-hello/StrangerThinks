@@ -1,29 +1,42 @@
 import { Router } from "express";
-import {
-  adminLogin,
-  requireAdmin,
-  getAdminChapters,
-  updateAdminChapter,
-  deleteAdminChapter,
-  resetAdminChapters,
-  getAdminLeaderboard,
-} from "../controllers/admin.controller";
+import { AdminController } from "../controllers/admin.controller";
+import { AuthController } from "../controllers/auth.controller";
 
 const router = Router();
 
-// POST /api/admin/login - Authenticate with command passkey
-router.post("/login", adminLogin);
+// Admin Login
+router.post("/login", AuthController.adminLogin);
 
-// Protected endpoints
-router.use(requireAdmin);
+// Question Vault CRUD
+router.get("/chapters", AdminController.getChapters);
+router.put("/chapters/:id", AdminController.updateChapter);
+router.delete("/chapters/:id", AdminController.deleteChapter);
+router.post("/chapters/reset", AdminController.resetChapters);
 
-// Live tournament leaderboard
-router.get("/leaderboard", getAdminLeaderboard);
+// Tournament Leaderboard & Team Administration
+router.get("/leaderboard", AdminController.getLeaderboard);
+router.get("/teams", AdminController.getTeams);
+router.post("/teams", AdminController.createTeam);
+router.put("/teams/:id/score", AdminController.updateTeamScore);
+router.post("/teams/:teamId/force-logout", AdminController.forceLogoutTeam);
 
-// Question Vault Configuration (CRUD)
-router.get("/chapters", getAdminChapters);
-router.put("/chapters/:id", updateAdminChapter);
-router.delete("/chapters/:id", deleteAdminChapter);
-router.post("/chapters/reset", resetAdminChapters);
+// Event Lifecycle Controls
+router.post("/event/start", AdminController.startEvent);
+router.post("/event/pause", AdminController.pauseEvent);
+router.post("/event/resume", AdminController.resumeEvent);
+router.post("/event/close-login", AdminController.closeLogin);
+router.post("/event/stop-submissions", AdminController.stopSubmissions);
+router.post("/event/end", AdminController.endEvent);
+
+// Results & Exports
+router.get("/results/overall", AdminController.getOverallResults);
+router.get("/results/rounds", AdminController.getRoundResults);
+router.get("/results/export.csv", AdminController.exportCsv);
+
+// Vecna Approval Queue
+router.get("/vecna/messages/pending", AdminController.getPendingVecnaMessages);
+router.post("/vecna/messages/:messageId/approve", AdminController.approveVecnaMessage);
+router.post("/vecna/messages/:messageId/reject", AdminController.rejectVecnaMessage);
+router.post("/vecna/templates", AdminController.createVecnaTemplate);
 
 export default router;

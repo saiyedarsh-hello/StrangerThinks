@@ -1,17 +1,15 @@
 /**
- * THE HAWKINS PROTOCOL - REALTIME ADAPTER
+ * THE HAWKINS PROTOCOL - REALTIME ADAPTER V2
  * 
- * Central event bus coordinating Player Website <-> Vecna Control.
+ * Central bi-directional event bus coordinating Player Website <-> Vecna Control.
  * 
- * Default Implementation: HTML5 BroadcastChannel ("hawkins-protocol").
- * Works instantly across browser tabs on the same origin without external servers.
- * 
- * Running the real event across separate laptops:
- * When running an in-person tournament where players and organizers are on different laptops,
- * switch the adapter backend below to Firebase Realtime Database or Supabase Realtime
- * using the provided stubs.
+ * Multi-device Realtime Transport:
+ * Uses Socket.io connected to our Express backend on port 5000 for zero-latency,
+ * multi-laptop live tournaments. Automatically falls back to HTML5 BroadcastChannel
+ * when running offline or in single-laptop environments.
  */
 
+import { io, Socket } from "socket.io-client";
 import { CONFIG } from "./config";
 import { StageId } from "./stages";
 import { LocationId } from "./tasks";
@@ -102,8 +100,55 @@ export type RealtimeMessage =
 
 type Handler = (msg: RealtimeMessage) => void;
 
+let socketInstance: Socket | null = null;
 let channelInstance: BroadcastChannel | null = null;
 const subscribers = new Set<Handler>();
+
+function getSocketUrl(): string {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname || "localhost";
+    return `http://${host}:5000`;
+  }
+  return "http://localhost:5000";
+}
+
+export function getSocket(): Socket | null {
+  if (typeof window === "undefined") return null;
+  if (!socketInstance) {
+    try {
+      const url = getSocketUrl();
+      socketInstance = io(url, {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1500,
+        timeout: 10000,
+      });
+
+      socketInstance.on("connect", () => {
+        console.log("[REALTIME] Connected to Hawkins Security Mainframe WebSocket via Socket.io");
+      });
+
+      // Bind all real-time events from server
+      const events = ["presence", "sabotage", "story_event", "challenge_lock", "award", "operator_assignment"];
+      events.forEach((evt) => {
+        socketInstance?.on(evt, (payload: any) => {
+          const msg = { type: evt, ...payload };
+          subscribers.forEach((fn) => {
+            try {
+              fn(msg);
+            } catch (err) {
+              console.error(`[Realtime] Error handling ${evt}:`, err);
+            }
+          });
+        });
+      });
+    } catch (err) {
+      console.warn("[REALTIME] Could not connect to Socket.io, relying on BroadcastChannel fallback:", err);
+    }
+  }
+  return socketInstance;
+}
 
 function getBroadcastChannel(): BroadcastChannel | null {
   if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") {
@@ -117,7 +162,7 @@ function getBroadcastChannel(): BroadcastChannel | null {
           try {
             fn(event.data);
           } catch (err) {
-            console.error("[Realtime] Handler error:", err);
+            console.error("[Realtime] Local channel error:", err);
           }
         });
       }
@@ -132,17 +177,27 @@ function getBroadcastChannel(): BroadcastChannel | null {
 export function publish(msg: RealtimeMessage): void {
   const stampedMsg = { ...msg, ts: msg.ts || Date.now() };
 
-  // 1. BroadcastChannel dispatch
+  // 1. Socket.io dispatch
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    try {
+      socket.emit(msg.type, stampedMsg);
+    } catch (err) {
+      console.error("[Realtime Socket] Emit error:", err);
+    }
+  }
+
+  // 2. BroadcastChannel dispatch (for multi-tab / local fallback)
   const ch = getBroadcastChannel();
   if (ch) {
     try {
       ch.postMessage(stampedMsg);
     } catch (err) {
-      console.error("[Realtime] Publish error:", err);
+      console.error("[Realtime BroadcastChannel] Publish error:", err);
     }
   }
 
-  // Also dispatch locally to subscribers in the same window context
+  // 3. Local subscribers dispatch
   subscribers.forEach((fn) => {
     try {
       fn(stampedMsg);
@@ -150,9 +205,6 @@ export function publish(msg: RealtimeMessage): void {
       console.error("[Realtime] Local subscriber error:", err);
     }
   });
-
-  // 2. External Provider Hook (e.g. Firebase or Supabase):
-  // publishToExternalBackend(stampedMsg);
 }
 
 /**
@@ -160,7 +212,8 @@ export function publish(msg: RealtimeMessage): void {
  */
 export function subscribe(handler: Handler): () => void {
   subscribers.add(handler);
-  getBroadcastChannel(); // Ensure channel is listening
+  getSocket(); // Ensure socket is initialized
+  getBroadcastChannel(); // Ensure local channel is initialized
   return () => {
     subscribers.delete(handler);
   };
@@ -175,46 +228,3 @@ export function presence(data: Omit<PresencePayload, "type">): void {
     ...data,
   });
 }
-
-/* =========================================================================
- * BACKEND ADAPTER STUBS FOR MULTI-DEVICE TOURNAMENTS
- * =========================================================================
- * When running across separate laptops, configure one of the options below:
- *
- * OPTION A: SUPABASE REALTIME
- * -------------------------------------------------------------------------
- * 1. npm install @supabase/supabase-js
- * 2. Create a Supabase project at https://supabase.com
- * 3. Initialize:
- *
- *    import { createClient } from "@supabase/supabase-js";
- *    const supabase = createClient("https://XYZ.supabase.co", "ANON_KEY");
- *    const room = supabase.channel("hawkins-protocol");
- *    room.on("broadcast", { event: "event" }, ({ payload }) => {
- *      subscribers.forEach(fn => fn(payload));
- *    }).subscribe();
- *
- *    function publishToExternalBackend(msg) {
- *      room.send({ type: "broadcast", event: "event", payload: msg });
- *    }
- *
- * OPTION B: FIREBASE REALTIME DATABASE
- * -------------------------------------------------------------------------
- * 1. npm install firebase
- * 2. Create a Firebase project at https://console.firebase.google.com
- * 3. Initialize:
- *
- *    import { initializeApp } from "firebase/app";
- *    import { getDatabase, ref, push, onChildAdded } from "firebase/database";
- *    const app = initializeApp({ databaseURL: "https://XYZ.firebaseio.com" });
- *    const db = getDatabase(app);
- *    const eventsRef = ref(db, "events");
- *    onChildAdded(eventsRef, (snapshot) => {
- *      const data = snapshot.val();
- *      subscribers.forEach(fn => fn(data));
- *    });
- *
- *    function publishToExternalBackend(msg) {
- *      push(eventsRef, msg);
- *    }
- * ========================================================================= */
