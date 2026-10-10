@@ -291,35 +291,16 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
         background: "#000000",
       }}
     >
-      {/* Town background: pure black during storm, smoothly fades in when title lands */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          opacity: titleIn ? 1 : 0,
-          transition: "opacity 1.2s ease",
-          pointerEvents: "none",
-        }}
-      >
-        <CinematicBackground
-          src="/hawkins-town-bg.jpg"
-          particles="none"
-          vignette="medium"
-          overlayOpacity={0.42}
-        />
-      </div>
+      {/* Cinematic Photorealistic Pumpkin Patch & High-Intensity Red Lightning Background */}
+      <CinematicBackground
+        src="/pumpkin-patch-bg-hd.jpg"
+        videoSrc="/stranger-things-bg.mp4"
+        particles="none"
+        vignette="none"
+        overlayOpacity={1.0}
+      />
 
-      {/* Intro storm: EXACTLY 4 clean red bolts on pure black background */}
-      {phase === "storm" && (
-        <IntroLightning
-          active={true}
-          climaxAt={200}
-          onFlash={(i) => setFlashLevel(i)}
-          onClimax={() => setPhase("title")}
-        />
-      )}
-
-      {/* Subtle Atmospheric Dark Vignette Layer: smoothly fades in after title lands */}
+      {/* Subtle Atmospheric Dark Vignette Layer */}
       <div
         className="layer"
         style={{
@@ -328,7 +309,7 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
           opacity: titleIn ? 1 : 0,
           transition: "opacity 1.5s ease",
           background:
-            "radial-gradient(circle at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.78) 100%), linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 50%, rgba(0,0,0,0.85) 100%)",
+            "radial-gradient(circle at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.62) 100%), linear-gradient(180deg, rgba(0,0,0,0.25) 0%, transparent 45%, rgba(0,0,0,0.68) 100%)",
         }}
       />
 

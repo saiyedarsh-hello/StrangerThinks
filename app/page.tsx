@@ -33,6 +33,15 @@ export default function Home() {
     return <VecnaEntryScreen onEnter={() => router.push("/vecna")} />;
   }
 
+  // Allow direct viewing of landing page via query param (e.g. ?landing=1)
+  const forceLanding =
+    typeof window !== "undefined" &&
+    (window.location.search.includes("landing=1") || window.location.search.includes("force=1"));
+
+  if (forceLanding) {
+    return <LandingPage onEnterVecna={() => setShowVecnaChosen(true)} />;
+  }
+
   // Without a valid player session, show the Image 1 Landing Page
   if (!session || session.role !== "PLAYER") {
     return <LandingPage onEnterVecna={() => setShowVecnaChosen(true)} />;

@@ -14,14 +14,16 @@ export type BackgroundKey = (typeof CINEMATIC_BACKGROUNDS)[number];
 
 interface CinematicBackgroundProps {
   src?: string | "random";
+  videoSrc?: string;
   particles?: "spores" | "embers" | "dust" | "none";
   particleCount?: number;
-  vignette?: "light" | "medium" | "heavy";
+  vignette?: "none" | "light" | "medium" | "heavy";
   overlayOpacity?: number;
 }
 
 export default function CinematicBackground({
   src = "random",
+  videoSrc,
   particles = "spores",
   particleCount = 55,
   vignette = "medium",
@@ -35,6 +37,7 @@ export default function CinematicBackground({
   }, [src]);
 
   const vignetteGradient = useMemo(() => {
+    if (vignette === "none") return "none";
     if (vignette === "heavy") {
       return "radial-gradient(ellipse at 50% 50%, rgba(10, 4, 8, 0.55) 0%, rgba(0, 0, 0, 0.92) 85%), linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 40%, rgba(0,0,0,0.92) 100%)";
     }
@@ -58,24 +61,62 @@ export default function CinematicBackground({
           pointerEvents: "none",
         }}
       >
-        <motion.img
-          key={chosenSrc}
-          src={chosenSrc}
-          alt="Stranger Things Scene"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center center",
-            filter: `brightness(${overlayOpacity}) contrast(1.15)`,
-          }}
-          initial={{ opacity: 0.2, scale: 1.04 }}
-          animate={{ opacity: 1, scale: [1.04, 1.07, 1.04] }}
-          transition={{
-            opacity: { duration: 0.5 },
-            scale: { duration: 22, repeat: Infinity, ease: "easeInOut" },
-          }}
-        />
+        {videoSrc ? (
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster={chosenSrc}
+            ref={(el) => {
+              if (el) {
+                el.muted = true;
+                el.play().catch(() => {});
+              }
+            }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center center",
+              filter: `brightness(${overlayOpacity}) contrast(1.15)`,
+            }}
+          >
+            <source src={videoSrc} type="video/mp4" />
+            {videoSrc.endsWith(".mp4") && (
+              <source src={videoSrc.replace(".mp4", ".webm")} type="video/webm" />
+            )}
+            <img
+              src={chosenSrc}
+              alt="Stranger Things Scene"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center center",
+              }}
+            />
+          </video>
+        ) : (
+          <motion.img
+            key={chosenSrc}
+            src={chosenSrc}
+            alt="Stranger Things Scene"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center center",
+              filter: `brightness(${overlayOpacity}) contrast(1.15)`,
+            }}
+            initial={{ opacity: 0.2, scale: 1.04 }}
+            animate={{ opacity: 1, scale: [1.04, 1.07, 1.04] }}
+            transition={{
+              opacity: { duration: 0.5 },
+              scale: { duration: 22, repeat: Infinity, ease: "easeInOut" },
+            }}
+          />
+        )}
       </div>
 
       {/* Floating Upside Down Spores/Embers */}
