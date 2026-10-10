@@ -1,16 +1,10 @@
 import { Router } from "express";
-import {
-  validatePinAnswer,
-  validateMasterKeypad,
-} from "../controllers/radiometer.controller";
-import { rateLimiter } from "../middleware/rateLimiter";
+import { RadiometerController } from "../controllers/radiometer.controller";
+import { validationRateLimiter } from "../middleware/rateLimiter.middleware";
 
 const router = Router();
 
-// POST /api/radiometer/validate-pin - Validates pin calibration on the server
-router.post("/validate-pin", rateLimiter(300, 30000), validatePinAnswer);
-
-// POST /api/radiometer/validate-keypad - Validates 5-digit master code on the server
-router.post("/validate-keypad", rateLimiter(300, 30000), validateMasterKeypad);
+router.post("/validate-pin", validationRateLimiter, RadiometerController.validatePin);
+router.post("/validate-keypad", validationRateLimiter, RadiometerController.validateKeypad);
 
 export default router;

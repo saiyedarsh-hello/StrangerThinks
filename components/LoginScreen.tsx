@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
-import { authenticateTeamWithSupabase } from "@/lib/supabaseService";
+import { authenticateTeamWithTiDB } from "@/lib/tidbService";
 import { saveSession } from "@/lib/config";
 import CinematicBackground from "./CinematicBackground";
 
@@ -27,7 +27,7 @@ export default function LoginScreen() {
     setError(false);
 
     try {
-      const authResult = await authenticateTeamWithSupabase(teamName, leaderName);
+      const authResult = await authenticateTeamWithTiDB(teamName, leaderName);
 
       if (authResult.success) {
         setError(false);
@@ -206,13 +206,13 @@ export default function LoginScreen() {
             }}
             disabled={!teamName.trim() || !leaderName.trim() || isAuthenticating}
           >
-            {isAuthenticating ? "VERIFYING VIA SUPABASE..." : "ENTER HAWKINS PROTOCOL"}
+            {isAuthenticating ? "VERIFYING VIA TIDB..." : "ENTER HAWKINS PROTOCOL"}
           </button>
 
-          {/* Supabase Security Badge & Quick Autofills */}
+          {/* TiDB Security Badge & Quick Autofills */}
           <div style={{ marginTop: 20, textAlign: "center" }}>
             <div style={{ fontSize: 11, color: "#36e0c4", letterSpacing: ".15em", marginBottom: 12 }}>
-              ● SUPABASE DATABASE CONNECTED
+              ● TIDB CLUSTER CONNECTED
             </div>
 
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 6 }}>

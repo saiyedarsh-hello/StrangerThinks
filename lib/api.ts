@@ -41,6 +41,40 @@ export interface PinValidationResult {
   message?: string;
 }
 
+export interface LoginResponse {
+  success: boolean;
+  token?: string;
+  session?: {
+    teamId: string;
+    teamName: string;
+    leaderName: string;
+    role: "PLAYER" | "VECNA" | "ADMIN";
+  };
+  team?: any;
+  error?: string;
+  message?: string;
+}
+
+export async function loginOnServer(
+  teamName: string,
+  leaderName: string
+): Promise<LoginResponse> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamName, leaderName }),
+    });
+    return await res.json();
+  } catch (err) {
+    return {
+      success: false,
+      error: "BACKEND_UNREACHABLE",
+      message: "Security backend is offline. Ensure backend is running on port 5000.",
+    };
+  }
+}
+
 /**
  * Validates a candidate answer for a chapter on the server.
  */
@@ -324,6 +358,31 @@ export async function importTeamsFromCsvOrJson(payload: { csv?: string; teams?: 
     return await res.json();
   } catch (err) {
     return { success: false };
+  }
+}
+
+export async function createAdminTeam(
+  teamName: string,
+  leaderName: string,
+  initialScore = 0,
+  token?: string
+): Promise<{ success: boolean; team?: any; error?: string; message?: string }> {
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers.Authorization = "Bearer " + token;
+    }
+
+    const res = await fetch(`${API_BASE}/admin/teams`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ teamName, leaderName, initialScore }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, error: "BACKEND_OFFLINE" };
   }
 }
 
