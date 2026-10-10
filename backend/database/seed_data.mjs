@@ -72,8 +72,8 @@ async function seed() {
   console.log("3. Parsing and seeding question answers from lib/chapterQuestions.ts...");
   const fileContent = fs.readFileSync("c:/Users/nilot/OneDrive/Desktop/STRANGERS THING NIL/lib/chapterQuestions.ts", "utf-8");
 
-  // Regex to match question blocks: id: "...", itemNumber: ..., ..., correctAnswerId: "...", hint: "..."
-  const questionRegex = /id:\s*"([^"]+)",[\s\S]*?correctAnswerId:\s*"([^"]+)"(?:,[\s\S]*?hint:\s*"([^"]*)")?/g;
+  // Regex to match question blocks with either raw or quoted keys
+  const questionRegex = /"?id"?:\s*"([^"]+)",[\s\S]*?"?correctAnswerId"?:\s*"([^"]+)"(?:,[\s\S]*?"?hint"?:\s*"([^"]*)")?/g;
   let match;
   let count = 0;
 
