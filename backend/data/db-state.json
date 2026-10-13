@@ -61,24 +61,38 @@
       "leaderName": "Maya Lin",
       "role": "PLAYER",
       "status": "ACTIVE",
-      "totalScore": 0,
+      "totalScore": 75,
       "breakdown": {
-        "tech": 0,
+        "tech": 80,
         "puzzle": 0,
         "speed": 0,
         "clue": 0,
         "story": 0,
         "teamwork": 0
       },
-      "penalty": 0,
-      "startedAt": null,
+      "penalty": 5,
+      "startedAt": "2026-10-13T06:14:53.464Z",
       "finishedAt": null,
-      "lastSolvedAt": null,
+      "lastSolvedAt": "2026-10-13T06:17:20.817Z",
       "location": "town",
       "stage": "hawkins",
-      "storyProgress": 5,
-      "completedTasks": [],
-      "solvedChapters": [],
+      "storyProgress": 11,
+      "completedTasks": [
+        "ch1-q1",
+        "ch1-q2",
+        "ch1-q3",
+        "ch1-q4",
+        "ch1-q5",
+        "ch1-q6",
+        "ch1-q7",
+        "ch1-q8",
+        "ch1-q9",
+        "ch1-q10",
+        "ch1-quiz"
+      ],
+      "solvedChapters": [
+        1
+      ],
       "unlockedLocations": {
         "town": true,
         "policeStation": true,
@@ -105,10 +119,14 @@
         false
       ],
       "radiometerCodeSolved": false,
-      "unlockedHints": {},
+      "unlockedHints": {
+        "ch1-q10": true
+      },
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-12T09:29:21.167Z",
-      "taskScores": {}
+      "updatedAt": "2026-10-13T06:23:04.553Z",
+      "taskScores": {
+        "ch1-quiz": 0
+      }
     },
     "T03": {
       "id": "T03",
@@ -299,7 +317,7 @@
       "leaderName": "Eddie Munson",
       "role": "PLAYER",
       "status": "ACTIVE",
-      "totalScore": 0,
+      "totalScore": 10,
       "breakdown": {
         "tech": 0,
         "puzzle": 0,
@@ -309,13 +327,15 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": null,
+      "startedAt": "2026-10-13T06:07:22.094Z",
       "finishedAt": null,
-      "lastSolvedAt": null,
+      "lastSolvedAt": "2026-10-13T06:07:58.697Z",
       "location": "town",
       "stage": "hawkins",
       "storyProgress": 5,
-      "completedTasks": [],
+      "completedTasks": [
+        "ch5-q7"
+      ],
       "solvedChapters": [],
       "unlockedLocations": {
         "town": true,
@@ -345,7 +365,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-12T09:28:53.182Z",
+      "updatedAt": "2026-10-13T06:12:50.815Z",
       "taskScores": {}
     },
     "T07": {
