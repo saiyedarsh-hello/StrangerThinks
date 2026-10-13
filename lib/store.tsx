@@ -587,6 +587,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      if (m.type === "session_superseded") {
+        const myTeamId = sRef.current.team?.id;
+        if (!m.teamId || !myTeamId || String(m.teamId).toLowerCase() === myTeamId.toLowerCase()) {
+          say("TERMINAL SUPERSEDED: Another device logged into this squad account. Controlling session migrated.");
+          sfx("err");
+          logout();
+        }
+      }
+
       if (m.type === "force_logout") {
         const myTeamId = sRef.current.team?.id;
         const myTeamName = sRef.current.team?.name;

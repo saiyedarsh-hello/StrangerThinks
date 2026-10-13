@@ -163,9 +163,10 @@ export const ValidationService = {
 
     // Check against first question or secret pattern
     const firstQ = questions[0];
-    const isMcqCorrect = firstQ && candidateAnswer.toUpperCase() === firstQ.correctAnswerId.toUpperCase();
-    const taskSecret = STORY_TASK_SECRETS[taskId];
-    const isTaskSecretCorrect = taskSecret && taskSecret.answerPattern.test(candidateAnswer);
+    const isMcqCorrect = firstQ && candidateAnswer.trim().toUpperCase() === firstQ.correctAnswerId.trim().toUpperCase();
+    const effectiveTaskId = taskId === "ch6-upsidedown" ? "ch7-upsidedown" : taskId;
+    const taskSecret = STORY_TASK_SECRETS[taskId] || STORY_TASK_SECRETS[effectiveTaskId];
+    const isTaskSecretCorrect = taskSecret && taskSecret.answerPattern.test(candidateAnswer.trim());
 
     if (isMcqCorrect || isTaskSecretCorrect) {
       // Unified scoring rules: Correct = +10 PTS, Wrong = 0 PTS
@@ -267,7 +268,8 @@ export const ValidationService = {
       };
     }
 
-    const secret = STORY_TASK_SECRETS[taskId];
+    const effectiveTaskId = taskId === "ch6-upsidedown" ? "ch7-upsidedown" : taskId;
+    const secret = STORY_TASK_SECRETS[taskId] || STORY_TASK_SECRETS[effectiveTaskId];
     if (!secret) {
       return {
         success: false,

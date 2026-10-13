@@ -111,6 +111,8 @@ export default function HopperPoliceReportQuiz({
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [unansweredPrompt, setUnansweredPrompt] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [networkErrorMsg, setNetworkErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const handleFsChange = () => {
@@ -175,7 +177,18 @@ export default function HopperPoliceReportQuiz({
 
   // Verify answer against authoritative backend: locked permanently on submission
   const handleVerifyCurrentQuestion = async () => {
-    if (isCurrentDone) return; // Cannot re-submit once completed
+    if (isCurrentDone || isSubmitting) return; // Cannot re-submit once completed or currently in flight
+
+    setNetworkErrorMsg(null);
+
+    // Fast check for browser network connectivity
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      sfx("err");
+      const offlineMsg = "OFFLINE: Internet connection lost. Reconnect before submitting.";
+      setNetworkErrorMsg(offlineMsg);
+      say(`NETWORK FAILURE: ${offlineMsg}`);
+      return;
+    }
 
     const chosen = selectedAnswers[currentIdx];
     if (!chosen || !chosen.trim()) {
@@ -187,6 +200,7 @@ export default function HopperPoliceReportQuiz({
     const qCode = currentQ.id || `ch${chapterNumber}-q${currentIdx + 1}`;
     let isCorrect = false;
     let earnedPoints = 0;
+    setIsSubmitting(true);
 
     try {
       let token = "";
@@ -204,7 +218,7 @@ export default function HopperPoliceReportQuiz({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ answer: chosen, teamId }),
+        body: JSON.stringify({ answer: chosen.trim(), teamId }),
       });
 
       if (res.ok) {
@@ -218,16 +232,24 @@ export default function HopperPoliceReportQuiz({
         } else if (res.status === 403 && errData.error === "EVENT_ENDED") {
           say("HAWKINS COMMAND: TOURNAMENT CONCLUDED. SUBMISSIONS CLOSED.");
         } else {
-          say(errData.message || "COMMUNICATION FAILURE: Mainframe rejected transmission.");
+          const msg = errData.message || "COMMUNICATION FAILURE: Mainframe rejected transmission.";
+          setNetworkErrorMsg(msg);
+          say(msg);
         }
         sfx("err");
+        setIsSubmitting(false);
         return;
       }
-    } catch (e) {
-      say("TRANSMISSION ERROR: Central server unreachable. Solutions cannot be evaluated while offline.");
+    } catch (e: any) {
+      const dropMsg = "TRANSMISSION FAILED: Central server unreachable (Wi-Fi/Network dropped). Please try again.";
+      setNetworkErrorMsg(dropMsg);
+      say(`TRANSMISSION ERROR: ${dropMsg}`);
       sfx("err");
+      setIsSubmitting(false);
       return;
     }
+
+    setIsSubmitting(false);
 
     if (isCorrect) {
       sfx("ok");
@@ -930,37 +952,57 @@ export default function HopperPoliceReportQuiz({
 
               {/* Action Button */}
               {!isCurrentDone ? (
-                <button
-                  type="button"
-                  onClick={handleVerifyCurrentQuestion}
-                  style={{
-                    padding: "9px 22px",
-                    background: "#24130d",
-                    color: "#ffffff",
-                    border: "1.5px solid #8f2d24",
-                    borderRadius: 3,
-                    fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    letterSpacing: ".14em",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
-                    textTransform: "uppercase",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#8f1218";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#24130d";
-                  }}
-                >
-                  <span>🔒</span>
-                  <span>SUBMIT LEVEL</span>
-                </button>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                  {networkErrorMsg && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#b81d24",
+                        fontFamily: "'Courier New', monospace",
+                        fontWeight: 700,
+                        background: "#ffebee",
+                        border: "1px solid #ffcdd2",
+                        padding: "3px 8px",
+                        borderRadius: 2,
+                      }}
+                    >
+                      ⚠ {networkErrorMsg}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={handleVerifyCurrentQuestion}
+                    style={{
+                      padding: "9px 22px",
+                      background: isSubmitting ? "#544638" : "#24130d",
+                      color: "#ffffff",
+                      border: "1.5px solid #8f2d24",
+                      borderRadius: 3,
+                      fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                      fontSize: 12,
+                      fontWeight: 900,
+                      letterSpacing: ".14em",
+                      cursor: isSubmitting ? "wait" : "pointer",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+                      textTransform: "uppercase",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      opacity: isSubmitting ? 0.75 : 1,
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSubmitting) e.currentTarget.style.background = "#8f1218";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSubmitting) e.currentTarget.style.background = "#24130d";
+                    }}
+                  >
+                    <span>{isSubmitting ? "⏳" : "🔒"}</span>
+                    <span>{isSubmitting ? "TRANSMITTING..." : "SUBMIT LEVEL"}</span>
+                  </button>
+                </div>
               ) : (
                 <div
                   style={{

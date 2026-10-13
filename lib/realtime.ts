@@ -124,6 +124,13 @@ export interface EventStatePayload {
   ts?: number;
 }
 
+export interface SessionSupersededPayload {
+  type: "session_superseded";
+  teamId?: string;
+  message?: string;
+  ts?: number;
+}
+
 export type RealtimeMessage =
   | PresencePayload
   | SabotagePayload
@@ -132,7 +139,8 @@ export type RealtimeMessage =
   | AwardPayload
   | ForceLogoutPayload
   | ScoreUpdatePayload
-  | EventStatePayload;
+  | EventStatePayload
+  | SessionSupersededPayload;
 
 type Handler = (msg: RealtimeMessage) => void;
 
@@ -259,6 +267,15 @@ export function getSocket(): Socket | null {
           isPaused: Boolean(data?.isPaused ?? (data?.status === "paused")),
           submissionsOpen: Boolean(data?.submissionsOpen),
           loginOpen: Boolean(data?.loginOpen),
+          ts: Date.now(),
+        });
+      });
+
+      socketInstance.on("session:superseded", (data: any) => {
+        dispatchToSubscribers({
+          type: "session_superseded",
+          teamId: data?.teamId,
+          message: data?.message || "TERMINAL SUPERSEDED: This squad has logged in from another active device or window.",
           ts: Date.now(),
         });
       });

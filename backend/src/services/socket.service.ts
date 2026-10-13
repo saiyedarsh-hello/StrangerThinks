@@ -137,7 +137,23 @@ class SocketService {
       if (!this.teamSockets.has(sess.teamId)) {
         this.teamSockets.set(sess.teamId, new Set<string>());
       }
-      this.teamSockets.get(sess.teamId)!.add(socket.id);
+      const existingSockets = this.teamSockets.get(sess.teamId)!;
+
+      // Multi-device / multi-tab management:
+      // If another active socket exists for this squad, notify it that a newer terminal has taken control
+      if (sess.role !== "ADMIN" && existingSockets.size > 0) {
+        for (const oldSocketId of existingSockets) {
+          if (oldSocketId !== socket.id) {
+            this.io?.to(oldSocketId).emit("session:superseded", {
+              teamId: sess.teamId,
+              message: "TERMINAL SUPERSEDED: This squad has logged in from another active device or window.",
+              ts: Date.now(),
+            });
+          }
+        }
+      }
+
+      existingSockets.add(socket.id);
 
       const wasOnline = this.onlineTeams.has(sess.teamId);
       this.onlineTeams.add(sess.teamId);
