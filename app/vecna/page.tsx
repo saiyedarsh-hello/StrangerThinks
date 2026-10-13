@@ -135,6 +135,23 @@ export default function VecnaPage() {
   const [isPowersOpen, setIsPowersOpen] = useState(false);
   const [isChaptersModalOpen, setIsChaptersModalOpen] = useState(false);
   const [isStoryDialogOpen, setIsStoryDialogOpen] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFs = () => setIsFullscreen(Boolean(typeof document !== "undefined" && document.fullscreenElement));
+    handleFs();
+    document.addEventListener("fullscreenchange", handleFs);
+    return () => document.removeEventListener("fullscreenchange", handleFs);
+  }, []);
+
+  const toggleFullscreen = () => {
+    sfx("click");
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
 
   // Selected team state for targeting
   const [selectedLocation, setSelectedLocation] = useState("town");
@@ -734,6 +751,33 @@ export default function VecnaPage() {
           >
             <span style={{ fontSize: "11px", color: isChaptersModalOpen ? "#000" : "#ff2d3a" }}>◈</span>
             <span>CHAPTERS</span>
+          </button>
+
+          <button
+            id="vecna-fullscreen-btn"
+            type="button"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
+            style={{
+              background: isFullscreen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
+              color: isFullscreen ? "#000000" : "#ffb3ba",
+              border: "1.5px solid #ff2d3a",
+              padding: "8px 16px",
+              borderRadius: "3px",
+              fontSize: "12px",
+              fontFamily: '"Share Tech Mono", monospace',
+              fontWeight: "bold",
+              letterSpacing: "0.15em",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <span style={{ fontSize: "12px" }}>{isFullscreen ? "✖" : "⛶"}</span>
+            <span>{isFullscreen ? "EXIT FS" : "FULLSCREEN"}</span>
           </button>
 
           <button

@@ -137,6 +137,33 @@ export type RealtimeMessage =
 type Handler = (msg: RealtimeMessage) => void;
 
 const subscribers = new Set<Handler>();
+const connectionSubscribers = new Set<(connected: boolean) => void>();
+let isCurrentSocketConnected = false;
+
+function notifyConnectionSubscribers(connected: boolean) {
+  isCurrentSocketConnected = connected;
+  connectionSubscribers.forEach((fn) => {
+    try {
+      fn(connected);
+    } catch (e) {
+      console.error("[Realtime] Connection subscriber error:", e);
+    }
+  });
+}
+
+export function isSocketConnected(): boolean {
+  if (typeof window === "undefined") return false;
+  return socketInstance ? socketInstance.connected : false;
+}
+
+export function subscribeToConnectionStatus(cb: (connected: boolean) => void): () => void {
+  connectionSubscribers.add(cb);
+  cb(isSocketConnected());
+  initRealtime();
+  return () => {
+    connectionSubscribers.delete(cb);
+  };
+}
 
 let localBroadcastChannel: BroadcastChannel | null = null;
 
@@ -183,6 +210,7 @@ export function getSocket(): Socket | null {
 
       socketInstance.on("connect", () => {
         console.log(`[SOCKET.IO] Connected to Hawkins Security Mainframe at ${backendUrl}`);
+        notifyConnectionSubscribers(true);
         const currentToken = resolveStoredToken();
         if (currentToken) {
           if (socketInstance) socketInstance.auth = { token: currentToken };
@@ -190,8 +218,17 @@ export function getSocket(): Socket | null {
         }
       });
 
+      socketInstance.on("disconnect", () => {
+        notifyConnectionSubscribers(false);
+      });
+
+      socketInstance.on("connect_error", () => {
+        notifyConnectionSubscribers(false);
+      });
+
       socketInstance.on("reconnect", () => {
         console.log("[SOCKET.IO] Reconnected to Hawkins Security Mainframe");
+        notifyConnectionSubscribers(true);
         const currentToken = resolveStoredToken();
         if (currentToken) {
           if (socketInstance) socketInstance.auth = { token: currentToken };

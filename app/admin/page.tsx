@@ -52,8 +52,26 @@ export default function AdminPage() {
   const [connStatus, setConnStatus] = useState<ConnectionStatus>(getConnectionStatus(0));
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [presenceFilter, setPresenceFilter] = useState<"all" | "online" | "offline" | "vecna">("all");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [dataSource, setDataSource] = useState<"tidb" | "backend" | "syncing">("syncing");
+
+  useEffect(() => {
+    const handleFs = () => setIsFullscreen(Boolean(typeof document !== "undefined" && document.fullscreenElement));
+    handleFs();
+    document.addEventListener("fullscreenchange", handleFs);
+    return () => document.removeEventListener("fullscreenchange", handleFs);
+  }, []);
+
+  const toggleFullscreen = () => {
+    sfx("click");
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
 
   // Team detail & points edit modal state
   const [detailTeam, setDetailTeam] = useState<AdminLeaderboardItem | null>(null);
@@ -860,13 +878,19 @@ export default function AdminPage() {
     }
   };
 
-  // Filtered leaderboard
-  const filteredLeaderboard = leaderboard.filter(
-    (t) =>
+  // Filtered leaderboard with text search and presence filter
+  const filteredLeaderboard = leaderboard.filter((t) => {
+    const matchesSearch =
       t.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.teamId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.leaderName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      t.leaderName.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (presenceFilter === "online") return t.isOnline;
+    if (presenceFilter === "offline") return !t.isOnline;
+    if (presenceFilter === "vecna") return t.role === "VECNA";
+    return true;
+  });
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 1. AUTHENTICATION GATE (If not logged in)
@@ -1252,6 +1276,57 @@ export default function AdminPage() {
               ))}
             </div>
           </div>
+
+          {/* 3. FULLSCREEN TOGGLE BUTTON */}
+          <button
+            id="admin-fullscreen-btn"
+            type="button"
+            onClick={toggleFullscreen}
+            style={{
+              padding: "7px 14px",
+              fontSize: 12,
+              letterSpacing: ".08em",
+              backgroundColor: isFullscreen ? "rgba(255, 45, 58, 0.3)" : "rgba(255, 45, 58, 0.12)",
+              border: isFullscreen ? "1px solid #ff4d58" : "1px solid rgba(255, 45, 58, 0.6)",
+              color: "#ffffff",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontWeight: 800,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.15s ease",
+            }}
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
+          >
+            <span style={{ fontSize: 13 }}>{isFullscreen ? "✖" : "⛶"}</span>
+            <span>{isFullscreen ? "EXIT FS" : "FULLSCREEN"}</span>
+          </button>
+
+          {/* 4. LOGOUT BUTTON */}
+          <button
+            id="admin-logout-btn"
+            type="button"
+            onClick={handleLogout}
+            style={{
+              padding: "7px 14px",
+              fontSize: 12,
+              letterSpacing: ".08em",
+              backgroundColor: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.18)",
+              color: "#d0d0d8",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontWeight: 800,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.15s ease",
+            }}
+            title="Log out of Admin Console"
+          >
+            <span>LOGOUT</span>
+          </button>
         </div>
       </header>
 
@@ -1753,6 +1828,40 @@ export default function AdminPage() {
                   <span>🔓</span>
                   <span>RESET ALL SESSIONS</span>
                 </button>
+
+                {/* Standings Filter Tabs: ALL, ONLINE, OFFLINE, VECNA */}
+                <div style={{ display: "flex", gap: 4, backgroundColor: "#07070a", padding: 2, borderRadius: 4, border: "1px solid rgba(255, 255, 255, 0.08)", flexWrap: "wrap" }}>
+                  {[
+                    { id: "all", label: `ALL (${leaderboard.length})` },
+                    { id: "online", label: `ONLINE (${leaderboard.filter((t) => t.isOnline).length})` },
+                    { id: "offline", label: `OFFLINE (${leaderboard.filter((t) => !t.isOnline).length})` },
+                    { id: "vecna", label: `VECNA (${leaderboard.filter((t) => t.role === "VECNA").length})` },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        sfx("click");
+                        setPresenceFilter(tab.id as any);
+                      }}
+                      style={{
+                        padding: "5px 10px",
+                        fontSize: 11,
+                        fontFamily: "var(--font-mono), monospace",
+                        fontWeight: 700,
+                        letterSpacing: ".06em",
+                        borderRadius: 3,
+                        border: "none",
+                        cursor: "pointer",
+                        backgroundColor: presenceFilter === tab.id ? (tab.id === "online" ? "#2e7d32" : tab.id === "vecna" ? "#b71c1c" : "#ff2d3a") : "transparent",
+                        color: presenceFilter === tab.id ? "#ffffff" : "#888899",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
                 <input
                   type="text"

@@ -5,6 +5,7 @@ import { POWERS, PowerId, useGame } from "@/lib/store";
 import { ITEMS, STAGE_ORDER, STAGES, StageId } from "@/lib/stages";
 import { LocationId } from "@/lib/tasks";
 import { isMuted, setMuted, sfx } from "@/lib/audio";
+import { subscribeToConnectionStatus } from "@/lib/realtime";
 
 export function SoundToggle({ style }: { style?: React.CSSProperties }) {
   return null;
@@ -46,9 +47,23 @@ export default function Hud() {
   const [dev, setDev] = useState(false);
   const [showClueLog, setShowClueLog] = useState(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
     setDev(new URLSearchParams(window.location.search).get("dev") === "1");
+
+    // Fullscreen state listener
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(typeof document !== "undefined" && document.fullscreenElement));
+    };
+    handleFsChange();
+    document.addEventListener("fullscreenchange", handleFsChange);
+
+    // Network connection status listener
+    const unsubConn = subscribeToConnectionStatus((conn) => {
+      setIsConnected(conn);
+    });
 
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement | Document;
@@ -67,8 +82,21 @@ export default function Hud() {
     };
 
     window.addEventListener("scroll", handleScroll, true);
-    return () => window.removeEventListener("scroll", handleScroll, true);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFsChange);
+      unsubConn();
+      window.removeEventListener("scroll", handleScroll, true);
+    };
   }, []);
+
+  const toggleFullscreen = () => {
+    sfx("click");
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
 
   return (
     <>
@@ -281,6 +309,81 @@ export default function Hud() {
             }}
           />
 
+          {/* Real-time Uplink Indicator */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "5px 10px",
+              borderRadius: 4,
+              background: isConnected ? "rgba(46, 125, 50, 0.18)" : "rgba(230, 81, 0, 0.22)",
+              border: `1.5px solid ${isConnected ? "rgba(76, 175, 80, 0.5)" : "rgba(255, 152, 0, 0.7)"}`,
+              marginRight: "clamp(8px, 1.2vw, 14px)",
+            }}
+            title={isConnected ? "Telemetry Mainframe Connected" : "Reconnecting to Mainframe..."}
+          >
+            <div
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: isConnected ? "#4caf50" : "#ff9800",
+                boxShadow: isConnected ? "0 0 10px #4caf50" : "0 0 10px #ff9800",
+              }}
+            />
+            <span
+              style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: "clamp(9.5px, 1.1vw, 11px)",
+                fontWeight: 800,
+                color: isConnected ? "#81c784" : "#ffb74d",
+                letterSpacing: ".16em",
+                textTransform: "uppercase",
+              }}
+            >
+              {isConnected ? "ONLINE" : "RECONNECTING"}
+            </span>
+          </div>
+
+          {/* FULLSCREEN TOGGLE BUTTON */}
+          <button
+            id="player-fullscreen-btn"
+            type="button"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Immersive Fullscreen Mode"}
+            style={{
+              padding: "7px clamp(12px, 1.5vw, 18px)",
+              background: isFullscreen ? "rgba(74, 18, 21, 0.5)" : "rgba(220, 24, 38, 0.08)",
+              border: isFullscreen ? "1.5px solid #ff2d3a" : "1.5px solid rgba(220, 24, 38, 0.75)",
+              borderRadius: 6,
+              color: "#ffffff",
+              fontFamily: "var(--font-mono), monospace",
+              fontSize: "clamp(10px, 1.1vw, 12px)",
+              fontWeight: 800,
+              letterSpacing: ".18em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+              boxShadow: isFullscreen ? "0 0 16px rgba(255, 45, 58, 0.4)" : "0 0 14px rgba(220, 24, 38, 0.2)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              marginRight: "clamp(8px, 1.2vw, 14px)",
+              transition: "all 0.18s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "#ff2d3a";
+              e.currentTarget.style.boxShadow = "0 0 20px rgba(220, 24, 38, 0.6)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = isFullscreen ? "#ff2d3a" : "rgba(220, 24, 38, 0.75)";
+              e.currentTarget.style.boxShadow = isFullscreen ? "0 0 16px rgba(255, 45, 58, 0.4)" : "0 0 14px rgba(220, 24, 38, 0.2)";
+            }}
+          >
+            <span style={{ fontSize: 13 }}>{isFullscreen ? "✖" : "⛶"}</span>
+            <span>{isFullscreen ? "EXIT FS" : "FULLSCREEN"}</span>
+          </button>
+
           {/* LOGOUT BUTTON */}
           <button
             id="player-logout-btn"
@@ -320,6 +423,67 @@ export default function Hud() {
           </button>
         </div>
       </div>
+
+      {/* Recovery Chip if Player Exits Fullscreen Mode */}
+      <AnimatePresence>
+        {!isFullscreen && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            style={{
+              position: "fixed",
+              bottom: 18,
+              left: 20,
+              zIndex: 999,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "8px 16px",
+              background: "rgba(18, 4, 7, 0.92)",
+              border: "1.5px solid rgba(220, 24, 38, 0.85)",
+              borderRadius: 6,
+              boxShadow: "0 0 20px rgba(220, 24, 38, 0.4), 0 6px 20px rgba(0,0,0,0.8)",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: 11,
+                color: "#e61a28",
+                fontWeight: 700,
+                letterSpacing: ".15em",
+                textTransform: "uppercase",
+              }}
+            >
+              RECOMMENDED FOR CRT EXPERIENCE:
+            </span>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              style={{
+                background: "#e61a28",
+                color: "#000000",
+                border: "none",
+                borderRadius: 4,
+                padding: "4px 10px",
+                fontFamily: "var(--font-mono), monospace",
+                fontSize: 11,
+                fontWeight: 900,
+                letterSpacing: ".15em",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+              }}
+            >
+              <span>⛶</span>
+              <span>ENTER FULLSCREEN</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Slide-out Clue Log Drawer */}
       <AnimatePresence>

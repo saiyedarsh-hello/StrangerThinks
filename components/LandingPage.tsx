@@ -210,6 +210,11 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
   const handleOpenAuth = () => {
     sfx("click");
     setSoundOn(true);
+    if (typeof document !== "undefined" && !document.fullscreenElement) {
+      try {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+      } catch {}
+    }
     setShowModal(true);
   };
 
@@ -222,6 +227,12 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!teamName.trim() || !leaderName.trim()) return;
+
+    if (typeof document !== "undefined" && !document.fullscreenElement) {
+      try {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+      } catch {}
+    }
 
     setIsAuthenticating(true);
     setError(false);

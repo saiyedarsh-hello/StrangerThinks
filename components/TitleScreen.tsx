@@ -50,7 +50,17 @@ export default function TitleScreen() {
           <button
             id="press-start-btn"
             className="btn big pulse-cta"
-            onClick={() => { setSoundOn(true); setMuted(false); sfx("boom"); start(); }}
+            onClick={() => {
+              setSoundOn(true);
+              setMuted(false);
+              sfx("boom");
+              if (typeof document !== "undefined" && !document.fullscreenElement) {
+                try {
+                  document.documentElement.requestFullscreen?.().catch(() => {});
+                } catch {}
+              }
+              start();
+            }}
           >
             ▶ PRESS START
           </button>
