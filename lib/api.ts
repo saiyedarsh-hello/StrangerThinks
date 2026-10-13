@@ -6,12 +6,14 @@
  */
 
 export const getApiBase = (): string => {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
   if (typeof window !== "undefined") {
     const host = window.location.hostname || "localhost";
-    return `http://${host}:5000/api`;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return `http://${host}:5000/api`;
+    }
+  }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
   }
   return "http://localhost:5000/api";
 };

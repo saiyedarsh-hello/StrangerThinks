@@ -202,10 +202,13 @@ export function getSocket(): Socket | null {
   if (!socketInstance) {
     try {
       const host = window.location.hostname || "localhost";
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL ||
-        (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "") : "") ||
-        `http://${host}:5000`;
+      let backendUrl = `http://${host}:5000`;
+      if (host === "localhost" || host === "127.0.0.1") {
+        backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL ||
+          (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "") : "") ||
+          `http://${host}:5000`;
+      }
 
       const initialToken = resolveStoredToken();
 
