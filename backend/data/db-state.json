@@ -6,7 +6,7 @@
       "leaderName": "Aarav Sharma",
       "role": "PLAYER",
       "status": "ACTIVE",
-      "totalScore": 10,
+      "totalScore": 0,
       "breakdown": {
         "tech": 0,
         "puzzle": 0,
@@ -16,15 +16,13 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-12T12:37:11.339Z",
+      "startedAt": "2026-10-13T05:40:39.685Z",
       "finishedAt": null,
-      "lastSolvedAt": "2026-10-12T12:45:47.974Z",
+      "lastSolvedAt": null,
       "location": "town",
       "stage": "hawkins",
       "storyProgress": 5,
-      "completedTasks": [
-        "ch1-q4"
-      ],
+      "completedTasks": [],
       "solvedChapters": [],
       "unlockedLocations": {
         "town": true,
@@ -54,7 +52,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-12T12:45:47.974Z",
+      "updatedAt": "2026-10-13T05:42:20.554Z",
       "taskScores": {}
     },
     "T02": {
@@ -73,7 +71,7 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-12T12:37:25.660Z",
+      "startedAt": null,
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
@@ -109,13 +107,86 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-12T12:43:49.838Z",
+      "updatedAt": "2026-10-12T09:29:21.167Z",
       "taskScores": {}
     },
     "T03": {
       "id": "T03",
       "teamName": "Rift Runners",
       "leaderName": "Lucas Sinclair",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 75,
+      "breakdown": {
+        "tech": 80,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 5,
+      "startedAt": "2026-10-13T05:56:34.981Z",
+      "finishedAt": null,
+      "lastSolvedAt": "2026-10-13T06:01:44.065Z",
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 11,
+      "completedTasks": [
+        "ch1-q1",
+        "ch1-q2",
+        "ch1-q3",
+        "ch1-q4",
+        "ch1-q5",
+        "ch1-q6",
+        "ch1-q7",
+        "ch1-q8",
+        "ch1-q9",
+        "ch1-q10",
+        "ch1-quiz"
+      ],
+      "solvedChapters": [
+        1
+      ],
+      "unlockedLocations": {
+        "town": true,
+        "policeStation": true,
+        "byersHouse": true,
+        "radioTower": true,
+        "lab": false,
+        "forest": false,
+        "gate": false,
+        "upsidedown": false,
+        "mind": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {
+        "ch1-q3": true
+      },
+      "createdAt": "2026-10-10T22:48:58.653Z",
+      "updatedAt": "2026-10-13T06:02:10.557Z",
+      "taskScores": {
+        "ch1-quiz": 0
+      }
+    },
+    "T04": {
+      "id": "T04",
+      "teamName": "Byte Byters",
+      "leaderName": "Dustin Henderson",
       "role": "PLAYER",
       "status": "ACTIVE",
       "totalScore": 0,
@@ -128,7 +199,7 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": null,
+      "startedAt": "2026-10-13T05:42:34.553Z",
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
@@ -164,62 +235,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-11T16:15:20.095Z",
-      "taskScores": {}
-    },
-    "T04": {
-      "id": "T04",
-      "teamName": "Byte Byters",
-      "leaderName": "Dustin Henderson",
-      "role": "VECNA",
-      "status": "ACTIVE",
-      "totalScore": 0,
-      "breakdown": {
-        "tech": 0,
-        "puzzle": 0,
-        "speed": 0,
-        "clue": 0,
-        "story": 0,
-        "teamwork": 0
-      },
-      "penalty": 0,
-      "startedAt": null,
-      "finishedAt": null,
-      "lastSolvedAt": null,
-      "location": "town",
-      "stage": "hawkins",
-      "storyProgress": 5,
-      "completedTasks": [],
-      "solvedChapters": [],
-      "unlockedLocations": {
-        "town": true,
-        "policeStation": true,
-        "byersHouse": true,
-        "radioTower": true,
-        "lab": false,
-        "forest": false,
-        "gate": false,
-        "upsidedown": false,
-        "mind": false
-      },
-      "radiometerPins": [
-        "-",
-        "-",
-        "-",
-        "-",
-        "-"
-      ],
-      "radiometerSolved": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "radiometerCodeSolved": false,
-      "unlockedHints": {},
-      "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-12T12:45:31.148Z",
+      "updatedAt": "2026-10-13T05:56:00.557Z",
       "taskScores": {}
     },
     "T05": {
@@ -329,7 +345,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-11T16:15:20.095Z",
+      "updatedAt": "2026-10-12T09:28:53.182Z",
       "taskScores": {}
     },
     "T07": {
@@ -9000,6 +9016,188 @@
           "solvedChapters": [],
           "completedTasks": [],
           "lastSolvedAt": null
+        },
+        {
+          "teamId": "T05",
+          "teamName": "Shadow Walkers",
+          "leaderName": "Mike Wheeler",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T06",
+          "teamName": "Hellfire Club",
+          "leaderName": "Eddie Munson",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T07",
+          "teamName": "Hawkins AV Club",
+          "leaderName": "Will Byers",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T08",
+          "teamName": "Mind Flayers",
+          "leaderName": "Max Mayfield",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-001",
+          "teamName": "Vecna",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-TEST-SEQ",
+          "teamName": "Vecna Seq Squad",
+          "leaderName": "Henry Creel",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "HAWKINS-SCORE-TEST",
+          "teamName": "Hawkins Double Test",
+          "leaderName": "Dustin Henderson",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-TEST-SEQ-1791743522368",
+          "teamName": "Vecna Seq Squad",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "HAWKINS-SCORE-TEST-1791743522436",
+          "teamName": "Hawkins Double Test",
+          "leaderName": "Dustin Henderson",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-TEST-SEQ-1791743549282",
+          "teamName": "Vecna Seq Squad",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "HAWKINS-SCORE-TEST-1791743549352",
+          "teamName": "Hawkins Double Test",
+          "leaderName": "Dustin Henderson",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        }
+      ]
+    },
+    {
+      "eventId": 1,
+      "eventCode": "HAWKINS_1983",
+      "archivedAt": "2026-10-13T05:56:01.325Z",
+      "results": [
+        {
+          "teamId": "T01",
+          "teamName": "Null Pointers",
+          "leaderName": "Aarav Sharma",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T02",
+          "teamName": "Stack Smashers",
+          "leaderName": "Maya Lin",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T03",
+          "teamName": "Rift Runners",
+          "leaderName": "Lucas Sinclair",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T04",
+          "teamName": "Byte Byters",
+          "leaderName": "Dustin Henderson",
+          "role": "PLAYER",
+          "score": 55,
+          "penalty": 5,
+          "solvedChapters": [],
+          "completedTasks": [
+            "ch1-q1",
+            "ch1-q2",
+            "ch1-q3",
+            "ch1-q4",
+            "ch1-q5",
+            "ch1-q6",
+            "ch1-q7",
+            "ch1-q8",
+            "ch1-q9"
+          ],
+          "lastSolvedAt": "2026-10-13T05:49:00.417Z"
         },
         {
           "teamId": "T05",
