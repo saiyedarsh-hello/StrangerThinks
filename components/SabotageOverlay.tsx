@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "@/lib/store";
 import { mmss } from "@/lib/results";
@@ -98,10 +99,14 @@ const NAME: Record<string, string> = {
 };
 
 export default function SabotageOverlay() {
+  const pathname = usePathname() || "";
   const { sabotage, clearSabotage } = useGame();
   const [val, setVal] = useState("");
   const [hide, setHide] = useState(false);
   const [left, setLeft] = useState(0);
+  const [selectedCorruptOpt, setSelectedCorruptOpt] = useState<string>("");
+  const [corruptError, setCorruptError] = useState<string | null>(null);
+  const [corruptSuccess, setCorruptSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     setVal("");
@@ -139,10 +144,7 @@ export default function SabotageOverlay() {
   const q = sabotage ? QS[sabotage.id % QS.length] : null;
   const overlay = sabotage && !hide && sabotage.kind !== "WATCH";
 
-  const isHawkinsOnly =
-    typeof window !== "undefined" &&
-    !window.location.pathname.startsWith("/vecna") &&
-    !window.location.pathname.startsWith("/admin");
+  const isHawkinsOnly = !pathname.startsWith("/vecna") && !pathname.startsWith("/admin");
 
   // Dedicated Top-Left Vecna Telepathic Message Popup (Requirement 7)
   if (sabotage && sabotage.kind === "MESSAGE" && !hide && isHawkinsOnly) {
@@ -494,10 +496,6 @@ export default function SabotageOverlay() {
     sabotage && sabotage.kind === "CORRUPT"
       ? CORRUPTED_ANOMALY_QUESTIONS[Math.abs(sabotage.id || 0) % CORRUPTED_ANOMALY_QUESTIONS.length]
       : null;
-
-  const [selectedCorruptOpt, setSelectedCorruptOpt] = useState<string>("");
-  const [corruptError, setCorruptError] = useState<string | null>(null);
-  const [corruptSuccess, setCorruptSuccess] = useState<boolean>(false);
 
   const handleSolveCorrupt = () => {
     if (!corruptQ || !selectedCorruptOpt) return;

@@ -49,7 +49,7 @@ async function main() {
         cwd: backendDir,
         stdio: "inherit",
         shell: false,
-        env: { ...process.env },
+        env: { ...process.env, PORT: process.env.PORT || "5055" },
       }
     );
 

@@ -7,7 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), "backend/.env") });
 dotenv.config();
 
 export const ENV = {
-  PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 5000,
+  PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 5055,
   CORS_ORIGIN: process.env.CORS_ORIGIN || "*",
   JWT_SECRET: process.env.JWT_SECRET || "HAWKINS_NATIONAL_LAB_SECRET_KEY_1983",
 
