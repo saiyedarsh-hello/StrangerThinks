@@ -450,7 +450,8 @@ export default function VecnaPage() {
   };
 
   const currentTrial = VECNA_TRIALS.find((t) => t.id === activeTrialId) || VECNA_TRIALS[0];
-  const currentQuestions = STAGE_QUIZ_CONFIGS[currentTrial.id]?.questions || [];
+  const stageConfig = STAGE_QUIZ_CONFIGS[currentTrial.id] || STAGE_QUIZ_CONFIGS[1];
+  const currentQuestions = stageConfig?.questions || [];
   const currentQuestion = currentQuestions[activeQuestionIdx] || currentQuestions[0];
   const totalQuestionsForTrial = currentQuestions.length;
 

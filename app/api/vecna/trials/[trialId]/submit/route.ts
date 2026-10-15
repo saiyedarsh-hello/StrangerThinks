@@ -3,10 +3,11 @@ import { getApiBase } from "@/lib/api";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { trialId: string } }
+  { params }: { params: Promise<{ trialId: string }> | { trialId: string } }
 ) {
   try {
-    const trialId = parseInt(params.trialId, 10);
+    const resolvedParams = await Promise.resolve(params);
+    const trialId = parseInt(resolvedParams.trialId, 10);
     if (isNaN(trialId)) {
       return NextResponse.json(
         { success: false, error: "INVALID_INPUT", message: "Trial ID is required." },

@@ -4,11 +4,12 @@ import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { trialId: string; questionIdx: string } }
+  { params }: { params: Promise<{ trialId: string; questionIdx: string }> | { trialId: string; questionIdx: string } }
 ) {
   try {
-    const trialId = parseInt(params.trialId, 10);
-    const questionIdx = parseInt(params.questionIdx, 10);
+    const resolvedParams = await Promise.resolve(params);
+    const trialId = parseInt(resolvedParams.trialId, 10);
+    const questionIdx = parseInt(resolvedParams.questionIdx, 10);
 
     if (isNaN(trialId) || isNaN(questionIdx)) {
       return NextResponse.json(
