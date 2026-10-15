@@ -15,6 +15,7 @@ import {
   getSocket,
   authenticateSocket,
   presence,
+  resolveStoredToken,
 } from "@/lib/realtime";
 import { API_BASE } from "@/lib/api";
 import CinematicBackground from "@/components/CinematicBackground";
@@ -340,7 +341,7 @@ export default function VecnaPage() {
     const fetchProgress = async () => {
       try {
         const stored = getStoredSession();
-        const token = stored && (stored as any).token ? (stored as any).token : "";
+        const token = (stored && (stored as any).token) || resolveStoredToken();
         const res = await fetch(`${API_BASE}/vecna/trials/${activeTrialId}/progress`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
@@ -495,7 +496,7 @@ export default function VecnaPage() {
 
     try {
       const stored = getStoredSession();
-      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const token = (stored && (stored as any).token) || resolveStoredToken();
       const res = await fetch(`${API_BASE}/vecna/trials/${currentTrial.id}/questions/${activeQuestionIdx}/clue`, {
         method: "POST",
         headers: {
@@ -547,7 +548,7 @@ export default function VecnaPage() {
     setIsCheckingQuestion(true);
     try {
       const stored = getStoredSession();
-      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const token = (stored && (stored as any).token) || resolveStoredToken();
       const res = await fetch(`${API_BASE}/vecna/trials/${currentTrial.id}/questions/${activeQuestionIdx}/submit`, {
         method: "POST",
         headers: {
@@ -690,7 +691,7 @@ export default function VecnaPage() {
     sfx("boom");
     try {
       const stored = getStoredSession();
-      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const token = (stored && (stored as any).token) || resolveStoredToken();
       const res = await fetch(`${API_BASE}/vecna/trials/${currentTrial.id}/submit`, {
         method: "POST",
         headers: {
@@ -749,7 +750,7 @@ export default function VecnaPage() {
 
     try {
       const stored = getStoredSession();
-      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const token = (stored && (stored as any).token) || resolveStoredToken();
       await fetch(`${API_BASE}/vecna/sabotage`, {
         method: "POST",
         headers: {
@@ -799,7 +800,7 @@ export default function VecnaPage() {
 
     try {
       const stored = getStoredSession();
-      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const token = (stored && (stored as any).token) || resolveStoredToken();
       const res = await fetch(`${API_BASE}/vecna/sabotage`, {
         method: "POST",
         headers: {

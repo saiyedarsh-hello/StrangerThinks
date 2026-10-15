@@ -7,8 +7,8 @@ const router = Router();
 // Event status relevant to participants (public)
 router.get("/event/state", SpecGameController.getEventState);
 
-// All participant gameplay endpoints require PLAYER or ADMIN role
-router.use(requireAuth(["PLAYER", "ADMIN"]));
+// All participant gameplay endpoints require PLAYER, ADMIN, or VECNA role
+router.use(requireAuth(["PLAYER", "ADMIN", "VECNA"]));
 
 // Participant Progress, Rounds & Question Navigation
 router.get("/me/progress", SpecGameController.getMyProgress);
