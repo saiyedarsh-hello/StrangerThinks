@@ -55,7 +55,7 @@ export default function Home() {
   // Authenticated Player game
   return (
     <>
-      {!cutscene && (s.stage === "ending" ? <Ending /> : <StageView />)}
+      {s.stage === "ending" ? <Ending /> : <StageView />}
       <Hud />
       <ChapterCard />
       <Toast />

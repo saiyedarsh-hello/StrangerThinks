@@ -6,7 +6,7 @@
       "leaderName": "Aarav Sharma",
       "role": "PLAYER",
       "status": "ACTIVE",
-      "totalScore": 20,
+      "totalScore": 40,
       "breakdown": {
         "tech": 0,
         "puzzle": 0,
@@ -18,7 +18,7 @@
       "penalty": 0,
       "startedAt": null,
       "finishedAt": null,
-      "lastSolvedAt": "2026-10-15T04:19:26.117Z",
+      "lastSolvedAt": "2026-10-15T07:03:28.571Z",
       "location": "town",
       "stage": "hawkins",
       "storyProgress": 5,
@@ -52,7 +52,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-15T04:19:26.117Z"
+      "updatedAt": "2026-10-15T07:03:28.571Z"
     },
     "T02": {
       "id": "T02",
@@ -438,9 +438,9 @@
       "leaderName": "Henry Creel",
       "role": "VECNA",
       "status": "ACTIVE",
-      "totalScore": 60,
+      "totalScore": 80,
       "breakdown": {
-        "tech": 60,
+        "tech": 0,
         "puzzle": 0,
         "speed": 0,
         "clue": 0,
@@ -452,7 +452,7 @@
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
-      "stage": "trial-5",
+      "stage": "trial-1",
       "storyProgress": 5,
       "completedTasks": [
         "vecna-trial-2"
@@ -488,7 +488,7 @@
       "radiometerCodeSolved": true,
       "unlockedHints": {},
       "createdAt": "2026-10-09T06:18:39.429Z",
-      "updatedAt": "2026-10-15T11:58:04.275Z",
+      "updatedAt": "2026-10-15T13:01:35.113Z",
       "taskScores": {}
     },
     "VECNA-TEST-SEQ": {
@@ -3019,6 +3019,58 @@
       "message": "YOU DON'T UNDERSTAND WHAT HE IS.",
       "operatorName": "HENRY CREEL",
       "expiresAt": 1792063498726
+    },
+    "1792067021426": {
+      "id": 1792067021426,
+      "kind": "LOCK",
+      "target": "Hellfire Club",
+      "operatorName": "HENRY CREEL",
+      "expiresAt": 1792067141426
+    },
+    "1792067535785": {
+      "id": 1792067535785,
+      "kind": "LOCK",
+      "target": "Null Pointers",
+      "operatorName": "HENRY CREEL",
+      "expiresAt": 1792067655785
+    },
+    "1792067548551": {
+      "id": 1792067548551,
+      "kind": "CORRUPT",
+      "target": "Null Pointers",
+      "operatorName": "HENRY CREEL",
+      "expiresAt": 1792067593552
+    },
+    "1792067564285": {
+      "id": 1792067564285,
+      "kind": "MESSAGE",
+      "target": "all",
+      "message": "I KNOW WHERE YOU ARE.",
+      "operatorName": "HENRY CREEL",
+      "expiresAt": 1792067576285
+    },
+    "1792069130588": {
+      "id": 1792069130588,
+      "kind": "MESSAGE",
+      "target": "all",
+      "message": "I KNOW WHERE YOU ARE.",
+      "operatorName": "HENRY CREEL",
+      "expiresAt": 1792069142588
+    },
+    "1792069152355": {
+      "id": 1792069152355,
+      "kind": "MESSAGE",
+      "target": "Null Pointers",
+      "message": "I KNOW WHERE YOU ARE.",
+      "operatorName": "HENRY CREEL",
+      "expiresAt": 1792069164355
+    },
+    "1792069161356": {
+      "id": 1792069161356,
+      "kind": "CORRUPT",
+      "target": "Null Pointers",
+      "operatorName": "Henry Creel",
+      "expiresAt": 1792069206356
     }
   },
   "vecnaProgress": {
@@ -3173,6 +3225,44 @@
         "attempts": 1,
         "isLocked": true,
         "submittedAt": "2026-10-15T11:58:04.273Z"
+      },
+      "3-1": {
+        "status": "solved",
+        "earnedPoints": 5,
+        "chosenAnswer": "A",
+        "attempts": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-15T12:36:11.288Z"
+      },
+      "3-2": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "__WRONG_REARRANGE__",
+        "attempts": 2,
+        "isLocked": true,
+        "clueUnlocked": true,
+        "clueUnlockedAt": "2026-10-15T12:36:27.961Z",
+        "submittedAt": "2026-10-15T12:36:37.840Z"
+      },
+      "3-3": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "__WRONG_REARRANGE__",
+        "attempts": 2,
+        "isLocked": true,
+        "clueUnlocked": true,
+        "clueUnlockedAt": "2026-10-15T12:36:50.909Z",
+        "submittedAt": "2026-10-15T12:36:56.394Z"
+      },
+      "3-4": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "__WRONG_REARRANGE__",
+        "attempts": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-15T12:37:36.304Z",
+        "clueUnlocked": true,
+        "clueUnlockedAt": "2026-10-15T12:37:40.895Z"
       }
     }
   },
@@ -9249,6 +9339,182 @@
           "penalty": 0,
           "solvedChapters": [],
           "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-TEST-SEQ",
+          "teamName": "Vecna Seq Squad",
+          "leaderName": "Henry Creel",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "HAWKINS-SCORE-TEST",
+          "teamName": "Hawkins Double Test",
+          "leaderName": "Dustin Henderson",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-TEST-SEQ-1791743522368",
+          "teamName": "Vecna Seq Squad",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "HAWKINS-SCORE-TEST-1791743522436",
+          "teamName": "Hawkins Double Test",
+          "leaderName": "Dustin Henderson",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-TEST-SEQ-1791743549282",
+          "teamName": "Vecna Seq Squad",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "HAWKINS-SCORE-TEST-1791743549352",
+          "teamName": "Hawkins Double Test",
+          "leaderName": "Dustin Henderson",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        }
+      ]
+    },
+    {
+      "eventId": 1,
+      "eventCode": "HAWKINS_1983",
+      "archivedAt": "2026-10-15T13:01:20.237Z",
+      "results": [
+        {
+          "teamId": "T01",
+          "teamName": "Null Pointers",
+          "leaderName": "Aarav Sharma",
+          "role": "PLAYER",
+          "score": 40,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": "2026-10-15T07:03:28.571Z"
+        },
+        {
+          "teamId": "T02",
+          "teamName": "Stack Smashers",
+          "leaderName": "Maya Lin",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T03",
+          "teamName": "Rift Runners",
+          "leaderName": "Lucas Sinclair",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T04",
+          "teamName": "Byte Byters",
+          "leaderName": "Dustin Henderson",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T05",
+          "teamName": "Shadow Walkers",
+          "leaderName": "Mike Wheeler",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T06",
+          "teamName": "Hellfire Club",
+          "leaderName": "Eddie Munson",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T07",
+          "teamName": "Hawkins AV Club",
+          "leaderName": "Will Byers",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T08",
+          "teamName": "Mind Flayers",
+          "leaderName": "Max Mayfield",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-001",
+          "teamName": "Vecna",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [
+            2
+          ],
+          "completedTasks": [
+            "vecna-trial-2"
+          ],
           "lastSolvedAt": null
         },
         {

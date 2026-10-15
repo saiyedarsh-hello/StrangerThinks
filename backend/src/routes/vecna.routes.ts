@@ -19,8 +19,8 @@ router.post("/messages", requireAuth(["VECNA", "ADMIN", "PLAYER"]), VecnaControl
 router.get("/messages/mine", requireAuth(["VECNA", "ADMIN", "PLAYER"]), VecnaController.getMyMessages);
 
 // Realtime Powers & Status
-router.post("/sabotage", VecnaController.triggerSabotage);
-router.get("/status", VecnaController.getStatus);
+router.post("/sabotage", extractAuth(), VecnaController.triggerSabotage);
+router.get("/status", extractAuth(), VecnaController.getStatus);
 
 // Question Progression, Intel Clues & Submissions (Universal access for VECNA, ADMIN, PLAYER)
 router.get("/trials/:trialId/progress", extractAuth(), VecnaController.getTrialProgress);

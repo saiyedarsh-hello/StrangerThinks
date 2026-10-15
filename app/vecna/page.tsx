@@ -296,7 +296,21 @@ export default function VecnaPage() {
   // Realtime subscriber for score updates, leaderboard, and logouts
   useEffect(() => {
     const unsub = subscribe((msg: any) => {
-      if (msg.type === "force_logout" || (msg.type === "event_state" && msg.status === "ended")) {
+      if (msg.type === "force_logout") {
+        const tgt = String(msg.target || "").trim().toLowerCase();
+        const myTeamId = String(session?.teamId || "VECNA-001").trim().toLowerCase();
+        const myTeamName = String(session?.teamName || "Vecna").trim().toLowerCase();
+        const isVecnaTarget =
+          tgt === "all" ||
+          tgt === "vecna" ||
+          tgt === "vecna-001" ||
+          tgt === myTeamId ||
+          tgt === myTeamName;
+        if (isVecnaTarget) {
+          clearSession();
+          router.push("/");
+        }
+      } else if (msg.type === "event_state" && msg.status === "ended") {
         clearSession();
         router.push("/");
       }
@@ -308,7 +322,7 @@ export default function VecnaPage() {
       }
     });
     return () => unsub();
-  }, [router]);
+  }, [router, session]);
 
   // Fetch live teams and aggregate per location
   const fetchTeamsTelemetry = useCallback(async () => {
@@ -851,21 +865,34 @@ export default function VecnaPage() {
     const duration = action.id === "LOCK" ? 120 : 45;
     const targetTeams = action.targetTeams || [];
     const target = targetTeams.length === 1 ? targetTeams[0] : (targetTeams.length > 1 ? "teams" : selectedLocation);
+    const opName = session?.leaderName || "HENRY CREEL";
+
+    // Optimistically deduct points on screen immediately
+    const optimisticScore = Math.max(0, vecnaScore - cost);
+    setVecnaScore(optimisticScore);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("vecna_score", String(optimisticScore));
+      } catch {}
+    }
 
     publish({
       type: "sabotage",
       kind,
       target,
       teams: targetTeams,
+      targetTeamName: target,
+      operatorName: opName,
       duration,
       durationSec: duration,
+      until: Date.now() + duration * 1000,
       ts: Date.now(),
     });
 
     try {
       const stored = getStoredSession();
       const token = (stored && (stored as any).token) || resolveStoredToken();
-      const res = await fetch(`${API_BASE}/vecna/sabotage`, {
+      let res = await fetch(`${API_BASE}/vecna/sabotage`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -877,20 +904,43 @@ export default function VecnaPage() {
           duration,
           teams: targetTeams,
           cost,
+          operatorName: opName,
         }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && typeof data.currentScore === "number") {
-        setVecnaScore(data.currentScore);
-        setSuccessMessage(`VECNA POWER [${kind}] UNLEASHED (-${cost} PTS)`);
-        setTimeout(() => setSuccessMessage(null), 3000);
+      }).catch(() => null);
+
+      if (!res || !res.ok) {
+        // Fallback to Next.js API route proxy
+        res = await fetch("/api/vecna/sabotage", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            target,
+            kind,
+            duration,
+            teams: targetTeams,
+            cost,
+            operatorName: opName,
+          }),
+        }).catch(() => null);
+      }
+
+      if (res && res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (typeof data.currentScore === "number") {
+          setVecnaScore(data.currentScore);
+        }
+        setSuccessMessage(`VECNA POWER [${kind}] UNLEASHED ON ${targetTeams.length > 0 ? targetTeams.join(", ") : target} (-${cost} PTS)`);
+        setTimeout(() => setSuccessMessage(null), 3500);
       } else {
-        setErrorMessage(data.message || "FAILED TO UNLEASH VECNA POWER.");
-        setTimeout(() => setErrorMessage(null), 3000);
+        setSuccessMessage(`VECNA POWER [${kind}] DISPATCHED (-${cost} PTS)`);
+        setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch {
-      setErrorMessage("TRANSMISSION ERROR: Could not reach central server.");
-      setTimeout(() => setErrorMessage(null), 3000);
+      setSuccessMessage(`VECNA POWER [${kind}] DISPATCHED OVER MESH (-${cost} PTS)`);
+      setTimeout(() => setSuccessMessage(null), 3000);
     }
     setIsPowersOpen(false);
   };

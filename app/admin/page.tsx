@@ -125,12 +125,14 @@ export default function AdminPage() {
     };
   }, [token]);
 
-  // 2. LOG OUT ON EVERY RELOAD — REQUIRE PASSKEY EVERY TIME
+  // 2. RESTORE SESSION FROM SESSIONSTORAGE IF PREVIOUSLY AUTHENTICATED
   useEffect(() => {
-    setToken(null);
     try {
-      localStorage.removeItem("hawkins_admin_token");
-      sessionStorage.removeItem("hawkins_admin_token");
+      const saved = sessionStorage.getItem("hawkins_admin_token");
+      if (saved) {
+        setToken(saved);
+        authenticateSocket(saved);
+      }
     } catch {}
   }, []);
 
@@ -450,10 +452,10 @@ export default function AdminPage() {
 
     // 4. Automated background refresh cycle (controllable interval & pause/resume)
     const autoRefreshTimer = setInterval(() => {
+      if (!autoRefreshEnabled) return;
       setAutoRefreshSec((prev) => {
-        if (!autoRefreshEnabled) return prev;
         if (prev <= 1) {
-          loadData();
+          setTimeout(() => loadData(), 0);
           return autoRefreshInterval;
         }
         return prev - 1;

@@ -1,10 +1,23 @@
 "use client";
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 export default function FullscreenEnforcer() {
+  const pathname = usePathname() || "";
+
   useEffect(() => {
-    const enterFullscreen = () => {
+    // Never force or intercept clicks on admin dashboard
+    if (pathname.startsWith("/admin")) return;
+
+    const enterFullscreen = (e: Event) => {
       if (typeof document === "undefined") return;
+      if (window.location.pathname.startsWith("/admin")) return;
+
+      // Do NOT trigger or intercept clicks on buttons, inputs, links, or control elements
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("button, input, select, textarea, [role='button'], a, [data-no-fullscreen]")) {
+        return;
+      }
 
       const doc = document as any;
       const isFs =
@@ -27,7 +40,7 @@ export default function FullscreenEnforcer() {
       }
     };
 
-    // Auto-enter fullscreen upon user interactions anywhere across the application
+    // Auto-enter fullscreen upon non-control interactions on immersive player view
     window.addEventListener("click", enterFullscreen, { passive: true });
     window.addEventListener("touchstart", enterFullscreen, { passive: true });
     window.addEventListener("keydown", enterFullscreen, { passive: true });
@@ -37,7 +50,8 @@ export default function FullscreenEnforcer() {
       window.removeEventListener("touchstart", enterFullscreen);
       window.removeEventListener("keydown", enterFullscreen);
     };
-  }, []);
+  }, [pathname]);
 
   return null;
 }
+

@@ -528,9 +528,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     const unsub = subscribe((m: RealtimeMessage) => {
       const cur = sRef.current;
-      if (!cur.team) return;
-      const mine = cur.team?.name;
-      const myId = cur.team?.id;
+      const storedSess = getStoredSession();
+      if (!cur.team && !storedSess) return;
+      const mine = cur.team?.name || (storedSess as any)?.teamName;
+      const myId = cur.team?.id || (storedSess as any)?.teamId;
 
       if ("target" in m && m.target && m.target !== "all") {
         const targetStr = String(m.target).trim().toLowerCase();
@@ -664,8 +665,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (m.type === "force_logout") {
-        const myTeamId = sRef.current.team?.id;
-        const myTeamName = sRef.current.team?.name;
+        // Do not force logout if currently on the admin page
+        if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+          return;
+        }
+        const myTeamId = sRef.current.team?.id || (storedSess as any)?.teamId;
+        const myTeamName = sRef.current.team?.name || (storedSess as any)?.teamName;
         const tgt = String(m.target || "").trim().toLowerCase();
         const isMatch =
           !m.target ||

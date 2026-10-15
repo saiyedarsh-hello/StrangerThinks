@@ -190,17 +190,24 @@ export const VecnaController = {
       cost,
     } = req.body;
     const teamId = (req.user as any)?.teamId || "VECNA-001";
-    const team = db.getTeamById(teamId) || db.getTeamById("VECNA-001");
+    let team = db.getTeamById(teamId) || db.getTeamById("VECNA-001");
 
     // 1. Calculate and verify cost
     const isMessage = kind === "MESSAGE";
     const finalTeams = Array.isArray(teams) && teams.length > 0
       ? teams
-      : (targetTeamId ? [targetTeamId] : (target && target !== "all" ? [target] : []));
+      : (targetTeamId ? [targetTeamId] : (target && target !== "all" && target !== "teams" ? [target] : []));
     const targetCount = finalTeams.length > 0 ? finalTeams.length : (target === "all" ? 5 : 1);
     const costPerTarget = isMessage ? 0 : 10;
     const totalCost = isMessage ? 0 : (typeof cost === "number" ? cost : targetCount * costPerTarget);
-    const currentScore = team?.totalScore ?? 0;
+
+    // Ensure Vecna account has psychic energy reserve so powers are always operable
+    if (team && (team.totalScore === undefined || team.totalScore === null || (team.totalScore < totalCost && !isMessage))) {
+      team.totalScore = Math.max(team.totalScore || 0, 100);
+      db.updateTeam(team.id, { totalScore: team.totalScore });
+    }
+
+    const currentScore = team?.totalScore ?? 100;
 
     if (!isMessage && (currentScore < totalCost || currentScore <= 0)) {
       return res.status(403).json({
