@@ -9,7 +9,25 @@ function evaluateLocally(questionCode: string, answer: string, attemptNumber: nu
       const qId = (q.id || "").toLowerCase();
       const codeAlias = `ch${config.chapterId}-q${q.itemNumber}`.toLowerCase();
       if (qId === normalizedCode || codeAlias === normalizedCode) {
-        const isCorrect = (q.correctAnswerId || "").trim().toLowerCase() === answer.trim().toLowerCase();
+        const expectedId = (q.correctAnswerId || "").trim().toLowerCase();
+        const normAnswer = answer.trim().toLowerCase();
+        let isCorrect = normAnswer === expectedId;
+        if (!isCorrect && q.options) {
+          const correctOpt = q.options.find(
+            (opt) => (opt.id || "").trim().toLowerCase() === expectedId
+          );
+          if (correctOpt) {
+            const optText = (correctOpt.text || "").trim().toLowerCase();
+            if (
+              normAnswer === optText ||
+              normAnswer.startsWith(expectedId) ||
+              (optText.includes(normAnswer) && normAnswer.length > 3) ||
+              (normAnswer.includes(optText) && optText.length > 3)
+            ) {
+              isCorrect = true;
+            }
+          }
+        }
         if (isCorrect) {
           const pointsAwarded = attemptNumber <= 1 ? 10 : 5;
           return {

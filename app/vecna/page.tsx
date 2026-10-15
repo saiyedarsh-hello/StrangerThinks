@@ -55,7 +55,7 @@ const VECNA_TRIALS: VecnaTrial[] = [
   {
     id: 2,
     shortName: "STAGE 2",
-    title: "STAGE 2: POLICE STATION // CONNECTION MATRIX",
+    title: "STAGE 2: HAWKINS LAB // CONNECTION MATRIX",
     subtitle: "RELATIONSHIP CORRELATION // MATCH CLUES & ARTIFACTS",
     category: "RELATIONSHIP MAPPING",
     description: "Match related clues, characters, locations, objects, or concepts by identifying their deep relationships.",
@@ -75,7 +75,7 @@ const VECNA_TRIALS: VecnaTrial[] = [
   {
     id: 4,
     shortName: "STAGE 4",
-    title: "STAGE 4: HAWKINS LAB // CASE STUDY FORENSICS",
+    title: "STAGE 4: CREEL HOUSE // CASE STUDY FORENSICS",
     subtitle: "INVESTIGATIVE FORENSICS // SITUATION ANALYSIS",
     category: "INVESTIGATIVE ANALYSIS",
     description: "Analyze a given situation report or set of clues, examine evidence logs, and draw forensic conclusions.",
@@ -95,7 +95,7 @@ const VECNA_TRIALS: VecnaTrial[] = [
   {
     id: 6,
     shortName: "STAGE 6",
-    title: "STAGE 6: THE GATE RIFT // LAB SYSTEM CHALLENGES",
+    title: "STAGE 6: THE UPSIDE DOWN // LAB SYSTEM CHALLENGES",
     subtitle: "HAWKINS LAB EXPERIMENTAL TERMINAL // SYSTEM CHALLENGES",
     category: "TECHNICAL EXPERIMENTS",
     description: "Interactive technical challenges involving logical sequences, system operations, bug fixing, and data analysis.",
@@ -158,6 +158,44 @@ export default function VecnaPage() {
   const [isChapterSubmitted, setIsChapterSubmitted] = useState<boolean>(false);
   const [isSubmittingChapter, setIsSubmittingChapter] = useState<boolean>(false);
   const [isCheckingQuestion, setIsCheckingQuestion] = useState<boolean>(false);
+  const [isUnlockingClue, setIsUnlockingClue] = useState<boolean>(false);
+  const [unansweredPrompt, setUnansweredPrompt] = useState<boolean>(false);
+
+  // Intel Clue Confirmation / Clearance Modal
+  const [intelModal, setIntelModal] = useState<{
+    isOpen: boolean;
+    type?: "warning" | "confirm";
+    title?: string;
+    message?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  } | null>(null);
+
+  // Keyboard shortcut listener for Intel Clue modal (Enter to confirm, Escape to cancel)
+  useEffect(() => {
+    if (!intelModal?.isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (intelModal.onCancel) {
+          intelModal.onCancel();
+        } else if (intelModal.onConfirm) {
+          intelModal.onConfirm();
+        }
+      } else if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (intelModal.onConfirm) {
+          intelModal.onConfirm();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [intelModal]);
 
   // Authoritative Vecna score (10 PTS per solved question)
   const [vecnaScore, setVecnaScore] = useState<number>(() => {
@@ -416,24 +454,6 @@ export default function VecnaPage() {
   const currentQuestion = currentQuestions[activeQuestionIdx] || currentQuestions[0];
   const totalQuestionsForTrial = currentQuestions.length;
 
-  const isLevelCompleted = (trialId: number, idx: number) => {
-    const key = `${trialId}-${idx}`;
-    return Boolean(
-      solvedQuestions[key] ||
-      failedQuestions[key] ||
-      questionResults[key]?.isCorrect ||
-      questionResults[key]?.isLocked
-    );
-  };
-
-  const isLevelUnlocked = (trialId: number, idx: number) => {
-    if (idx === 0) return true;
-    for (let i = 0; i < idx; i++) {
-      if (!isLevelCompleted(trialId, i)) return false;
-    }
-    return true;
-  };
-
   const currentKey = `${currentTrial.id}-${activeQuestionIdx}`;
   const currentResult = questionResults[currentKey];
   const currentAttempts = questionAttempts[currentKey] || 0;
@@ -451,53 +471,74 @@ export default function VecnaPage() {
 
   const isAttempt1Wrong = currentAttempts === 1 && currentResult && !currentResult.isCorrect && !isQuestionLocked;
 
-  // Question is completed (eligible for proceeding) ONLY if verified OR locked with 2 failed attempts
-  const isQuestionCompleted = isQuestionVerified || isQuestionLocked;
-
   const currentHintKey = `${currentTrial.id}-${activeQuestionIdx}`;
   const isCurrentClueUnlocked = Boolean(unlockedHints[currentHintKey]);
 
-  // Counts for current chapter docket
-  const answeredCount = currentQuestions.filter((_, idx) =>
-    Boolean(selectedAnswers[`${currentTrial.id}-${idx}`]) || isLevelCompleted(currentTrial.id, idx)
-  ).length;
+  // Answered count across current trial (using trimmed text or verified state)
+  const answeredCount = currentQuestions.filter((_, idx) => {
+    const k = `${currentTrial.id}-${idx}`;
+    return Boolean(selectedAnswers[k]?.trim()) || Boolean(solvedQuestions[k]) || Boolean(questionResults[k]?.isCorrect) || Boolean(questionResults[k]?.isLocked);
+  }).length;
 
-  const solvedInCurrentTrial = currentQuestions.filter((_, idx) =>
-    Boolean(solvedQuestions[`${currentTrial.id}-${idx}`] || questionResults[`${currentTrial.id}-${idx}`]?.isCorrect)
-  ).length;
+  const allQuestionsAnswered = answeredCount === totalQuestionsForTrial && totalQuestionsForTrial > 0;
 
-  const completedInCurrentTrial = currentQuestions.filter((_, idx) =>
-    isLevelCompleted(currentTrial.id, idx)
-  ).length;
-
-  const allCompleted = completedInCurrentTrial === totalQuestionsForTrial && totalQuestionsForTrial === 10;
-
-  const handleSelectOption = (trialId: number, qIdx: number, optionId: string) => {
+  const handleSelectOption = (trialId: number, qIdx: number, optionId: string, silent = false) => {
     const key = `${trialId}-${qIdx}`;
-    if (isLevelCompleted(trialId, qIdx) || questionResults[key]?.isLocked) return;
-    sfx("click");
+    const itemRes = questionResults[key];
+    const isLocked = Boolean(
+      itemRes?.isLocked ||
+      (questionAttempts[key] >= 2 && itemRes && !itemRes.isCorrect) ||
+      failedQuestions[key] ||
+      solvedQuestions[key]
+    );
+    if (isLocked) return;
+    if (!silent) sfx("type");
     setSelectedAnswers((prev) => ({
       ...prev,
       [key]: optionId,
     }));
     setErrorMessage(null);
+    setUnansweredPrompt(false);
   };
 
-  const handleUnlockClue = async () => {
-    if (isCurrentClueUnlocked) return;
+  const handleUnlockClueClick = () => {
+    if (isCurrentClueUnlocked || isUnlockingClue) return;
     sfx("click");
 
     if (vecnaScore < 5) {
-      setErrorMessage("INSUFFICIENT PSYCHIC POINTS (-5 PTS REQUIRED TO DECRYPT CLUE)");
       sfx("err");
-      setTimeout(() => setErrorMessage(null), 3000);
+      setIntelModal({
+        isOpen: true,
+        type: "warning",
+        title: "CLEARANCE RESTRICTED // INSUFFICIENT SCORE",
+        message: "You need at least 5 squad points to decrypt this classified Intel Clue. Complete tasks or submit accurate answers to earn points.",
+        confirmLabel: "ACKNOWLEDGE",
+        onConfirm: () => setIntelModal(null),
+      });
       return;
     }
 
+    setIntelModal({
+      isOpen: true,
+      type: "confirm",
+      title: "CLASSIFIED INTEL DOSSIER DECRYPTION",
+      message: "Decrypt classified surveillance dossier? This action will deduct 5 points from your current squad score.",
+      confirmLabel: "DECRYPT CLUE (-5 PTS)",
+      cancelLabel: "ABORT",
+      onConfirm: async () => {
+        setIntelModal(null);
+        await executeUnlockClue();
+      },
+      onCancel: () => setIntelModal(null),
+    });
+  };
+
+  const executeUnlockClue = async () => {
+    setIsUnlockingClue(true);
     try {
       const stored = getStoredSession();
       const token = (stored && (stored as any).token) || resolveStoredToken();
-      const res = await fetch(`${API_BASE}/vecna/trials/${currentTrial.id}/questions/${activeQuestionIdx}/clue`, {
+      let res = await fetch(`${API_BASE}/vecna/trials/${currentTrial.id}/questions/${activeQuestionIdx}/clue`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -505,7 +546,25 @@ export default function VecnaPage() {
         },
       });
 
-      const data = await res.json().catch(() => ({}));
+      let data = await res.json().catch(() => ({}));
+
+      // Resilient fallback if backend 500 or offline
+      if (!res.ok && res.status >= 500) {
+        const qCode = currentQuestion.id || `ch${currentTrial.id}-q${activeQuestionIdx + 1}`;
+        const fallbackRes = await fetch(`/api/hints/use`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ questionId: qCode, hintNumber: 1 }),
+        });
+        if (fallbackRes.ok) {
+          data = await fallbackRes.json();
+          res = fallbackRes;
+        }
+      }
+
       if (res.ok && data.success) {
         sfx("boom");
         setUnlockedHints((prev) => {
@@ -515,11 +574,11 @@ export default function VecnaPage() {
           } catch {}
           return next;
         });
-        if (typeof data.currentScore === "number") {
-          setVecnaScore(data.currentScore);
-        } else {
-          setVecnaScore((prev) => Math.max(0, prev - 5));
-        }
+        const nextScore = typeof data.currentScore === "number" ? data.currentScore : Math.max(0, vecnaScore - 5);
+        setVecnaScore(nextScore);
+        try {
+          localStorage.setItem("vecna_score", String(nextScore));
+        } catch {}
         setSuccessMessage("INTEL CLUE DECRYPTED (-5 PTS DEDUCTED)");
         setTimeout(() => setSuccessMessage(null), 3000);
       } else {
@@ -531,6 +590,8 @@ export default function VecnaPage() {
       sfx("err");
       setErrorMessage("FAILED TO CONTACT CENTRAL INTELLIGENCE VAULT.");
       setTimeout(() => setErrorMessage(null), 3000);
+    } finally {
+      setIsUnlockingClue(false);
     }
   };
 
@@ -539,116 +600,119 @@ export default function VecnaPage() {
 
     const chosen = selectedAnswers[currentKey];
     if (!chosen || !chosen.trim()) {
-      setErrorMessage("SELECT AN ANSWER ENTRY BEFORE EVALUATION.");
+      setErrorMessage(`PLEASE RECORD AN ANSWER FOR ITEM ${activeQuestionIdx + 1} BEFORE CHECKING`);
       sfx("err");
+      setUnansweredPrompt(true);
       setTimeout(() => setErrorMessage(null), 2500);
       return;
     }
 
+    const priorAttempts = questionAttempts[currentKey] || 0;
+    const thisAttemptNumber = priorAttempts + 1;
+
     setIsCheckingQuestion(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setUnansweredPrompt(false);
+
     try {
       const stored = getStoredSession();
       const token = (stored && (stored as any).token) || resolveStoredToken();
-      const res = await fetch(`${API_BASE}/vecna/trials/${currentTrial.id}/questions/${activeQuestionIdx}/submit`, {
+      let res = await fetch(`${API_BASE}/vecna/trials/${currentTrial.id}/questions/${activeQuestionIdx}/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ answer: chosen }),
+        body: JSON.stringify({ answer: chosen, attemptNumber: thisAttemptNumber }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      let data = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        if (data.error === "SEQUENTIAL_PROGRESSION_REQUIRED") {
-          setErrorMessage(data.message || "COMPLETE PRECEDING LEVEL FIRST.");
-          sfx("err");
-          setTimeout(() => setErrorMessage(null), 3000);
-          setIsCheckingQuestion(false);
-          return;
-        }
-        if (data.error === "EVENT_PAUSED" || data.error === "SUBMISSIONS_CLOSED") {
-          setErrorMessage(data.message || "TOURNAMENT ACTIONS SUSPENDED.");
-          sfx("err");
-          setTimeout(() => setErrorMessage(null), 3000);
-          setIsCheckingQuestion(false);
-          return;
+      // Resilient fallback if vecna endpoint failed
+      if (!res.ok && res.status >= 500) {
+        const qCode = currentQuestion.id || `ch${currentTrial.id}-q${activeQuestionIdx + 1}`;
+        const fallbackRes = await fetch(`/api/questions/${encodeURIComponent(qCode)}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answer: chosen, teamId: "VECNA-001", attemptNumber: thisAttemptNumber }),
+        });
+        if (fallbackRes.ok) {
+          data = await fallbackRes.json();
+          res = fallbackRes;
         }
       }
 
-      const isCorrect = Boolean(data.isCorrect);
-      const isLocked = Boolean(data.isLocked);
-      const attemptsCount = typeof data.attempts === "number" ? data.attempts : (currentAttempts + 1);
-      const points = typeof data.pointsAwarded === "number" ? data.pointsAwarded : (isCorrect ? (attemptsCount === 1 ? 10 : 5) : 0);
+      if (res.ok && data.success) {
+        const isCorrect = Boolean(data.isCorrect);
+        const isLocked = Boolean(data.isLocked ?? (isCorrect || thisAttemptNumber >= 2));
+        const points = typeof data.pointsAwarded === "number" ? data.pointsAwarded : (isCorrect ? (thisAttemptNumber === 1 ? 10 : 5) : 0);
 
-      setQuestionAttempts((prev) => ({
-        ...prev,
-        [currentKey]: attemptsCount,
-      }));
+        setQuestionAttempts((prev) => {
+          const next = { ...prev, [currentKey]: thisAttemptNumber };
+          try {
+            localStorage.setItem("vecna_question_attempts", JSON.stringify(next));
+          } catch {}
+          return next;
+        });
 
-      setQuestionResults((prev) => ({
-        ...prev,
-        [currentKey]: {
-          isCorrect,
-          isLocked,
-          message: data.message,
-          pointsAwarded: points,
-          attempts: attemptsCount,
-        },
-      }));
+        setQuestionResults((prev) => {
+          const next = {
+            ...prev,
+            [currentKey]: {
+              isCorrect,
+              isLocked,
+              message: data.message || (
+                isCorrect
+                  ? (thisAttemptNumber === 1 ? "VERIFIED [+10 PTS]" : "VERIFIED [+5 PTS]")
+                  : isLocked
+                  ? "TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS]"
+                  : "INCORRECT · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)"
+              ),
+              pointsAwarded: points,
+              attempts: thisAttemptNumber,
+            },
+          };
+          try {
+            localStorage.setItem("vecna_question_results", JSON.stringify(next));
+          } catch {}
+          return next;
+        });
 
-      if (isCorrect) {
-        sfx("boom");
-        setSolvedQuestions((prev) => ({
-          ...prev,
-          [currentKey]: true,
-        }));
-        if (typeof data.currentScore === "number") {
-          setVecnaScore(data.currentScore);
-        } else {
-          setVecnaScore((prev) => prev + points);
-        }
-        setSuccessMessage(`ITEM ${activeQuestionIdx + 1} VERIFIED (+${points} PTS)`);
-        setErrorMessage(null);
-
-        // Auto advance to next question
-        if (activeQuestionIdx < totalQuestionsForTrial - 1) {
-          setTimeout(() => {
-            setActiveQuestionIdx((i) => i + 1);
-            setSuccessMessage(null);
-          }, 800);
-        } else {
-          setTimeout(() => setSuccessMessage(null), 2500);
-        }
-      } else {
-        sfx("err");
-        if (isLocked) {
-          // 2 attempts exhausted
-          setFailedQuestions((prev) => ({
+        if (isCorrect) {
+          sfx("ok");
+          setSolvedQuestions((prev) => ({
             ...prev,
             [currentKey]: true,
           }));
-          setErrorMessage("TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED (0 PTS)");
-          setSuccessMessage(null);
-          if (activeQuestionIdx < totalQuestionsForTrial - 1) {
-            setTimeout(() => {
-              setActiveQuestionIdx((i) => i + 1);
-              setErrorMessage(null);
-            }, 1000);
-          } else {
-            setTimeout(() => setErrorMessage(null), 3000);
-          }
+          const newScore = typeof data.currentScore === "number" ? data.currentScore : (vecnaScore + points);
+          setVecnaScore(newScore);
+          try {
+            localStorage.setItem("vecna_score", String(newScore));
+          } catch {}
+          setSuccessMessage(`ITEM ${activeQuestionIdx + 1} VERIFIED (+${points} PTS)`);
+          setTimeout(() => setSuccessMessage(null), 2500);
         } else {
-          // Attempt 1 failed
-          setErrorMessage("INCORRECT · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)");
-          setSuccessMessage(null);
-          setTimeout(() => setErrorMessage(null), 3500);
+          sfx("err");
+          if (isLocked) {
+            setFailedQuestions((prev) => ({
+              ...prev,
+              [currentKey]: true,
+            }));
+            setErrorMessage("TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS]");
+          } else {
+            setErrorMessage("INCORRECT · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)");
+          }
+          setTimeout(() => setErrorMessage(null), 3000);
         }
+      } else {
+        sfx("err");
+        setErrorMessage(data.message || "COMMUNICATION FAILURE: Central server rejected submission.");
+        setTimeout(() => setErrorMessage(null), 3000);
       }
     } catch {
-      setErrorMessage("VECNA TELEMETRY DISCONNECTED: Central server unreachable.");
       sfx("err");
+      setErrorMessage("TRANSMISSION ERROR: Central server unreachable.");
       setTimeout(() => setErrorMessage(null), 3000);
     } finally {
       setIsCheckingQuestion(false);
@@ -661,34 +725,31 @@ export default function VecnaPage() {
       setActiveQuestionIdx((i) => i - 1);
       setErrorMessage(null);
       setSuccessMessage(null);
+      setUnansweredPrompt(false);
     }
   };
 
   const handleNextLevel = () => {
     sfx("click");
-    if (!isQuestionCompleted) {
-      sfx("err");
-      setErrorMessage("ACCESS DENIED: ANSWER CURRENT ITEM BEFORE PROCEEDING.");
-      setTimeout(() => setErrorMessage(null), 3000);
-      return;
-    }
     if (activeQuestionIdx < totalQuestionsForTrial - 1) {
       setActiveQuestionIdx((i) => i + 1);
       setErrorMessage(null);
       setSuccessMessage(null);
+      setUnansweredPrompt(false);
     }
   };
 
   const handleSubmitChapter = async () => {
-    if (completedInCurrentTrial < totalQuestionsForTrial || totalQuestionsForTrial !== 10 || isSubmittingChapter) {
-      setErrorMessage(`CANNOT SUBMIT: COMPLETE ALL 10 ITEMS FIRST (${completedInCurrentTrial}/10 COMPLETED)`);
+    if (!allQuestionsAnswered) {
       sfx("err");
+      setUnansweredPrompt(true);
+      setErrorMessage(`CANNOT SUBMIT: PLEASE RECORD ANSWERS FOR ALL 10 ITEMS (${answeredCount}/10 RECORDED)`);
       setTimeout(() => setErrorMessage(null), 3000);
       return;
     }
 
     setIsSubmittingChapter(true);
-    sfx("boom");
+    sfx("ok");
     try {
       const stored = getStoredSession();
       const token = (stored && (stored as any).token) || resolveStoredToken();
@@ -705,6 +766,9 @@ export default function VecnaPage() {
         setIsChapterSubmitted(true);
         if (typeof data.currentScore === "number") {
           setVecnaScore(data.currentScore);
+          try {
+            localStorage.setItem("vecna_score", String(data.currentScore));
+          } catch {}
         }
         setSuccessMessage(data.message || `CHAPTER ${currentTrial.id} DOSSIER SUBMITTED`);
         setTimeout(() => setSuccessMessage(null), 3000);
@@ -728,7 +792,6 @@ export default function VecnaPage() {
     setErrorMessage(null);
     setSuccessMessage(null);
     setIsChapterSubmitted(false);
-    setIsStoryDialogOpen(true);
   };
 
   const handleSendMessage = async (target: "all" | string, message: string) => {
@@ -1228,112 +1291,171 @@ export default function VecnaPage() {
             </button>
           </div>
 
+          {/* Docket Title and Valuation Bar */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              flexWrap: "wrap",
+              borderBottom: "2px solid #231e1a",
+              paddingBottom: 6,
+              marginBottom: 8,
+              gap: 8,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 900,
+                letterSpacing: ".12em",
+                textTransform: "uppercase",
+                fontFamily: "'Courier New', Courier, monospace",
+                color: "#231e1a",
+              }}
+            >
+              {stageConfig?.docketNumber || `FORM HPD-0${currentTrial.id}-83 // CLASSIFIED INCIDENT DOCKET`}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: "bold",
+                color: "#8a5818",
+                letterSpacing: ".1em",
+                fontFamily: "'Courier New', Courier, monospace",
+              }}
+            >
+              VALUED: {stageConfig?.points || 50} PTS (5-10 PTS PER ITEM)
+            </div>
+          </div>
+
+          <div
+            style={{
+              fontSize: "clamp(12px, 1.2vw, 13px)",
+              fontWeight: 900,
+              color: "#b81d24",
+              letterSpacing: ".1em",
+              textTransform: "uppercase",
+              marginBottom: 14,
+              fontFamily: "'Courier New', Courier, monospace",
+            }}
+          >
+            {stageConfig?.sectionHeader || `SECTION 0${currentTrial.id} — FORMAL INQUIRY // HAWKINS ANOMALY`}
+          </div>
+
           {/* DOCKET ITEMS: [ ITEM 1 ] ... [ ITEM 10 ] (Screenshot 1 Tab Row) */}
           <div
             style={{
-              background: "#ded4c1",
-              border: "1px solid #b8a992",
-              borderRadius: "3px",
-              padding: "7px 12px",
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              flexWrap: "wrap",
-              marginBottom: "18px",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 18,
+              padding: "6px 12px",
+              background: "#e4dac5",
+              border: "1px solid #c9bda4",
+              borderRadius: 3,
             }}
           >
-            <span
+            <div
               style={{
-                fontFamily: "'Courier New', Courier, monospace",
-                fontSize: "11px",
-                fontWeight: 900,
-                color: "#3a2c20",
-                letterSpacing: "0.1em",
-                marginRight: "4px",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                flexWrap: "nowrap",
+                overflowX: "auto",
+                whiteSpace: "nowrap",
+                paddingBottom: 4,
+                scrollbarWidth: "thin",
+                flex: 1,
+                minWidth: 0,
               }}
             >
-              DOCKET ITEMS:
-            </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 900,
+                  color: "#544638",
+                  letterSpacing: ".1em",
+                  textTransform: "uppercase",
+                  marginRight: 6,
+                  flexShrink: 0,
+                  whiteSpace: "nowrap",
+                  fontFamily: "'Courier New', Courier, monospace",
+                }}
+              >
+                DOCKET ITEMS:
+              </span>
+              {currentQuestions.map((q, idx) => {
+                const isCurrent = idx === activeQuestionIdx;
+                const itemKey = `${currentTrial.id}-${idx}`;
+                const itemRes = questionResults[itemKey];
+                const itemAttempts = questionAttempts[itemKey] || 0;
+                const isVerified = Boolean(solvedQuestions[itemKey] || itemRes?.isCorrect);
+                const isLocked = Boolean(itemRes?.isLocked || (itemAttempts >= 2 && itemRes && !itemRes.isCorrect) || failedQuestions[itemKey]);
+                const isFailed = Boolean((itemRes && !itemRes.isCorrect && isLocked) || failedQuestions[itemKey]);
+                const isAttempt1Wrong = Boolean(itemAttempts === 1 && itemRes && !itemRes.isCorrect && !isLocked);
+                const hasAnswer = Boolean(selectedAnswers[itemKey]?.trim());
 
-            {currentQuestions.map((q, idx) => {
-              const isCurrent = idx === activeQuestionIdx;
-              const itemKey = `${currentTrial.id}-${idx}`;
-              const itemRes = questionResults[itemKey];
-              const itemAttempts = questionAttempts[itemKey] || 0;
-              const isSolved = Boolean(solvedQuestions[itemKey] || itemRes?.isCorrect);
-              const isFailed = Boolean(failedQuestions[itemKey] || (itemRes && !itemRes.isCorrect && itemRes.isLocked));
-              const isAttempt1Wrong = itemAttempts === 1 && itemRes && !itemRes.isCorrect && !itemRes.isLocked;
-              const hasAnswer = Boolean(selectedAnswers[itemKey]);
-              const isUnlocked = isLevelUnlocked(currentTrial.id, idx);
-
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  disabled={!isUnlocked}
-                  onClick={() => {
-                    if (!isUnlocked) {
-                      sfx("err");
-                      setErrorMessage(`ITEM ${idx + 1} LOCKED · COMPLETE PRECEDING LEVEL FIRST`);
-                      setTimeout(() => setErrorMessage(null), 2500);
-                      return;
-                    }
-                    sfx("click");
-                    setActiveQuestionIdx(idx);
-                    setErrorMessage(null);
-                    setSuccessMessage(null);
-                  }}
-                  style={{
-                    padding: "4px 10px",
-                    background: isCurrent
-                      ? "#b81d24"
-                      : isSolved
-                      ? "#234d31"
-                      : isFailed
-                      ? "#3d1414"
-                      : isAttempt1Wrong
-                      ? "#593c12"
-                      : hasAnswer
-                      ? "#2e2118"
-                      : "#ded6c4",
-                    color: isCurrent || isSolved || isFailed || isAttempt1Wrong || hasAnswer ? "#ffffff" : "#2a221a",
-                    border: isCurrent
-                      ? "1.5px solid #8f1218"
-                      : isSolved
-                      ? "1px solid #3d8053"
-                      : isFailed
-                      ? "1px solid #8f2d24"
-                      : isAttempt1Wrong
-                      ? "1px solid #9c6c21"
-                      : hasAnswer
-                      ? "1px solid #573a2e"
-                      : "1px solid #b5a48b",
-                    borderRadius: "2px",
-                    fontSize: "11px",
-                    fontWeight: 900,
-                    fontFamily: "'Courier New', monospace",
-                    letterSpacing: "0.08em",
-                    cursor: isUnlocked ? "pointer" : "not-allowed",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    opacity: isUnlocked ? 1 : 0.45,
-                    boxShadow: isCurrent ? "0 0 8px rgba(184, 29, 36, 0.4)" : "none",
-                    transition: "all 0.12s ease",
-                  }}
-                  title={!isUnlocked ? "Locked until preceding item is completed" : `Item ${idx + 1}`}
-                >
-                  ITEM {idx + 1}
-                  {isSolved
-                    ? ` [+${itemRes?.pointsAwarded || (itemAttempts === 2 ? 5 : 10)}]`
-                    : isFailed
-                    ? " [0P]"
-                    : isAttempt1Wrong
-                    ? " [5P]"
-                    : ""}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={q.id || idx}
+                    type="button"
+                    onClick={() => {
+                      sfx("click");
+                      setActiveQuestionIdx(idx);
+                      setErrorMessage(null);
+                      setSuccessMessage(null);
+                      setUnansweredPrompt(false);
+                    }}
+                    style={{
+                      padding: "4px 10px",
+                      background: isCurrent
+                        ? "#b81d24"
+                        : isVerified
+                        ? "#234d31"
+                        : isFailed
+                        ? "#3d1414"
+                        : isAttempt1Wrong
+                        ? "#4d3314"
+                        : hasAnswer
+                        ? "#2e2118"
+                        : "#ded6c4",
+                      color: isCurrent || isVerified || isFailed || isAttempt1Wrong || hasAnswer ? "#fff" : "#2a221a",
+                      border: isCurrent
+                        ? "1.5px solid #8f1218"
+                        : isVerified
+                        ? "1px solid #3d8053"
+                        : isFailed
+                        ? "1px solid #8f2d24"
+                        : isAttempt1Wrong
+                        ? "1px solid #d97706"
+                        : hasAnswer
+                        ? "1px solid #573a2e"
+                        : "1px solid #b5a48b",
+                      borderRadius: 2,
+                      fontSize: 11,
+                      fontWeight: 900,
+                      letterSpacing: ".08em",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      flexShrink: 0,
+                      whiteSpace: "nowrap",
+                      transition: "all 0.12s ease",
+                      fontFamily: "'Courier New', Courier, monospace",
+                    }}
+                    title={`Item ${idx + 1}`}
+                  >
+                    <span>
+                      ITEM {idx + 1}
+                      {isVerified ? ` [+${itemRes?.pointsAwarded || (itemAttempts === 2 ? 5 : 10)}]` : isFailed ? " [0P]" : isAttempt1Wrong ? " [5P]" : ""}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Question Body: Typewriter Monospace Card & 2x2 Option Grid via QuestionTypeRenderer */}
@@ -1398,9 +1520,31 @@ export default function VecnaPage() {
                 {successMessage}
               </motion.div>
             )}
+
+            {unansweredPrompt && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  marginBottom: 14,
+                  padding: "8px 14px",
+                  background: "rgba(255, 140, 0, 0.12)",
+                  border: "1.5px solid #d46b08",
+                  color: "#a85002",
+                  textAlign: "center",
+                  fontWeight: 900,
+                  fontSize: 12,
+                  letterSpacing: ".1em",
+                  fontFamily: "'Benguiat Bold', serif",
+                }}
+              >
+                PLEASE RECORD AN ANSWER FOR ALL ITEMS BEFORE SUBMITTING REPORT
+              </motion.div>
+            )}
           </AnimatePresence>
 
-          {/* Action & Submit Answer Strip (Renamed from Check Answer to Submit Answer) */}
+          {/* Action & Submit Answer Strip (Exact Hawkins 2-Attempt Answering Mech) */}
           <div
             style={{
               marginTop: "12px",
@@ -1452,18 +1596,18 @@ export default function VecnaPage() {
                   : isAttempt1Wrong
                   ? "INCORRECT · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)"
                   : selectedAnswers[currentKey]
-                  ? "ANSWER ENTRY READY [10 PTS]"
-                  : "SELECT ANSWER ENTRY [10 PTS]"}
+                  ? (currentAttempts === 1 ? "ANSWER RECORDED [5 PTS]" : "ANSWER RECORDED [10 PTS]")
+                  : (currentAttempts === 1 ? "SELECT ANSWER [5 PTS]" : "SELECT ANSWER [10 PTS]")}
               </span>
             </div>
 
             <button
-              id="vecna-submit-answer-btn"
+              id="vecna-check-answer-btn"
               type="button"
               onClick={handleVerifyCurrentQuestion}
-              disabled={isQuestionLocked || !selectedAnswers[currentKey] || isCheckingQuestion}
+              disabled={isCheckingQuestion || !selectedAnswers[currentKey]?.trim() || isQuestionLocked}
               style={{
-                padding: "8px 22px",
+                padding: "8px 20px",
                 background: isCheckingQuestion
                   ? "#332219"
                   : isQuestionVerified
@@ -1471,7 +1615,7 @@ export default function VecnaPage() {
                   : isQuestionLocked
                   ? "#2c1515"
                   : isAttempt1Wrong
-                  ? "#593c12"
+                  ? "#5c330a"
                   : "#24130d",
                 color: "#ffffff",
                 border: isQuestionVerified
@@ -1479,24 +1623,21 @@ export default function VecnaPage() {
                   : isQuestionLocked
                   ? "1.5px solid #7d2a2a"
                   : isAttempt1Wrong
-                  ? "1.5px solid #9c6c21"
+                  ? "1.5px solid #d97706"
                   : "1.5px solid #8f2d24",
                 borderRadius: "3px",
                 fontFamily: "'Benguiat Bold', serif",
                 fontSize: "12px",
                 fontWeight: 900,
                 letterSpacing: "0.12em",
-                cursor:
-                  isQuestionLocked || !selectedAnswers[currentKey] || isCheckingQuestion
-                    ? "not-allowed"
-                    : "pointer",
-                opacity: !selectedAnswers[currentKey] || isQuestionLocked ? 0.65 : 1,
+                cursor: isCheckingQuestion || !selectedAnswers[currentKey]?.trim() || isQuestionLocked ? "not-allowed" : "pointer",
+                opacity: !selectedAnswers[currentKey]?.trim() || isQuestionLocked ? 0.6 : 1,
                 boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
                 transition: "all 0.15s ease",
               }}
             >
               {isCheckingQuestion
-                ? "SUBMITTING..."
+                ? "CHECKING..."
                 : isQuestionVerified
                 ? "VERIFIED"
                 : isQuestionLocked
@@ -1507,74 +1648,169 @@ export default function VecnaPage() {
             </button>
           </div>
 
-          {/* INTEL CLUE Strip (-5 PTS deduction) */}
-          <div
-            style={{
-              marginTop: "10px",
-              background: isCurrentClueUnlocked ? "#fbf6ec" : "#ece3d0",
-              border: isCurrentClueUnlocked ? "1.5px solid #c49646" : "1.5px dashed #a8947c",
-              borderRadius: "3px",
-              padding: "8px 14px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "10px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: "220px" }}>
-              <span
-                style={{
-                  fontFamily: "'Courier New', monospace",
-                  fontSize: "11px",
-                  fontWeight: 900,
-                  color: "#8f231e",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                INTEL CLUE:
-              </span>
-              <span
-                style={{
-                  fontFamily: "'Courier New', monospace",
-                  fontSize: "11.5px",
-                  color: isCurrentClueUnlocked ? "#2a221a" : "#7c6c59",
-                  fontWeight: isCurrentClueUnlocked ? 700 : "normal",
-                }}
-              >
-                {isCurrentClueUnlocked
-                  ? currentQuestion.hint || "Review the covert Hawkins frequency logs."
-                  : "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░"}
-              </span>
+          {/* INTEL CLUE Strip (Exact Hawkins Intel Clue & -5 PTS Mechanism) */}
+          {currentQuestion.hint && (
+            <div
+              style={{
+                marginTop: "10px",
+                background: isCurrentClueUnlocked ? "#fbf6ec" : "#ece3d0",
+                border: isCurrentClueUnlocked ? "1.5px solid #c49646" : "1.5px dashed #a8947c",
+                borderRadius: "3px",
+                padding: "8px 14px",
+                boxShadow: isCurrentClueUnlocked
+                  ? "0 2px 8px rgba(212, 167, 89, 0.2), inset 0 0 10px rgba(255,255,255,0.6)"
+                  : "inset 0 0 8px rgba(0,0,0,0.06)",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {isCurrentClueUnlocked ? (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                      flexWrap: "wrap",
+                      gap: 6,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 900,
+                        color: "#8a5818",
+                        letterSpacing: ".14em",
+                        fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                        textTransform: "uppercase",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <span>DECRYPTED INTEL DOSSIER</span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: "bold",
+                        fontFamily: "'Courier New', monospace",
+                        color: "#7a4808",
+                        background: "rgba(212, 167, 89, 0.25)",
+                        border: "1px solid rgba(138, 88, 24, 0.35)",
+                        padding: "1px 6px",
+                        borderRadius: 2,
+                        letterSpacing: ".08em",
+                      }}
+                    >
+                      CLEARANCE LEVEL 4 GRANTED
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "clamp(12.5px, 1.3vw, 14px)",
+                      color: "#24180d",
+                      lineHeight: 1.5,
+                      fontFamily: "'Courier New', Courier, monospace",
+                      fontWeight: 700,
+                      borderLeft: "3px solid #c49646",
+                      paddingLeft: 10,
+                      background: "rgba(255,255,255,0.45)",
+                      padding: "6px 10px",
+                      borderRadius: "0 2px 2px 0",
+                    }}
+                  >
+                    <b>SURVEILLANCE CLUE:</b> &quot;{currentQuestion.hint}&quot;
+                  </div>
+                </motion.div>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 200, flex: 1 }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 900,
+                        letterSpacing: ".14em",
+                        fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                        color: "#b81d24",
+                        textTransform: "uppercase",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span>INTEL CLUE:</span>
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "monospace",
+                        letterSpacing: ".2em",
+                        color: "rgba(70, 50, 35, 0.45)",
+                        fontSize: 12,
+                        userSelect: "none",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      ██████████████████████████████████████
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleUnlockClueClick}
+                    disabled={isUnlockingClue}
+                    style={{
+                      padding: "6px 14px",
+                      background: "#24130d",
+                      color: "#ffd54f",
+                      border: "1.5px solid #8f2d24",
+                      borderRadius: 3,
+                      fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                      fontSize: 11,
+                      fontWeight: 900,
+                      letterSpacing: ".12em",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+                      transition: "all 0.15s ease",
+                      textTransform: "uppercase",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#8f1218";
+                      e.currentTarget.style.color = "#ffffff";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "#24130d";
+                      e.currentTarget.style.color = "#ffd54f";
+                    }}
+                    title="Unlock classified dossier clue for 5 points (-5 PTS)"
+                  >
+                    <span>{isUnlockingClue ? "DECRYPTING..." : "UNLOCK CLUE"}</span>
+                  </button>
+                </div>
+              )}
             </div>
+          )}
 
-            {!isCurrentClueUnlocked && (
-              <button
-                type="button"
-                onClick={handleUnlockClue}
-                disabled={vecnaScore < 5}
-                style={{
-                  background: vecnaScore < 5 ? "#1a120e" : "#24130d",
-                  border: vecnaScore < 5 ? "1.5px solid #57432e" : "1.5px solid #c49646",
-                  color: vecnaScore < 5 ? "#7a6a57" : "#e8c374",
-                  padding: "6px 14px",
-                  borderRadius: "2px",
-                  fontFamily: "'Benguiat Bold', serif",
-                  fontSize: "11px",
-                  fontWeight: 900,
-                  letterSpacing: "0.1em",
-                  cursor: vecnaScore < 5 ? "not-allowed" : "pointer",
-                  boxShadow: vecnaScore < 5 ? "none" : "0 2px 6px rgba(0,0,0,0.25)",
-                  transition: "all 0.15s ease",
-                }}
-                title={vecnaScore < 5 ? "Requires at least 5 PTS to unlock" : "Unlock clue (-5 PTS)"}
-              >
-                UNLOCK CLUE (-5 PTS)
-              </button>
-            )}
-          </div>
-
-          {/* Bottom Navigation & Submission Bar (PREVIOUS | NEXT | COMPLETE ALL 10 / SUBMIT) */}
+          {/* Bottom Navigation & Submission Bar (Exact Hawkins Previous | Next | Submit Report) */}
           <div
             style={{
               display: "flex",
@@ -1587,22 +1823,22 @@ export default function VecnaPage() {
               gap: "14px",
             }}
           >
-            {/* Left: PREVIOUS and NEXT (Sequence Enforced) */}
+            {/* Left: PREVIOUS and NEXT Controls */}
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <button
                 type="button"
                 onClick={handlePrevLevel}
                 disabled={activeQuestionIdx === 0}
                 style={{
-                  padding: "8px 18px",
-                  background: "transparent",
-                  border: "1.5px solid #2a221a",
-                  borderRadius: "2px",
+                  padding: "10px 16px",
+                  background: activeQuestionIdx === 0 ? "transparent" : "#e4dac4",
+                  border: "1px solid #b5a48b",
+                  borderRadius: "3px",
                   color: activeQuestionIdx === 0 ? "rgba(42, 34, 26, 0.3)" : "#2a221a",
                   fontFamily: "'Benguiat Bold', serif",
                   fontSize: "12px",
-                  fontWeight: 900,
-                  letterSpacing: "0.12em",
+                  fontWeight: 800,
+                  letterSpacing: "0.1em",
                   cursor: activeQuestionIdx === 0 ? "not-allowed" : "pointer",
                 }}
               >
@@ -1612,76 +1848,86 @@ export default function VecnaPage() {
               <button
                 type="button"
                 onClick={handleNextLevel}
-                disabled={!isQuestionCompleted || activeQuestionIdx === totalQuestionsForTrial - 1}
+                disabled={activeQuestionIdx === totalQuestionsForTrial - 1}
                 style={{
-                  padding: "8px 22px",
-                  background: !isQuestionCompleted || activeQuestionIdx === totalQuestionsForTrial - 1 ? "#332219" : "#24130d",
-                  border: "1.5px solid #24130d",
-                  borderRadius: "2px",
-                  color: !isQuestionCompleted || activeQuestionIdx === totalQuestionsForTrial - 1 ? "#7c6c59" : "#ffffff",
+                  padding: "10px 18px",
+                  background: activeQuestionIdx === totalQuestionsForTrial - 1 ? "transparent" : "#2e2118",
+                  border: "1px solid #573a2e",
+                  borderRadius: "3px",
+                  color: activeQuestionIdx === totalQuestionsForTrial - 1 ? "#a89d8d" : "#ffffff",
                   fontFamily: "'Benguiat Bold', serif",
                   fontSize: "12px",
-                  fontWeight: 900,
-                  letterSpacing: "0.12em",
-                  cursor: !isQuestionCompleted || activeQuestionIdx === totalQuestionsForTrial - 1 ? "not-allowed" : "pointer",
-                  opacity: !isQuestionCompleted ? 0.6 : 1,
+                  fontWeight: 800,
+                  letterSpacing: "0.1em",
+                  cursor: activeQuestionIdx === totalQuestionsForTrial - 1 ? "not-allowed" : "pointer",
+                  opacity: activeQuestionIdx === totalQuestionsForTrial - 1 ? 0.6 : 1,
                   transition: "all 0.15s ease",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
                 }}
-                title={!isQuestionCompleted ? "Complete current item before proceeding" : "Next item"}
+                title="Next item"
               >
                 NEXT
               </button>
             </div>
 
-            {/* Right: SUBMIT [X/10] + PROCEED TO NEXT CHAPTER */}
+            {/* Right: SUBMIT REPORT / SUBMIT [X/10] + PROCEED TO NEXT CHAPTER */}
             <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              {/* Submit Chapter Button (Disabled until ALL 10 items completed) */}
               <button
                 type="button"
                 onClick={handleSubmitChapter}
-                disabled={completedInCurrentTrial < totalQuestionsForTrial || totalQuestionsForTrial !== 10 || isSubmittingChapter}
+                disabled={!allQuestionsAnswered || isSubmittingChapter}
                 style={{
-                  padding: "9px 22px",
+                  padding: "10px 24px",
                   background: isChapterSubmitted
                     ? "#234d31"
-                    : completedInCurrentTrial === totalQuestionsForTrial && totalQuestionsForTrial === 10
-                    ? "#8f231e"
+                    : allQuestionsAnswered
+                    ? "#b81d24"
                     : "rgba(139, 126, 109, 0.4)",
                   color: "#ffffff",
-                  border: isChapterSubmitted ? "1.5px solid #3d8053" : "none",
+                  border: isChapterSubmitted
+                    ? "1.5px solid #3d8053"
+                    : allQuestionsAnswered
+                    ? "1.5px solid #8f1218"
+                    : "1px solid #776a5a",
                   borderRadius: "3px",
-                  fontFamily: "'Benguiat Bold', serif",
-                  fontSize: "12px",
+                  fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                  fontSize: "clamp(12px, 1.3vw, 14px)",
                   fontWeight: 900,
-                  letterSpacing: "0.12em",
-                  cursor:
-                    completedInCurrentTrial < totalQuestionsForTrial || totalQuestionsForTrial !== 10 || isSubmittingChapter
-                      ? "not-allowed"
-                      : "pointer",
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  cursor: allQuestionsAnswered && !isSubmittingChapter ? "pointer" : "not-allowed",
                   boxShadow:
-                    completedInCurrentTrial === totalQuestionsForTrial && !isChapterSubmitted
-                      ? "0 0 12px rgba(184, 29, 36, 0.5)"
+                    allQuestionsAnswered && !isChapterSubmitted
+                      ? "0 6px 16px rgba(184, 29, 36, 0.5), inset 0 0 10px rgba(0,0,0,0.25)"
                       : "0 2px 6px rgba(0,0,0,0.2)",
-                  opacity: completedInCurrentTrial < totalQuestionsForTrial ? 0.65 : 1,
+                  opacity: allQuestionsAnswered ? 1 : 0.65,
                   transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (allQuestionsAnswered && !isChapterSubmitted) e.currentTarget.style.background = "#941319";
+                }}
+                onMouseLeave={(e) => {
+                  if (allQuestionsAnswered && !isChapterSubmitted) e.currentTarget.style.background = "#b81d24";
                 }}
               >
                 {isSubmittingChapter
-                  ? "SUBMITTING DOSSIER..."
+                  ? "SUBMITTING REPORT..."
                   : isChapterSubmitted
-                  ? `SUBMITTED [${completedInCurrentTrial}/${totalQuestionsForTrial}]`
-                  : completedInCurrentTrial < totalQuestionsForTrial
-                  ? `COMPLETE ALL 10 ITEMS [${completedInCurrentTrial}/${totalQuestionsForTrial}]`
-                  : `SUBMIT CHAPTER [${completedInCurrentTrial}/${totalQuestionsForTrial}]`}
+                  ? `SUBMITTED [${answeredCount}/${totalQuestionsForTrial}]`
+                  : allQuestionsAnswered
+                  ? "SUBMIT REPORT"
+                  : `SUBMIT [${answeredCount}/${totalQuestionsForTrial}]`}
               </button>
 
-              {/* Prominent Next Chapter Redirect Button (ONLY displayed when all 10 completed AND chapter submitted) */}
-              {allCompleted && isChapterSubmitted && (
+              {/* Prominent Next Chapter Redirect Button (displayed when chapter is submitted) */}
+              {isChapterSubmitted && (
                 <button
                   type="button"
                   onClick={handleProceedNextChapter}
                   style={{
-                    padding: "9px 24px",
+                    padding: "10px 24px",
                     background: "linear-gradient(135deg, #b81d24 0%, #8f1218 100%)",
                     color: "#ffffff",
                     border: "1.5px solid #ff4d58",
@@ -1959,6 +2205,208 @@ export default function VecnaPage() {
             trialShortName={currentTrial.shortName}
             onComplete={() => setIsStoryDialogOpen(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Intel Clue Clearance & Decryption Modal (Exact Hawkins Style) */}
+      <AnimatePresence>
+        {intelModal && intelModal.isOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 99999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "16px",
+              background: "rgba(8, 2, 5, 0.82)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+            onClick={() => {
+              if (intelModal.onCancel) {
+                intelModal.onCancel();
+              } else if (intelModal.onConfirm) {
+                intelModal.onConfirm();
+              }
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 10 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "relative",
+                width: "100%",
+                maxWidth: "480px",
+                background: "linear-gradient(180deg, #18070a 0%, #0c0305 100%)",
+                border: `2px solid ${intelModal.type === "warning" ? "#f59e0b" : "#e61a28"}`,
+                borderRadius: "6px",
+                boxShadow: `${intelModal.type === "warning" ? "0 0 24px rgba(245, 158, 11, 0.4)" : "0 0 24px rgba(230, 26, 40, 0.35)"}, 0 20px 50px rgba(0, 0, 0, 0.9)`,
+                padding: "20px 24px 22px",
+                boxSizing: "border-box",
+                color: "#f3e8dc",
+                fontFamily: "'Courier New', Courier, monospace",
+              }}
+            >
+              {/* Subtle Top Red/Amber Accent Line */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: "10%",
+                  right: "10%",
+                  height: "2px",
+                  background: `linear-gradient(90deg, transparent, ${intelModal.type === "warning" ? "#f59e0b" : "#e61a28"}, transparent)`,
+                }}
+              />
+
+              {/* Subheader Header Badge */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                  borderBottom: "1px dashed rgba(255, 255, 255, 0.15)",
+                  paddingBottom: 8,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 900,
+                    letterSpacing: ".14em",
+                    color: intelModal.type === "warning" ? "#f59e0b" : "#e61a28",
+                    textTransform: "uppercase",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: intelModal.type === "warning" ? "#f59e0b" : "#e61a28",
+                      boxShadow: `0 0 8px ${intelModal.type === "warning" ? "#f59e0b" : "#e61a28"}`,
+                      display: "inline-block",
+                    }}
+                  />
+                  <span>CLASSIFIED PROTOCOL // LEVEL 4</span>
+                </div>
+
+                <span
+                  style={{
+                    fontSize: 9.5,
+                    color: "rgba(255, 255, 255, 0.4)",
+                    fontFamily: "monospace",
+                    letterSpacing: ".06em",
+                  }}
+                >
+                  FORM HPD-83
+                </span>
+              </div>
+
+              {/* Title */}
+              <h3
+                style={{
+                  margin: "0 0 12px",
+                  fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+                  fontSize: "clamp(15px, 1.4vw, 17px)",
+                  color: "#ffffff",
+                  letterSpacing: ".1em",
+                  textTransform: "uppercase",
+                  lineHeight: 1.35,
+                  textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+                }}
+              >
+                {intelModal.title}
+              </h3>
+
+              {/* Message Content */}
+              <p
+                style={{
+                  margin: "0 0 20px",
+                  fontSize: "13.5px",
+                  lineHeight: 1.6,
+                  color: "#ded2c4",
+                  fontFamily: "'Courier New', Courier, monospace",
+                  fontWeight: 600,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {intelModal.message}
+              </p>
+
+              {/* Action Buttons */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                {intelModal.cancelLabel && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx("click");
+                      intelModal.onCancel?.();
+                    }}
+                    style={{
+                      padding: "9px 18px",
+                      background: "rgba(255, 255, 255, 0.05)",
+                      color: "#c9bda4",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: 3,
+                      fontFamily: "'Benguiat Bold', serif",
+                      fontSize: 11.5,
+                      fontWeight: 800,
+                      letterSpacing: ".1em",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {intelModal.cancelLabel}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx("ok");
+                    intelModal.onConfirm?.();
+                  }}
+                  style={{
+                    padding: "9px 22px",
+                    background: intelModal.type === "warning" ? "#f59e0b" : "#e61a28",
+                    color: intelModal.type === "warning" ? "#000000" : "#ffffff",
+                    border: `1.5px solid ${intelModal.type === "warning" ? "#f59e0b" : "#e61a28"}`,
+                    borderRadius: 3,
+                    fontFamily: "'Benguiat Bold', serif",
+                    fontSize: 12,
+                    fontWeight: 900,
+                    letterSpacing: ".12em",
+                    cursor: "pointer",
+                    boxShadow: `0 2px 10px ${intelModal.type === "warning" ? "rgba(245, 158, 11, 0.35)" : "rgba(230, 26, 40, 0.35)"}`,
+                    transition: "all 0.15s ease",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {intelModal.confirmLabel || (intelModal.cancelLabel ? "CONFIRM" : "ACKNOWLEDGE")}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

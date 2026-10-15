@@ -42,6 +42,8 @@ export const ValidationService = {
       };
     }
 
+    const team = teamId ? db.getTeamById(teamId) : undefined;
+
     const rawChapter = db.getRawChapterById(chapterId);
     if (!rawChapter) {
       return {
@@ -52,15 +54,6 @@ export const ValidationService = {
       };
     }
 
-    const team = teamId ? db.getTeamById(teamId) : undefined;
-    if (team && team.role === "VECNA") {
-      return {
-        success: false,
-        pointsAwarded: 0,
-        error: "ROLE_UNAUTHORIZED",
-        message: "ACCESS DENIED: Vecna squads cannot submit Hawkins investigation solutions.",
-      };
-    }
     const questions = rawChapter.questions || [];
 
     // Case A: Batch docket submission (Array or Object map of answers)
@@ -270,6 +263,8 @@ export const ValidationService = {
       };
     }
 
+    const team = teamId ? db.getTeamById(teamId) : undefined;
+
     const secret = STORY_TASK_SECRETS[taskId];
     if (!secret) {
       return {
@@ -290,15 +285,6 @@ export const ValidationService = {
       };
     }
 
-    const team = teamId ? db.getTeamById(teamId) : undefined;
-    if (team && team.role === "VECNA") {
-      return {
-        success: false,
-        pointsAwarded: 0,
-        error: "ROLE_UNAUTHORIZED",
-        message: "ACCESS DENIED: Vecna squads cannot submit Hawkins tasks.",
-      };
-    }
     const basePoints = secret.points;
     const speedBonus = team ? ScoreService.calculateSpeedBonus(basePoints, team.startedAt) : 0;
     const totalPoints = basePoints + speedBonus;

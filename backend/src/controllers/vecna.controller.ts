@@ -374,19 +374,6 @@ export const VecnaController = {
     const teamId = (req.user as any)?.teamId || "VECNA-001";
     const progress = db.getVecnaProgress(teamId, trialId);
 
-    // Enforce sequential progression: all prior questions 0..(questionIdx - 1) MUST be attempted
-    for (let i = 0; i < questionIdx; i++) {
-      const priorState = progress[i];
-      if (!priorState || (priorState.status !== "solved" && priorState.status !== "failed")) {
-        return res.status(403).json({
-          success: false,
-          error: "SEQUENTIAL_PROGRESSION_REQUIRED",
-          message: `ACCESS DENIED: Sequential progression required. Question ${i + 1} must be completed first.`,
-          unlockedMaxIndex: i,
-        });
-      }
-    }
-
     const questions = RAW_CHAPTER_QUESTIONS[trialId] || [];
     const q = questions[questionIdx];
     if (!q) {
@@ -444,19 +431,6 @@ export const VecnaController = {
 
     const teamId = (req.user as any)?.teamId || "VECNA-001";
     const progress = db.getVecnaProgress(teamId, trialId);
-
-    // Enforce sequential progression: all prior questions 0..(questionIdx - 1) MUST be completed
-    for (let i = 0; i < questionIdx; i++) {
-      const priorState = progress[i];
-      if (!priorState || (priorState.status !== "solved" && priorState.status !== "failed")) {
-        return res.status(403).json({
-          success: false,
-          error: "SEQUENTIAL_PROGRESSION_REQUIRED",
-          message: `ACCESS DENIED: Cannot skip question ${i + 1}. Preceding questions must be completed first.`,
-          unlockedMaxIndex: i,
-        });
-      }
-    }
 
     // Check if this question is already submitted & locked (idempotent, no points duplicate)
     const existing = progress[questionIdx];
