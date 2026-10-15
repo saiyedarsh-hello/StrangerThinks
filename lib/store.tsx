@@ -528,7 +528,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     const unsub = subscribe((m: RealtimeMessage) => {
       const cur = sRef.current;
-      if (cur.phase !== "play") return;
+      if (!cur.team) return;
       const mine = cur.team?.name;
       const myId = cur.team?.id;
 
@@ -541,7 +541,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const matchesTargetTeamName =
           (m as any).targetTeamName && mine && String((m as any).targetTeamName).trim().toLowerCase() === mine.trim().toLowerCase();
 
-        if (!matchesName && !matchesId && !matchesTargetTeamId && !matchesTargetTeamName) {
+        // Check if player's team is in `teams` array:
+        const teamsList = Array.isArray((m as any).teams) ? (m as any).teams : [];
+        const matchesInTeamsList = teamsList.some(
+          (t: string) =>
+            (mine && String(t).trim().toLowerCase() === mine.trim().toLowerCase()) ||
+            (myId && String(t).trim().toLowerCase() === myId.trim().toLowerCase())
+        );
+
+        // Check if target is a location and player is currently at that location:
+        const matchesLocation = cur.location && targetStr === cur.location.toLowerCase();
+
+        if (!matchesName && !matchesId && !matchesTargetTeamId && !matchesTargetTeamName && !matchesInTeamsList && !matchesLocation) {
           return;
         }
       }
@@ -771,13 +782,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const applySabotage = (kind: SabKind, pinIndex?: number, message?: string, operatorName?: string) => {
     const dur: Record<SabKind, number> = {
-      CORRUPT: 30,
+      CORRUPT: 45,
       TIME_FREEZE: 5,
-      LOCK: 20,
+      LOCK: 120,
       DISTORT: 40,
       SIGNAL_JAM: 30,
       WATCH: 8,
-      MESSAGE: 8,
+      MESSAGE: 12,
       GLITCH: 3,
     };
 

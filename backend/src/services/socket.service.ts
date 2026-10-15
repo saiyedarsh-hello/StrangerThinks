@@ -155,6 +155,10 @@ class SocketService {
         }
       } else if (sess.role === "PLAYER") {
         socket.join(`team:${sess.teamId}`);
+        socket.join(`team:${sess.teamId.toLowerCase()}`);
+        if (sess.teamName) {
+          socket.join(`team:${sess.teamName.toLowerCase()}`);
+        }
       }
 
       if (sess.role !== "ADMIN") {
@@ -308,19 +312,46 @@ class SocketService {
         const eventPayload = {
           type: "sabotage",
           ...sabotageRecord,
+          id: sabotageRecord.id,
+          target: data.target || "all",
           targetTeamId,
-          targetTeamName: matched ? matched.teamName : undefined,
+          targetTeamName: matched ? matched.teamName : (data as any).targetTeamName,
+          teams: Array.isArray((data as any).teams) ? (data as any).teams : (data.target && data.target !== "all" ? [data.target] : []),
+          message: data.message,
+          duration: durationSec,
+          durationSec,
+          until: sabotageRecord.expiresAt,
           ts: Date.now(),
         };
 
-        // Dispatch single sabotage event cleanly
+        // 1. Always broadcast to public:broadcast so all clients receive and filter locally
+        this.io?.to("public:broadcast").emit("sabotage", eventPayload);
+
+        // 2. Also emit directly to specific team rooms
         if (targetTeamId && targetTeamId !== "all") {
           this.io?.to(`team:${targetTeamId}`).emit("sabotage", eventPayload);
-          this.io?.to("role:vecna").emit("sabotage", eventPayload);
-          this.io?.to("admins").emit("sabotage", eventPayload);
-        } else {
-          this.io?.to("public:broadcast").emit("sabotage", eventPayload);
+          this.io?.to(`team:${targetTeamId.toLowerCase()}`).emit("sabotage", eventPayload);
         }
+        if (matched) {
+          this.io?.to(`team:${matched.teamName.toLowerCase()}`).emit("sabotage", eventPayload);
+        }
+        if (Array.isArray((data as any).teams)) {
+          for (const t of (data as any).teams) {
+            this.io?.to(`team:${t}`).emit("sabotage", eventPayload);
+            this.io?.to(`team:${String(t).toLowerCase()}`).emit("sabotage", eventPayload);
+            const tm = allTeams.find(
+              (x) =>
+                x.teamName.toLowerCase() === String(t).toLowerCase() ||
+                x.id.toLowerCase() === String(t).toLowerCase()
+            );
+            if (tm) {
+              this.io?.to(`team:${tm.id}`).emit("sabotage", eventPayload);
+              this.io?.to(`team:${tm.teamName.toLowerCase()}`).emit("sabotage", eventPayload);
+            }
+          }
+        }
+        this.io?.to("role:vecna").emit("sabotage", eventPayload);
+        this.io?.to("admins").emit("sabotage", eventPayload);
 
         console.log(
           `[SABOTAGE DISPATCHED] ${data.kind} -> Target: ${data.target} (${targetTeamId}) (${durationSec}s)`

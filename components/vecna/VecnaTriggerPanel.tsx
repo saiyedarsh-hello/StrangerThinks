@@ -58,6 +58,7 @@ interface VecnaTriggerPanelProps {
   onTriggerAction: (action: TriggerAction) => void;
   activeActionId?: string | null;
   currentVecnaScore?: number;
+  teams?: string[];
 }
 
 export default function VecnaTriggerPanel({
@@ -65,9 +66,11 @@ export default function VecnaTriggerPanel({
   onSelectLocation,
   onTriggerAction,
   activeActionId,
-  currentVecnaScore = 50,
+  currentVecnaScore = 0,
+  teams = AVAILABLE_TEAMS,
 }: VecnaTriggerPanelProps) {
-  const [selectedTeams, setSelectedTeams] = useState<string[]>(["Null Pointers"]);
+  const activeTeamList = teams && teams.length > 0 ? teams : AVAILABLE_TEAMS;
+  const [selectedTeams, setSelectedTeams] = useState<string[]>(() => [activeTeamList[0] || "Null Pointers"]);
   const [selectedPower, setSelectedPower] = useState<TriggerActionKind>("LOCK");
 
   const toggleTeam = (tm: string) => {
@@ -79,16 +82,16 @@ export default function VecnaTriggerPanel({
 
   const selectAllTeams = () => {
     sfx("click");
-    if (selectedTeams.length === AVAILABLE_TEAMS.length) {
+    if (selectedTeams.length === activeTeamList.length) {
       setSelectedTeams([]);
     } else {
-      setSelectedTeams([...AVAILABLE_TEAMS]);
+      setSelectedTeams([...activeTeamList]);
     }
   };
 
   const activeAction = TRIGGER_ACTIONS.find((a) => a.id === selectedPower) || TRIGGER_ACTIONS[1];
   const totalCost = selectedTeams.length * 10;
-  const canAfford = currentVecnaScore >= totalCost && selectedTeams.length > 0;
+  const canAfford = currentVecnaScore > 0 && selectedTeams.length > 0 && currentVecnaScore >= totalCost;
 
   const handleExecute = () => {
     if (!canAfford) return;
@@ -215,12 +218,12 @@ export default function VecnaTriggerPanel({
               textDecoration: "underline",
             }}
           >
-            {selectedTeams.length === AVAILABLE_TEAMS.length ? "DESELECT ALL" : "SELECT ALL"}
+            {selectedTeams.length === activeTeamList.length ? "DESELECT ALL" : "SELECT ALL"}
           </button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "6px" }}>
-          {AVAILABLE_TEAMS.map((tm) => {
+          {activeTeamList.map((tm) => {
             const isChecked = selectedTeams.includes(tm);
             return (
               <button
@@ -374,7 +377,7 @@ export default function VecnaTriggerPanel({
             transition: "all 0.15s ease",
           }}
         >
-          {canAfford ? `ACTIVATE (-${totalCost} PTS)` : "INSUFFICIENT PTS / NO TARGETS"}
+          {canAfford ? `ACTIVATE (-${totalCost} PTS)` : selectedTeams.length === 0 ? "SELECT TARGET TEAM" : "INSUFFICIENT PTS"}
         </button>
       </div>
     </div>

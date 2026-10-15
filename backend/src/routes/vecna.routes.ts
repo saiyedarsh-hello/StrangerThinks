@@ -26,5 +26,7 @@ router.get("/status", VecnaController.getStatus);
 router.get("/trials/:trialId/progress", requireAuth(["VECNA", "ADMIN"]), VecnaController.getTrialProgress);
 router.get("/trials/:trialId/questions/:questionIdx", requireAuth(["VECNA", "ADMIN"]), VecnaController.getTrialQuestion);
 router.post("/trials/:trialId/questions/:questionIdx/submit", requireAuth(["VECNA", "ADMIN"]), VecnaController.submitTrialQuestion);
+router.post("/trials/:trialId/questions/:questionIdx/clue", requireAuth(["VECNA", "ADMIN"]), VecnaController.unlockClue);
+router.post("/trials/:trialId/submit", requireAuth(["VECNA", "ADMIN"]), VecnaController.submitTrialChapter);
 
 export default router;

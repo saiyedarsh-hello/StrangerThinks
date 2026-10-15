@@ -57,7 +57,6 @@ export default function Home() {
     <>
       {!cutscene && (s.stage === "ending" ? <Ending /> : <StageView />)}
       <Hud />
-      <SabotageOverlay />
       <ChapterCard />
       <Toast />
     </>

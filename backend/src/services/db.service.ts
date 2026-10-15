@@ -397,6 +397,9 @@ class DatabaseService {
         if ((id.startsWith("T") || id.startsWith("TEAM")) && (clean.startsWith("T") || clean.startsWith("TEAM"))) {
           return team;
         }
+        if (id.startsWith("VECNA") && clean.startsWith("VECNA")) {
+          return team;
+        }
       }
     }
     return undefined;
@@ -759,9 +762,31 @@ class DatabaseService {
   public getVecnaProgress(
     teamId: string,
     trialId: number
-  ): Record<number, { status: "solved" | "failed"; earnedPoints: number; chosenAnswer: string; submittedAt: string }> {
+  ): Record<
+    number,
+    {
+      status: "solved" | "failed" | "attempt_1_failed";
+      earnedPoints: number;
+      chosenAnswer: string;
+      attempts: number;
+      isLocked: boolean;
+      clueUnlocked?: boolean;
+      submittedAt: string;
+    }
+  > {
     const teamMap = this.vecnaQuestionProgress.get(teamId) || {};
-    const trialProgress: Record<number, { status: "solved" | "failed"; earnedPoints: number; chosenAnswer: string; submittedAt: string }> = {};
+    const trialProgress: Record<
+      number,
+      {
+        status: "solved" | "failed" | "attempt_1_failed";
+        earnedPoints: number;
+        chosenAnswer: string;
+        attempts: number;
+        isLocked: boolean;
+        clueUnlocked?: boolean;
+        submittedAt: string;
+      }
+    > = {};
     for (let i = 0; i < 10; i++) {
       const key = `${trialId}-${i}`;
       if (teamMap[key]) {
@@ -775,17 +800,42 @@ class DatabaseService {
     teamId: string,
     trialId: number,
     questionIdx: number,
-    status: "solved" | "failed",
+    status: "solved" | "failed" | "attempt_1_failed",
     earnedPoints: number,
-    chosenAnswer: string
+    chosenAnswer: string,
+    attempts: number = 1,
+    isLocked: boolean = false
   ): void {
     const key = `${trialId}-${questionIdx}`;
     const teamMap = this.vecnaQuestionProgress.get(teamId) || {};
+    const existing = teamMap[key] || {};
     teamMap[key] = {
+      ...existing,
       status,
       earnedPoints,
       chosenAnswer,
+      attempts,
+      isLocked,
       submittedAt: new Date().toISOString(),
+    };
+    this.vecnaQuestionProgress.set(teamId, teamMap);
+    this.saveSnapshot();
+  }
+
+  public unlockVecnaClue(teamId: string, trialId: number, questionIdx: number): void {
+    const key = `${trialId}-${questionIdx}`;
+    const teamMap = this.vecnaQuestionProgress.get(teamId) || {};
+    const existing = teamMap[key] || {
+      status: "unanswered",
+      earnedPoints: 0,
+      chosenAnswer: "",
+      attempts: 0,
+      isLocked: false,
+    };
+    teamMap[key] = {
+      ...existing,
+      clueUnlocked: true,
+      clueUnlockedAt: new Date().toISOString(),
     };
     this.vecnaQuestionProgress.set(teamId, teamMap);
     this.saveSnapshot();

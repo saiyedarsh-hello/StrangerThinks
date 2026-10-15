@@ -11,9 +11,9 @@ export const getApiBase = (): string => {
   }
   if (typeof window !== "undefined") {
     const host = window.location.hostname || "localhost";
-    return `http://${host}:5000/api`;
+    return `http://${host}:5055/api`;
   }
-  return "http://localhost:5000/api";
+  return "http://localhost:5055/api";
 };
 
 export const API_BASE = {

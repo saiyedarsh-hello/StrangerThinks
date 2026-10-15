@@ -6,7 +6,7 @@
       "leaderName": "Aarav Sharma",
       "role": "PLAYER",
       "status": "ACTIVE",
-      "totalScore": 10,
+      "totalScore": 20,
       "breakdown": {
         "tech": 0,
         "puzzle": 0,
@@ -16,15 +16,13 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-12T12:37:11.339Z",
+      "startedAt": null,
       "finishedAt": null,
-      "lastSolvedAt": "2026-10-12T12:45:47.974Z",
+      "lastSolvedAt": "2026-10-15T04:19:26.117Z",
       "location": "town",
       "stage": "hawkins",
       "storyProgress": 5,
-      "completedTasks": [
-        "ch1-q4"
-      ],
+      "completedTasks": [],
       "solvedChapters": [],
       "unlockedLocations": {
         "town": true,
@@ -38,11 +36,11 @@
         "mind": false
       },
       "radiometerPins": [
-        "-",
-        "-",
-        "-",
-        "-",
-        "-"
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "radiometerSolved": [
         false,
@@ -54,8 +52,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-12T12:45:47.974Z",
-      "taskScores": {}
+      "updatedAt": "2026-10-15T04:19:26.117Z"
     },
     "T02": {
       "id": "T02",
@@ -73,7 +70,7 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-12T12:37:25.660Z",
+      "startedAt": null,
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
@@ -93,11 +90,11 @@
         "mind": false
       },
       "radiometerPins": [
-        "-",
-        "-",
-        "-",
-        "-",
-        "-"
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "radiometerSolved": [
         false,
@@ -109,8 +106,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-12T12:43:49.838Z",
-      "taskScores": {}
+      "updatedAt": "2026-10-13T01:01:51.493Z"
     },
     "T03": {
       "id": "T03",
@@ -148,11 +144,11 @@
         "mind": false
       },
       "radiometerPins": [
-        "-",
-        "-",
-        "-",
-        "-",
-        "-"
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "radiometerSolved": [
         false,
@@ -164,14 +160,13 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-11T16:15:20.095Z",
-      "taskScores": {}
+      "updatedAt": "2026-10-13T01:01:51.493Z"
     },
     "T04": {
       "id": "T04",
       "teamName": "Byte Byters",
       "leaderName": "Dustin Henderson",
-      "role": "VECNA",
+      "role": "PLAYER",
       "status": "ACTIVE",
       "totalScore": 0,
       "breakdown": {
@@ -203,11 +198,11 @@
         "mind": false
       },
       "radiometerPins": [
-        "-",
-        "-",
-        "-",
-        "-",
-        "-"
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "radiometerSolved": [
         false,
@@ -219,8 +214,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-12T12:45:31.148Z",
-      "taskScores": {}
+      "updatedAt": "2026-10-13T05:45:45.832Z"
     },
     "T05": {
       "id": "T05",
@@ -258,11 +252,11 @@
         "mind": false
       },
       "radiometerPins": [
-        "-",
-        "-",
-        "-",
-        "-",
-        "-"
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "radiometerSolved": [
         false,
@@ -274,8 +268,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-11T16:15:20.095Z",
-      "taskScores": {}
+      "updatedAt": "2026-10-11T16:15:20.095Z"
     },
     "T06": {
       "id": "T06",
@@ -313,11 +306,11 @@
         "mind": false
       },
       "radiometerPins": [
-        "-",
-        "-",
-        "-",
-        "-",
-        "-"
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "radiometerSolved": [
         false,
@@ -329,8 +322,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-11T16:15:20.095Z",
-      "taskScores": {}
+      "updatedAt": "2026-10-13T05:45:45.832Z"
     },
     "T07": {
       "id": "T07",
@@ -368,11 +360,11 @@
         "mind": false
       },
       "radiometerPins": [
-        "-",
-        "-",
-        "-",
-        "-",
-        "-"
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "radiometerSolved": [
         false,
@@ -384,8 +376,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-11T16:15:20.095Z",
-      "taskScores": {}
+      "updatedAt": "2026-10-13T11:19:28.697Z"
     },
     "T08": {
       "id": "T08",
@@ -423,11 +414,11 @@
         "mind": false
       },
       "radiometerPins": [
-        "-",
-        "-",
-        "-",
-        "-",
-        "-"
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "radiometerSolved": [
         false,
@@ -439,8 +430,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-11T16:15:20.095Z",
-      "taskScores": {}
+      "updatedAt": "2026-10-11T16:15:20.095Z"
     },
     "VECNA-001": {
       "id": "VECNA-001",
@@ -462,10 +452,14 @@
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
-      "stage": "hawkins",
-      "storyProgress": 10,
-      "completedTasks": [],
-      "solvedChapters": [],
+      "stage": "trial-1",
+      "storyProgress": 5,
+      "completedTasks": [
+        "vecna-trial-2"
+      ],
+      "solvedChapters": [
+        2
+      ],
       "unlockedLocations": {
         "town": true,
         "policeStation": true,
@@ -494,7 +488,7 @@
       "radiometerCodeSolved": true,
       "unlockedHints": {},
       "createdAt": "2026-10-09T06:18:39.429Z",
-      "updatedAt": "2026-10-11T18:43:03.056Z",
+      "updatedAt": "2026-10-15T10:38:33.981Z",
       "taskScores": {}
     },
     "VECNA-TEST-SEQ": {
@@ -2979,7 +2973,15 @@
       ]
     }
   ],
-  "activeSabotages": {},
+  "activeSabotages": {
+    "1792052321492": {
+      "id": 1792052321492,
+      "kind": "LOCK",
+      "target": "town",
+      "operatorName": "HENRY CREEL",
+      "expiresAt": 1792052351492
+    }
+  },
   "vecnaProgress": {},
   "eventHistory": [
     {

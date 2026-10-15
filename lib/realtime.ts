@@ -168,9 +168,10 @@ export function getSocket(): Socket | null {
     try {
       const host = window.location.hostname || "localhost";
       const backendUrl =
+        process.env.NEXT_PUBLIC_SOCKET_URL ||
         process.env.NEXT_PUBLIC_BACKEND_URL ||
         (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "") : "") ||
-        `http://${host}:5000`;
+        `http://${host}:5055`;
 
       const initialToken = resolveStoredToken();
 

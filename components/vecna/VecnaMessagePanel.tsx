@@ -5,33 +5,70 @@ import { sfx } from "@/lib/audio";
 interface VecnaMessagePanelProps {
   onSendMessage: (target: "all" | string, message: string) => void;
   selectedTeamName?: string;
+  teams?: string[];
 }
 
-const AVAILABLE_TEAMS = [
+const DEFAULT_AVAILABLE_TEAMS = [
   "Null Pointers",
   "Stack Smashers",
   "Rift Runners",
   "Byte Byters",
-  "Signal Seekers",
+  "Shadow Walkers",
   "Hellfire Club",
+  "Hawkins AV Club",
+  "Mind Flayers",
 ];
 
 export default function VecnaMessagePanel({
   onSendMessage,
   selectedTeamName,
+  teams = DEFAULT_AVAILABLE_TEAMS,
 }: VecnaMessagePanelProps) {
   const [targetType, setTargetType] = useState<"all" | "specific">("all");
-  const [chosenTeam, setChosenTeam] = useState<string>(selectedTeamName || AVAILABLE_TEAMS[0]);
+  const availableTeamList = teams.length > 0 ? teams : DEFAULT_AVAILABLE_TEAMS;
+  const [chosenTeam, setChosenTeam] = useState<string>(selectedTeamName || availableTeamList[0]);
   const [message, setMessage] = useState("I KNOW WHERE YOU ARE.");
 
-  // Limits:
-  // "all": limit 5 times, cooldown 120s (2 minutes)
-  // individual team: limit 5 times per team, cooldown 60s (1 minute)
-  const [allCount, setAllCount] = useState<number>(0);
-  const [allLastSent, setAllLastSent] = useState<number>(0);
+  // Limits (Requirement 5):
+  // "all": limit 3 chances, cooldown 180s (3 minutes)
+  // individual team: limit 5 messages per team, cooldown 60s (1 minute)
+  const [allCount, setAllCount] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("vecna_dispatch_all_count");
+        if (saved) return parseInt(saved, 10) || 0;
+      } catch {}
+    }
+    return 0;
+  });
+  const [allLastSent, setAllLastSent] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("vecna_dispatch_all_last");
+        if (saved) return parseInt(saved, 10) || 0;
+      } catch {}
+    }
+    return 0;
+  });
 
-  const [teamCounts, setTeamCounts] = useState<Record<string, number>>({});
-  const [teamLastSent, setTeamLastSent] = useState<Record<string, number>>({});
+  const [teamCounts, setTeamCounts] = useState<Record<string, number>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("vecna_dispatch_team_counts");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return {};
+  });
+  const [teamLastSent, setTeamLastSent] = useState<Record<string, number>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("vecna_dispatch_team_last");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return {};
+  });
 
   const [now, setNow] = useState<number>(Date.now());
 
@@ -41,19 +78,19 @@ export default function VecnaMessagePanel({
   }, []);
 
   useEffect(() => {
-    if (selectedTeamName) {
+    if (selectedTeamName && availableTeamList.includes(selectedTeamName)) {
       setChosenTeam(selectedTeamName);
     }
-  }, [selectedTeamName]);
+  }, [selectedTeamName, availableTeamList]);
 
-  // Calculate cooldowns
-  const allCooldownRemaining = Math.max(0, Math.ceil((allLastSent + 120000 - now) / 1000));
+  // Calculate cooldowns (3 min = 180s for All; 1 min = 60s for Individual)
+  const allCooldownRemaining = Math.max(0, Math.ceil((allLastSent + 180000 - now) / 1000));
   const selectedTeamCooldownRemaining = Math.max(
     0,
     Math.ceil(((teamLastSent[chosenTeam] || 0) + 60000 - now) / 1000)
   );
 
-  const isAllDisabled = allCount >= 5 || allCooldownRemaining > 0;
+  const isAllDisabled = allCount >= 3 || allCooldownRemaining > 0;
   const currentTeamCount = teamCounts[chosenTeam] || 0;
   const isTeamDisabled = currentTeamCount >= 5 || selectedTeamCooldownRemaining > 0;
 
@@ -83,6 +120,17 @@ export default function VecnaMessagePanel({
       onSendMessage(chosenTeam, message.trim());
     }
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("vecna_dispatch_all_count", String(allCount));
+        localStorage.setItem("vecna_dispatch_all_last", String(allLastSent));
+        localStorage.setItem("vecna_dispatch_team_counts", JSON.stringify(teamCounts));
+        localStorage.setItem("vecna_dispatch_team_last", JSON.stringify(teamLastSent));
+      } catch {}
+    }
+  }, [allCount, allLastSent, teamCounts, teamLastSent]);
 
   const presetMessages = [
     "I KNOW WHERE YOU ARE.",
@@ -127,7 +175,7 @@ export default function VecnaMessagePanel({
           }}
         >
           {targetType === "all"
-            ? `ALL TEAMS: ${5 - allCount}/5 REMAINING`
+            ? `ALL TEAMS: ${3 - allCount}/3 REMAINING`
             : `${chosenTeam}: ${5 - currentTeamCount}/5 REMAINING`}
         </span>
       </div>
@@ -154,7 +202,7 @@ export default function VecnaMessagePanel({
             borderRadius: "2px",
           }}
         >
-          ALL TEAMS ({5 - allCount}/5)
+          ALL TEAMS ({3 - allCount}/3)
         </button>
         <button
           type="button"
@@ -213,7 +261,7 @@ export default function VecnaMessagePanel({
               cursor: "pointer",
             }}
           >
-            {AVAILABLE_TEAMS.map((tm) => (
+            {availableTeamList.map((tm) => (
               <option key={tm} value={tm} style={{ background: "#140407", color: "#ffffff" }}>
                 {tm} ({5 - (teamCounts[tm] || 0)} messages left)
               </option>
@@ -237,10 +285,10 @@ export default function VecnaMessagePanel({
             textAlign: "center",
           }}
         >
-          ⏳ COOLDOWN: {allCooldownRemaining}s REMAINING (ALL TEAMS: 1 PER 2 MIN)
+          ⏳ COOLDOWN: {allCooldownRemaining}s REMAINING (ALL TEAMS: 1 PER 3 MIN)
         </div>
       )}
-      {targetType === "all" && allCount >= 5 && (
+      {targetType === "all" && allCount >= 3 && (
         <div
           style={{
             background: "rgba(100, 20, 25, 0.4)",
@@ -254,7 +302,7 @@ export default function VecnaMessagePanel({
             textAlign: "center",
           }}
         >
-          🚫 QUOTA REACHED: 5/5 ALL TEAMS TRANSMISSIONS USED
+          🚫 QUOTA REACHED: 3/3 ALL TEAMS TRANSMISSIONS USED
         </div>
       )}
 
@@ -392,7 +440,7 @@ export default function VecnaMessagePanel({
           }}
         >
           {targetType === "all"
-            ? `SEND TO ALL TEAMS (${5 - allCount} LEFT)`
+            ? `SEND TO ALL TEAMS (${3 - allCount} LEFT)`
             : `SEND TO ${chosenTeam.toUpperCase()} (${5 - currentTeamCount} LEFT)`}
         </button>
       </form>

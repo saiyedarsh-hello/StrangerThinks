@@ -15,6 +15,77 @@ const QS: [string, RegExp][] = [
   ["Decimal of binary 1100?", /^12$/],
 ];
 
+interface CorruptQuestion {
+  id: string;
+  title: string;
+  prompt: string;
+  options: { id: string; text: string }[];
+  correctAnswer: string;
+}
+
+const CORRUPTED_ANOMALY_QUESTIONS: CorruptQuestion[] = [
+  {
+    id: "corrupt-1",
+    title: "VOID FREQUENCY DISTORTION",
+    prompt: "A psychic anomaly has scrambled your Hawkins radio transceiver. To recalibrate the mainframe, determine: What channel was Mike's Realistic TRC-214 walkie-talkie tuned to when contacting Will?",
+    options: [
+      { id: "A", text: "Channel 11" },
+      { id: "B", text: "Channel 14" },
+      { id: "C", text: "Channel 9" },
+      { id: "D", text: "Channel 20" },
+    ],
+    correctAnswer: "B",
+  },
+  {
+    id: "corrupt-2",
+    title: "HIVE MIND TELEMETRY INTRUSION",
+    prompt: "Vecna has injected a false parity byte into the Hawkins Lab Sublevel 3 router. Which emergency code did the Party broadcast over the airwaves when under Demogorgon attack?",
+    options: [
+      { id: "A", text: "CODE RED" },
+      { id: "B", text: "BLACKOUT" },
+      { id: "C", text: "OPERATION ZERO" },
+      { id: "D", text: "SHADOW MONSTER" },
+    ],
+    correctAnswer: "A",
+  },
+  {
+    id: "corrupt-3",
+    title: "PARITY OVERFLOW ERROR",
+    prompt: "Dimensional reality corrupted: Convert decimal value 13 into standard 4-bit binary to unlock the terminal bypass circuit.",
+    options: [
+      { id: "A", text: "1011 (binary)" },
+      { id: "B", text: "1110 (binary)" },
+      { id: "C", text: "1101 (binary)" },
+      { id: "D", text: "1001 (binary)" },
+    ],
+    correctAnswer: "C",
+  },
+  {
+    id: "corrupt-4",
+    title: "CEREBRO RADIO INTERFERENCE",
+    prompt: "Dustin's Cerebro antenna received an anomalous harmonic interference. What song was broadcast across Roane County to transmit Planck's Constant (6.62607004)?",
+    options: [
+      { id: "A", text: "The NeverEnding Story" },
+      { id: "B", text: "Should I Stay or Should I Go" },
+      { id: "C", text: "Africa by Toto" },
+      { id: "D", text: "Runnin' Up That Hill" },
+    ],
+    correctAnswer: "A",
+  },
+  {
+    id: "corrupt-5",
+    title: "SOTERIA CHIP CORRUPTION",
+    prompt: "Experiment 001's inhibitor telemetry has leaked into your docket. What is the hexadecimal representation of decimal 255?",
+    options: [
+      { id: "A", text: "0xFF" },
+      { id: "B", text: "0xEE" },
+      { id: "C", text: "0xAA" },
+      { id: "D", text: "0x100" },
+    ],
+    correctAnswer: "A",
+  },
+];
+
 const NAME: Record<string, string> = {
   CORRUPT: "CHALLENGE CORRUPTED",
   TIME_FREEZE: "TIME FREEZE · -02:00",
@@ -419,22 +490,51 @@ export default function SabotageOverlay() {
     );
   }
 
+  const corruptQ =
+    sabotage && sabotage.kind === "CORRUPT"
+      ? CORRUPTED_ANOMALY_QUESTIONS[Math.abs(sabotage.id || 0) % CORRUPTED_ANOMALY_QUESTIONS.length]
+      : null;
+
+  const [selectedCorruptOpt, setSelectedCorruptOpt] = useState<string>("");
+  const [corruptError, setCorruptError] = useState<string | null>(null);
+  const [corruptSuccess, setCorruptSuccess] = useState<boolean>(false);
+
+  const handleSolveCorrupt = () => {
+    if (!corruptQ || !selectedCorruptOpt) return;
+    if (selectedCorruptOpt === corruptQ.correctAnswer) {
+      sfx("boom");
+      setCorruptSuccess(true);
+      setCorruptError(null);
+      setTimeout(() => {
+        clearSabotage();
+        setSelectedCorruptOpt("");
+        setCorruptSuccess(false);
+      }, 900);
+    } else {
+      sfx("err");
+      setCorruptError("ANOMALY OVERRIDE FAILED · PARITY MISMATCH!");
+      setTimeout(() => setCorruptError(null), 2500);
+    }
+  };
+
   return (
     <>
       <AnimatePresence>
         {overlay && sabotage.kind !== "MESSAGE" && (
           <motion.div className="sab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="sab-box" style={{ maxWidth: 620 }}>
-              <div className="term" style={{ color: "var(--danger)", fontSize: 24, letterSpacing: ".3em" }}>
-                [ALERT] SYSTEM COMPROMISED
+            <div className="sab-box" style={{ maxWidth: 660, padding: 24, border: "2px solid #ff2d3a", background: "#0a0306", boxShadow: "0 0 30px rgba(255, 45, 58, 0.4)" }}>
+              <div className="term" style={{ color: "#ff2d3a", fontSize: 20, letterSpacing: ".25em", fontWeight: 900 }}>
+                {sabotage.kind === "CORRUPT" ? "★ VECNA INTRUSION · SYSTEM CORRUPTED ★" : "[ALERT] SYSTEM COMPROMISED"}
               </div>
 
-              <h2 className="title-xl" style={{ fontSize: 44, margin: "14px 0", color: "#ff2d3a" }}>
-                <Glitch text={sabotage.message || "VECNA HAS FOUND YOU."} hard />
+              <h2 className="title-xl" style={{ fontSize: sabotage.kind === "CORRUPT" ? 28 : 44, margin: "10px 0", color: "#ff2d3a" }}>
+                <Glitch text={sabotage.message || (sabotage.kind === "CORRUPT" ? "ANOMALY INJECTED INTO INVESTIGATION TRACK" : "VECNA HAS FOUND YOU.")} hard />
               </h2>
 
-              <div className="eyebrow" style={{ marginBottom: 18 }}>
-                {sabotage.kind === "LOCK" && sabotage.pinIndex !== undefined
+              <div className="eyebrow" style={{ marginBottom: 16 }}>
+                {sabotage.kind === "CORRUPT"
+                  ? "CORRUPTED TELEMETRY DETECTED · SOLVE ANOMALY TO RETURN TO ORIGINAL TRACK"
+                  : sabotage.kind === "LOCK" && sabotage.pinIndex !== undefined
                   ? `PIN ${sabotage.pinIndex + 1} LOCKED BY VECNA`
                   : NAME[sabotage.kind]}
                 {sabotage.operatorName && (
@@ -444,7 +544,99 @@ export default function SabotageOverlay() {
                 )}
               </div>
 
-              {(sabotage.kind === "LOCK" || sabotage.kind === "CORRUPT") && q && (
+              {/* CORRUPT POWER: INJECTS 1 FAKE QUESTION HAWKINS MUST SOLVE (Requirement 6) */}
+              {sabotage.kind === "CORRUPT" && corruptQ ? (
+                <div style={{ textAlign: "left", width: "100%", marginTop: 8 }}>
+                  <div
+                    style={{
+                      background: "rgba(255, 45, 58, 0.08)",
+                      border: "1.5px solid rgba(255, 45, 58, 0.4)",
+                      padding: "14px 16px",
+                      borderRadius: 4,
+                      marginBottom: 16,
+                      fontFamily: "'Courier New', Courier, monospace",
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      color: "#ffd9db",
+                    }}
+                  >
+                    <div style={{ color: "#ff2d3a", fontWeight: 900, marginBottom: 6, fontSize: 11, letterSpacing: ".1em" }}>
+                      [CORRUPTED ANOMALY // {corruptQ.title}]
+                    </div>
+                    {corruptQ.prompt}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                    {corruptQ.options.map((opt) => {
+                      const isSel = selectedCorruptOpt === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => {
+                            sfx("click");
+                            setSelectedCorruptOpt(opt.id);
+                          }}
+                          style={{
+                            padding: "10px 14px",
+                            textAlign: "left",
+                            background: isSel ? "rgba(255, 45, 58, 0.25)" : "rgba(20, 10, 14, 0.8)",
+                            border: isSel ? "2px solid #ff2d3a" : "1px solid rgba(255, 45, 58, 0.3)",
+                            borderRadius: 4,
+                            color: isSel ? "#ffffff" : "#f1cfd2",
+                            cursor: "pointer",
+                            fontSize: 12,
+                            fontFamily: "'Courier New', Courier, monospace",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          <span style={{ fontWeight: 900, color: "#ff2d3a", background: "rgba(255, 45, 58, 0.2)", padding: "2px 6px", borderRadius: 2 }}>
+                            {opt.id}
+                          </span>
+                          <span>{opt.text}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {corruptError && (
+                    <div style={{ color: "#ff4d58", fontSize: 12, fontWeight: 900, marginBottom: 12, textAlign: "center", fontFamily: "'Courier New', Courier, monospace" }}>
+                      {corruptError}
+                    </div>
+                  )}
+
+                  {corruptSuccess && (
+                    <div style={{ color: "#36e0c4", fontSize: 13, fontWeight: 900, marginBottom: 12, textAlign: "center", fontFamily: "'Courier New', Courier, monospace" }}>
+                      ✓ CORRUPTION PURGED · RETURNING TO INVESTIGATION TRACK...
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleSolveCorrupt}
+                    disabled={!selectedCorruptOpt || corruptSuccess}
+                    style={{
+                      width: "100%",
+                      padding: "12px 20px",
+                      background: selectedCorruptOpt ? "#ff2d3a" : "rgba(255, 45, 58, 0.3)",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: 4,
+                      fontWeight: 900,
+                      fontFamily: "'Benguiat Bold', serif",
+                      letterSpacing: ".12em",
+                      cursor: selectedCorruptOpt ? "pointer" : "not-allowed",
+                      boxShadow: selectedCorruptOpt ? "0 0 15px rgba(255, 45, 58, 0.6)" : "none",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    OVERRIDE CORRUPTION & RESUME TRACK
+                  </button>
+                </div>
+              ) : (sabotage.kind === "LOCK" || sabotage.kind === "CORRUPT") && q ? (
                 <>
                   <div className="term dim" style={{ marginBottom: 14 }}>
                     Solve the challenge to restore access.
@@ -473,7 +665,7 @@ export default function SabotageOverlay() {
                     </div>
                   </form>
                 </>
-              )}
+              ) : null}
             </div>
           </motion.div>
         )}

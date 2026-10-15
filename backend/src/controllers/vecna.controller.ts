@@ -63,7 +63,7 @@ export const VecnaController = {
 
     const sessionRes = await SessionService.createVecnaSession(senderId);
     const token = AuthService.generateToken({
-      teamId: `VECNA-${senderId}`,
+      teamId: senderId === 2 ? "VECNA-002" : "VECNA-001",
       teamName: senderName,
       leaderName: senderName,
       role: "VECNA",
@@ -176,13 +176,57 @@ export const VecnaController = {
   },
 
   /**
-   * POST /api/vecna/sabotage — Trigger real-time power sabotage
+   * POST /api/vecna/sabotage — Trigger real-time power sabotage with fair points deduction
    */
   async triggerSabotage(req: Request, res: Response) {
-    const { target = "all", kind = "GLITCH", message, duration = 45, operatorName = "HENRY CREEL" } = req.body;
+    const {
+      target = "all",
+      teams = [],
+      targetTeamId,
+      kind = "GLITCH",
+      message,
+      duration = 45,
+      operatorName = "HENRY CREEL",
+      cost,
+    } = req.body;
+    const teamId = (req.user as any)?.teamId || "VECNA-001";
+    const team = db.getTeamById(teamId) || db.getTeamById("VECNA-001");
+
+    // 1. Calculate and verify cost
+    const isMessage = kind === "MESSAGE";
+    const finalTeams = Array.isArray(teams) && teams.length > 0
+      ? teams
+      : (targetTeamId ? [targetTeamId] : (target && target !== "all" ? [target] : []));
+    const targetCount = finalTeams.length > 0 ? finalTeams.length : (target === "all" ? 5 : 1);
+    const costPerTarget = isMessage ? 0 : 10;
+    const totalCost = isMessage ? 0 : (typeof cost === "number" ? cost : targetCount * costPerTarget);
+    const currentScore = team?.totalScore ?? 0;
+
+    if (!isMessage && (currentScore < totalCost || currentScore <= 0)) {
+      return res.status(403).json({
+        success: false,
+        error: "INSUFFICIENT_POINTS",
+        message: `INSUFFICIENT VECNA POWER: Unleashing [${kind}] requires ${totalCost} PTS (${costPerTarget} PTS/target), but you only have ${currentScore} PTS.`,
+        currentScore,
+        requiredScore: totalCost,
+      });
+    }
+
+    // 2. Deduct points fairly from Vecna team (if cost > 0)
+    const newScore = Math.max(0, currentScore - totalCost);
+    if (team && totalCost > 0) {
+      db.updateTeam(team.id, {
+        totalScore: newScore,
+        breakdown: {
+          ...team.breakdown,
+          tech: Math.max(0, (team.breakdown?.tech ?? 0) - totalCost),
+        },
+      });
+      socketService.broadcastLeaderboard();
+    }
+
     const pool = tidb.pool;
     let sabotageId = Date.now();
-
     const durationMs = Number(duration) * 1000;
     const expiresAt = Date.now() + durationMs;
 
@@ -204,6 +248,7 @@ export const VecnaController = {
       id: sabotageId,
       kind,
       target,
+      teams: finalTeams,
       message,
       duration: Number(duration),
       operatorName,
@@ -211,15 +256,21 @@ export const VecnaController = {
       ts: Date.now(),
     };
 
-    if (target === "all") {
-      socketService.broadcastEvent("sabotage", payload);
-    } else {
+    // Broadcast globally and emit directly to each target team
+    socketService.broadcastEvent("sabotage", payload);
+    if (Array.isArray(finalTeams) && finalTeams.length > 0) {
+      for (const t of finalTeams) {
+        socketService.emitToTeam(t, "sabotage", payload);
+      }
+    } else if (target && target !== "all") {
       socketService.emitToTeam(target, "sabotage", payload);
     }
 
     return res.json({
       success: true,
-      message: `Vecna power [${kind}] unleashed on [${target}].`,
+      message: `Vecna power [${kind}] unleashed on [${target}]. (${totalCost} PTS deducted)`,
+      currentScore: newScore,
+      pointsDeducted: totalCost,
       sabotage: { sabotage_id: sabotageId, ...payload },
     });
   },
@@ -295,11 +346,14 @@ export const VecnaController = {
       }
     }
 
+    const team = db.getTeamById(teamId) || db.getTeamById("VECNA-001");
+
     return res.json({
       success: true,
       trialId,
       progress,
       maxUnlockedIdx: Math.min(9, maxUnlockedIdx),
+      currentScore: team?.totalScore ?? 0,
     });
   },
 
@@ -341,6 +395,7 @@ export const VecnaController = {
 
     const attempt = progress[questionIdx];
     const isLocked = Boolean(attempt && (attempt.status === "solved" || attempt.status === "failed"));
+    const clueUnlocked = Boolean(attempt?.clueUnlocked);
 
     return res.json({
       success: true,
@@ -352,13 +407,16 @@ export const VecnaController = {
         options: q.options,
         isLocked,
         status: attempt?.status || "unanswered",
+        attempts: attempt?.attempts || 0,
         earnedPoints: attempt?.earnedPoints || 0,
+        clueUnlocked,
+        hint: clueUnlocked ? q.hint : undefined,
       },
     });
   },
 
   /**
-   * POST /api/vecna/trials/:trialId/questions/:questionIdx/submit — Authoritative submit with sequential check
+   * POST /api/vecna/trials/:trialId/questions/:questionIdx/submit — Authoritative submit with Hawkins 2-attempt model
    */
   async submitTrialQuestion(req: Request, res: Response) {
     const trialId = parseInt(req.params.trialId, 10);
@@ -387,7 +445,7 @@ export const VecnaController = {
     const teamId = (req.user as any)?.teamId || "VECNA-001";
     const progress = db.getVecnaProgress(teamId, trialId);
 
-    // Enforce sequential progression: all prior questions 0..(questionIdx - 1) MUST be attempted
+    // Enforce sequential progression: all prior questions 0..(questionIdx - 1) MUST be completed
     for (let i = 0; i < questionIdx; i++) {
       const priorState = progress[i];
       if (!priorState || (priorState.status !== "solved" && priorState.status !== "failed")) {
@@ -400,7 +458,7 @@ export const VecnaController = {
       }
     }
 
-    // Check if this question is already submitted (idempotent, no points duplicate)
+    // Check if this question is already submitted & locked (idempotent, no points duplicate)
     const existing = progress[questionIdx];
     if (existing && (existing.status === "solved" || existing.status === "failed")) {
       return res.json({
@@ -408,11 +466,15 @@ export const VecnaController = {
         isCorrect: existing.status === "solved",
         pointsAwarded: 0,
         status: existing.status,
+        attempts: existing.attempts || 1,
         isLocked: true,
         nextQuestionIdx: Math.min(9, questionIdx + 1),
-        message: "Question already submitted and locked.",
+        message: "Question already completed and locked.",
       });
     }
+
+    // Determine attempt count (Attempt 1 vs Attempt 2)
+    const currentAttemptNum = existing?.status === "attempt_1_failed" ? 2 : 1;
 
     const questions = RAW_CHAPTER_QUESTIONS[trialId] || [];
     const q = questions[questionIdx];
@@ -420,24 +482,76 @@ export const VecnaController = {
       return res.status(404).json({ success: false, error: "QUESTION_NOT_FOUND" });
     }
 
-    const isCorrect = answer.trim().toUpperCase() === q.correctAnswerId.trim().toUpperCase();
-    const pointsAwarded = isCorrect ? 10 : 0;
-    const status = isCorrect ? "solved" : "failed";
+    const normAnswer = answer.trim().toLowerCase();
+    const expectedId = (q.correctAnswerId || "").trim().toLowerCase();
+    const correctOpt = q.options?.find((o: any) => o.id.toLowerCase() === expectedId);
+    const optText = correctOpt ? correctOpt.text.trim().toLowerCase() : "";
+
+    // Comprehensive answer matching: ID, exact text, prefix, or token sequence
+    const isCorrect =
+      normAnswer === expectedId ||
+      (optText && normAnswer === optText) ||
+      (optText && normAnswer.startsWith(expectedId)) ||
+      (optText && optText.includes(normAnswer) && normAnswer.length > 3) ||
+      (normAnswer.includes(optText) && optText.length > 3);
+
+    let pointsAwarded = 0;
+    let status: "solved" | "failed" | "attempt_1_failed" = "failed";
+    let isLocked = false;
+    let message = "";
+
+    if (isCorrect) {
+      // Hawkins rule: 10 PTS on 1st try; 5 PTS on 2nd try
+      pointsAwarded = currentAttemptNum === 1 ? 10 : 5;
+      status = "solved";
+      isLocked = true;
+      message = currentAttemptNum === 1
+        ? `LEVEL ${questionIdx + 1} OVERRIDE CONFIRMED (+10 PTS)`
+        : `LEVEL ${questionIdx + 1} OVERRIDE CONFIRMED (+5 PTS)`;
+    } else {
+      // Incorrect
+      if (currentAttemptNum === 1) {
+        // Attempt 1 failed: 0 points deducted, 1 attempt remaining, not locked
+        pointsAwarded = 0;
+        status = "attempt_1_failed";
+        isLocked = false;
+        message = "INCORRECT · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)";
+      } else {
+        // Attempt 2 failed: 0 points awarded, permanently locked
+        pointsAwarded = 0;
+        status = "failed";
+        isLocked = true;
+        message = "TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS]";
+      }
+    }
 
     // Record authoritative attempt in backend
-    db.recordVecnaAttempt(teamId, trialId, questionIdx, status, pointsAwarded, answer);
+    db.recordVecnaAttempt(
+      teamId,
+      trialId,
+      questionIdx,
+      status,
+      pointsAwarded,
+      answer,
+      currentAttemptNum,
+      isLocked
+    );
 
-    if (pointsAwarded > 0) {
-      const team = db.getTeamById(teamId);
-      if (team) {
+    let updatedTotalScore = 0;
+    const team = db.getTeamById(teamId) || db.getTeamById("VECNA-001");
+    if (team) {
+      if (pointsAwarded > 0) {
+        updatedTotalScore = team.totalScore + pointsAwarded;
         db.updateTeam(team.id, {
-          totalScore: team.totalScore + pointsAwarded,
+          totalScore: updatedTotalScore,
           breakdown: {
             ...team.breakdown,
-            tech: team.breakdown.tech + pointsAwarded,
+            tech: (team.breakdown?.tech ?? 0) + pointsAwarded,
           },
         });
         socketService.broadcastLeaderboard();
+      } else {
+        updatedTotalScore = team.totalScore;
       }
     }
 
@@ -445,12 +559,131 @@ export const VecnaController = {
       success: true,
       isCorrect,
       pointsAwarded,
+      currentScore: updatedTotalScore,
       status,
-      isLocked: true,
-      nextQuestionIdx: Math.min(9, questionIdx + 1),
-      message: isCorrect
-        ? `LEVEL ${questionIdx + 1} OVERRIDE CONFIRMED (+10 PTS)`
-        : `INCORRECT VECTOR · LEVEL ${questionIdx + 1} LOCKED (0 PTS)`,
+      attempts: currentAttemptNum,
+      isLocked,
+      nextQuestionIdx: isLocked ? Math.min(9, questionIdx + 1) : questionIdx,
+      message,
+    });
+  },
+
+  /**
+   * POST /api/vecna/trials/:trialId/questions/:questionIdx/clue — Unlock Intel Clue (-5 PTS)
+   */
+  async unlockClue(req: Request, res: Response) {
+    const trialId = parseInt(req.params.trialId, 10);
+    const questionIdx = parseInt(req.params.questionIdx, 10);
+
+    if (isNaN(trialId) || trialId < 1 || trialId > 7) {
+      return res.status(400).json({ success: false, error: "INVALID_TRIAL_ID" });
+    }
+    if (isNaN(questionIdx) || questionIdx < 0 || questionIdx > 9) {
+      return res.status(400).json({ success: false, error: "INVALID_QUESTION_INDEX" });
+    }
+
+    const teamId = (req.user as any)?.teamId || "VECNA-001";
+    const team = db.getTeamById(teamId) || db.getTeamById("VECNA-001");
+    const progress = db.getVecnaProgress(teamId, trialId);
+
+    const questions = RAW_CHAPTER_QUESTIONS[trialId] || [];
+    const q = questions[questionIdx];
+    if (!q) {
+      return res.status(404).json({ success: false, error: "QUESTION_NOT_FOUND" });
+    }
+
+    // Check if clue was already unlocked
+    if (progress[questionIdx]?.clueUnlocked) {
+      return res.json({
+        success: true,
+        hint: q.hint || "Review covert frequency telemetry.",
+        currentScore: team?.totalScore ?? 0,
+        alreadyUnlocked: true,
+      });
+    }
+
+    const currentScore = team?.totalScore ?? 0;
+    const clueCost = 5;
+
+    if (currentScore < clueCost) {
+      return res.status(403).json({
+        success: false,
+        error: "INSUFFICIENT_POINTS",
+        message: `INSUFFICIENT PSYCHIC POINTS: Unlocking an Intel Clue requires ${clueCost} PTS, but you have ${currentScore} PTS.`,
+        currentScore,
+        requiredScore: clueCost,
+      });
+    }
+
+    const newScore = Math.max(0, currentScore - clueCost);
+    if (team) {
+      db.updateTeam(team.id, {
+        totalScore: newScore,
+        breakdown: {
+          ...team.breakdown,
+          tech: Math.max(0, (team.breakdown?.tech ?? 0) - clueCost),
+        },
+      });
+      socketService.broadcastLeaderboard();
+    }
+
+    db.unlockVecnaClue(teamId, trialId, questionIdx);
+
+    return res.json({
+      success: true,
+      hint: q.hint || "Review covert frequency telemetry.",
+      currentScore: newScore,
+      pointsDeducted: clueCost,
+      message: `INTEL CLUE DECRYPTED (-${clueCost} PTS DEDUCTED)`,
+    });
+  },
+
+  /**
+   * POST /api/vecna/trials/:trialId/submit — Submit full chapter/trial docket
+   */
+  async submitTrialChapter(req: Request, res: Response) {
+    const trialId = parseInt(req.params.trialId, 10);
+    const teamId = (req.user as any)?.teamId || "VECNA-001";
+    const progress = db.getVecnaProgress(teamId, trialId);
+
+    const solvedCount = Object.values(progress).filter((p: any) => p.status === "solved").length;
+    const completedCount = Object.values(progress).filter(
+      (p: any) => p.status === "solved" || p.status === "failed"
+    ).length;
+
+    // Strictly enforce all 10 questions must be completed before chapter dossier can be submitted
+    if (completedCount < 10) {
+      return res.status(400).json({
+        success: false,
+        error: "INCOMPLETE_CHAPTER",
+        message: `CANNOT SUBMIT CHAPTER ${trialId}: All 10 docket items must be completed before submitting (Completed: ${completedCount}/10).`,
+        completedCount,
+        requiredCount: 10,
+      });
+    }
+
+    const team = db.getTeamById(teamId) || db.getTeamById("VECNA-001");
+    const nextTrialId = Math.min(6, trialId + 1);
+
+    if (team) {
+      const completedTasks = Array.from(new Set([...(team.completedTasks || []), `vecna-trial-${trialId}`]));
+      const solvedChapters = Array.from(new Set([...(team.solvedChapters || []), trialId]));
+      db.updateTeam(team.id, {
+        completedTasks,
+        solvedChapters,
+      });
+      socketService.broadcastLeaderboard();
+    }
+
+    return res.json({
+      success: true,
+      trialId,
+      solvedCount,
+      completedCount,
+      totalQuestions: 10,
+      nextTrialId,
+      currentScore: team?.totalScore ?? 0,
+      message: `TRIAL ${trialId} DOSSIER SUBMITTED (${solvedCount}/10 ACCURATE)`,
     });
   },
 };
