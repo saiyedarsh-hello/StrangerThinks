@@ -701,6 +701,8 @@ class DatabaseService {
         completedTasks: distinctCompleted,
         lastSubmissionTime: t.lastSolvedAt || t.updatedAt,
         status: t.status,
+        location: t.location || "town",
+        isOnline: t.status === "ACTIVE",
       };
     });
   }

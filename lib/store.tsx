@@ -274,6 +274,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     return 1;
   });
+
+  // Automatically keep s.location synchronized with player's active chapter
+  useEffect(() => {
+    const chapterToLocation: Record<number, LocationId> = {
+      1: "town",
+      2: "policeStation",
+      3: "byersHouse",
+      4: "lab",
+      5: "radioTower",
+      6: "upsidedown",
+      7: "upsidedown",
+    };
+    const targetLoc = chapterToLocation[activeChapterId];
+    if (targetLoc) {
+      setS((prev) => (prev.location !== targetLoc ? { ...prev, location: targetLoc } : prev));
+    }
+  }, [activeChapterId]);
+
   const [chapterModalOpen, setChapterModalOpen] = useState(false);
   const [modal, setModal] = useState<InGameModalConfig | null>(null);
 

@@ -153,6 +153,8 @@ export interface LeaderboardEntry {
   completedTasks: string[];
   lastSubmissionTime: string;
   status: "ACTIVE" | "COMPLETED" | "DISQUALIFIED";
+  location?: string;
+  isOnline?: boolean;
 }
 
 export interface ValidationResponse {

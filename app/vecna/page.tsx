@@ -334,12 +334,26 @@ export default function VecnaPage() {
       if (msg.type === "score:update" && msg.teamId === "VECNA-001" && typeof msg.score === "number") {
         setVecnaScore(msg.score);
       }
-      if (msg.type === "leaderboard:update") {
+      if (msg.type === "leaderboard:update" || msg.type === "presence" || msg.type === "presence:update") {
         fetchTeamsTelemetry();
       }
     });
     return () => unsub();
   }, [router, session]);
+
+  // Normalize any location string format to valid Tactical Map key
+  const normalizeMapLocation = (loc?: string): string => {
+    if (!loc) return "town";
+    const clean = String(loc).trim().toLowerCase().replace(/[\s\-_]/g, "");
+    if (clean.includes("radio")) return "radioTower";
+    if (clean.includes("police")) return "police";
+    if (clean.includes("byer")) return "byers";
+    if (clean.includes("lab")) return "lab";
+    if (clean.includes("forest") || clean.includes("wood")) return "forest";
+    if (clean.includes("upside") || clean.includes("gate") || clean.includes("mind") || clean.includes("rift")) return "upsideDown";
+    if (clean.includes("town") || clean.includes("hawkins")) return "town";
+    return "town";
+  };
 
   // Fetch live teams and aggregate per location
   const fetchTeamsTelemetry = useCallback(async () => {
@@ -370,26 +384,21 @@ export default function VecnaPage() {
           };
 
           squads.forEach((t: any) => {
-            let locKey = "town";
-            if (t.location && locMap[t.location]) {
-              locKey = t.location;
-            } else {
-              const solved = Number(t.solvedCount || 0);
-              if (solved === 0) locKey = "town";
-              else if (solved === 1) locKey = "police";
-              else if (solved === 2) locKey = "byers";
-              else if (solved === 3) locKey = "lab";
-              else if (solved === 4) locKey = "radioTower";
-              else if (solved === 5) locKey = "forest";
-              else locKey = "upsideDown";
-            }
-
+            const locKey = normalizeMapLocation(t.location);
             const status = t.status === "ACTIVE" ? "Online" : t.status === "LOCKED" ? "Stuck" : "Offline";
-            locMap[locKey].push({
-              id: t.teamId,
-              name: t.teamName,
-              status,
-            });
+            if (locMap[locKey]) {
+              locMap[locKey].push({
+                id: t.teamId,
+                name: t.teamName,
+                status,
+              });
+            } else {
+              locMap.town.push({
+                id: t.teamId,
+                name: t.teamName,
+                status,
+              });
+            }
           });
 
           setTeamsAtLocation(locMap);

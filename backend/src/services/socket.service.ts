@@ -229,11 +229,9 @@ class SocketService {
     // 1. Telemetry Heartbeat (Player -> Server -> Vecna & Admin)
     // ─────────────────────────────────────────────────────────────────────────
     socket.on("presence", (payload: TelemetryPayload) => {
-      if (!payload || !session || !session.teamId) return;
-
-      const targetTeamId = session.teamId;
-      const teamSet = this.teamSockets.get(targetTeamId);
-      if (!teamSet || !teamSet.has(socket.id)) return;
+      if (!payload) return;
+      const targetTeamId = session?.teamId || payload.teamId;
+      if (!targetTeamId) return;
 
       const wasOnline = this.onlineTeams.has(targetTeamId);
       this.onlineTeams.add(targetTeamId);
@@ -242,9 +240,9 @@ class SocketService {
         this.io?.to("public:broadcast").emit("presence:update", { teamId: targetTeamId, isOnline: true });
       }
 
-      // Update state in db
-      if (payload.teamId) {
-        db.updateTeam(payload.teamId, {
+      // Update state in db with real-time location
+      if (targetTeamId) {
+        db.updateTeam(targetTeamId, {
           location: payload.location || "town",
           stage: payload.stage || "hawkins",
           storyProgress: payload.storyProgress || 5,
@@ -254,7 +252,14 @@ class SocketService {
       // Broadcast to Vecna operators
       this.io?.to("role:vecna").emit("presence", {
         ...payload,
+        teamId: targetTeamId,
+        location: payload.location || "town",
         ts: Date.now(),
+      });
+      this.io?.emit("presence:update", {
+        teamId: targetTeamId,
+        location: payload.location || "town",
+        isOnline: true,
       });
     });
 
