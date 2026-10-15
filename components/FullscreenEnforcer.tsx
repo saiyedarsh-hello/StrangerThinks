@@ -6,12 +6,12 @@ export default function FullscreenEnforcer() {
   const pathname = usePathname() || "";
 
   useEffect(() => {
-    // Never force or intercept clicks on admin dashboard
-    if (pathname.startsWith("/admin")) return;
+    // Never force or intercept clicks on admin dashboard or vecna tactical console
+    if (pathname.startsWith("/admin") || pathname.startsWith("/vecna")) return;
 
     const enterFullscreen = (e: Event) => {
       if (typeof document === "undefined") return;
-      if (window.location.pathname.startsWith("/admin")) return;
+      if (window.location.pathname.startsWith("/admin") || window.location.pathname.startsWith("/vecna")) return;
 
       // Do NOT trigger or intercept clicks on buttons, inputs, links, or control elements
       const target = e.target as HTMLElement | null;

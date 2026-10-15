@@ -322,8 +322,10 @@ export const VecnaController = {
       }
     }
 
+    const team = db.getTeamById(teamId) || db.getTeamById("VECNA-001");
     return res.json({
       success: true,
+      currentScore: team?.totalScore ?? 100,
       sabotages: activeSabotages,
       messages: deliveredMessages,
     });

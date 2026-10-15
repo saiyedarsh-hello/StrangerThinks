@@ -91,7 +91,7 @@ export default function VecnaTriggerPanel({
 
   const activeAction = TRIGGER_ACTIONS.find((a) => a.id === selectedPower) || TRIGGER_ACTIONS[1];
   const totalCost = selectedTeams.length * 10;
-  const canAfford = currentVecnaScore > 0 && selectedTeams.length > 0 && currentVecnaScore >= totalCost;
+  const canAfford = selectedTeams.length > 0;
 
   const handleExecute = () => {
     if (!canAfford) return;
@@ -377,7 +377,7 @@ export default function VecnaTriggerPanel({
             transition: "all 0.15s ease",
           }}
         >
-          {canAfford ? `ACTIVATE (-${totalCost} PTS)` : selectedTeams.length === 0 ? "SELECT TARGET TEAM" : "INSUFFICIENT PTS"}
+          {selectedTeams.length === 0 ? "SELECT TARGET TEAM" : `ACTIVATE (-${totalCost} PTS)`}
         </button>
       </div>
     </div>

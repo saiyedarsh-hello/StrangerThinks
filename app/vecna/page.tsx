@@ -197,15 +197,17 @@ export default function VecnaPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [intelModal]);
 
-  // Authoritative Vecna score (10 PTS per solved question)
+  // Authoritative Vecna score (10 PTS per solved question with 100 PTS psychic reserve)
   const [vecnaScore, setVecnaScore] = useState<number>(() => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("vecna_score");
-        if (saved) return parseInt(saved, 10) || 0;
+        if (saved && !isNaN(parseInt(saved, 10)) && parseInt(saved, 10) > 0) {
+          return parseInt(saved, 10);
+        }
       } catch {}
     }
-    return 0;
+    return 100;
   });
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -253,7 +255,7 @@ export default function VecnaPage() {
     }
   }, [questionAttempts, questionResults]);
 
-  // Authenticate session
+  // Authenticate session & sync live score
   useEffect(() => {
     const s = getStoredSession();
     if (!s || s.role !== "VECNA") {
@@ -264,6 +266,21 @@ export default function VecnaPage() {
     if ((s as any).token) {
       authenticateSocket((s as any).token);
     }
+
+    // Sync live psychic score from server
+    const token = (s as any)?.token || resolveStoredToken();
+    fetch("/api/vecna/trials/1/progress", {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && typeof d.currentScore === "number" && d.currentScore > 0) {
+          setVecnaScore(d.currentScore);
+        } else {
+          setVecnaScore((prev) => (prev > 0 ? prev : 100));
+        }
+      })
+      .catch(() => {});
   }, [router]);
 
   // Keep Vecna authenticated with REAL authoritative score in heartbeat
@@ -854,12 +871,7 @@ export default function VecnaPage() {
   const handleExecuteTrigger = async (action: TriggerAction) => {
     sfx("boom");
     const cost = action.totalCost || (action.targetTeams && action.targetTeams.length > 0 ? action.targetTeams.length * 10 : 10);
-    if (vecnaScore < cost || vecnaScore <= 0) {
-      setErrorMessage("INSUFFICIENT PSYCHIC POINTS. COMPLETE DOCKET ITEMS TO GAIN POINTS.");
-      sfx("err");
-      setTimeout(() => setErrorMessage(null), 3000);
-      return;
-    }
+    const effectiveScore = vecnaScore <= 0 ? 100 : vecnaScore;
 
     const kind = action.id;
     const duration = action.id === "LOCK" ? 120 : 45;
@@ -868,7 +880,7 @@ export default function VecnaPage() {
     const opName = session?.leaderName || "HENRY CREEL";
 
     // Optimistically deduct points on screen immediately
-    const optimisticScore = Math.max(0, vecnaScore - cost);
+    const optimisticScore = Math.max(0, effectiveScore - cost);
     setVecnaScore(optimisticScore);
     if (typeof window !== "undefined") {
       try {
