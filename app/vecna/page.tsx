@@ -27,8 +27,10 @@ import VecnaTriggerPanel, { TriggerAction } from "@/components/vecna/VecnaTrigge
 import VecnaMessagePanel from "@/components/vecna/VecnaMessagePanel";
 import VecnaStoryDialog from "@/components/vecna/VecnaStoryDialog";
 import VecnaChaptersModal from "@/components/vecna/VecnaChaptersModal";
+import VecnaBulletinBoard from "@/components/vecna/VecnaBulletinBoard";
 import QuestionTypeRenderer from "@/components/chapters/QuestionTypeRenderer";
 import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
+import { useTelevisionTransition } from "@/components/TelevisionTransition";
 
 interface VecnaTrial {
   id: number;
@@ -213,12 +215,18 @@ export default function VecnaPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // View Mode: 'board' (Mind Lair Bulletin Board) or 'trial' (Active Trial Question Console)
+  const [viewMode, setViewMode] = useState<"board" | "trial">("board");
+
+  // Retro Television CRT Transition system
+  const { triggerTransition, TelevisionOverlay } = useTelevisionTransition(480);
+
   // Modals state
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isMessageOpen, setIsMessageOpen] = useState(false);
   const [isPowersOpen, setIsPowersOpen] = useState(false);
   const [isChaptersModalOpen, setIsChaptersModalOpen] = useState(false);
-  const [isStoryDialogOpen, setIsStoryDialogOpen] = useState(true);
+  const [isStoryDialogOpen, setIsStoryDialogOpen] = useState(false);
 
   // Selected team state for targeting
   const [selectedLocation, setSelectedLocation] = useState("town");
@@ -486,6 +494,9 @@ export default function VecnaPage() {
       getSocket()?.emit("team:logout");
     } catch {}
     clearSession();
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("hawkins_entered");
+    }
     router.push("/");
   };
 
@@ -826,13 +837,14 @@ export default function VecnaPage() {
   };
 
   const handleProceedNextChapter = () => {
-    sfx("boom");
-    const nextId = currentTrial.id < 6 ? currentTrial.id + 1 : 1;
-    setActiveTrialId(nextId);
-    setActiveQuestionIdx(0);
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setIsChapterSubmitted(false);
+    triggerTransition(() => {
+      const nextId = currentTrial.id < 6 ? currentTrial.id + 1 : 1;
+      setActiveTrialId(nextId);
+      setActiveQuestionIdx(0);
+      setErrorMessage(null);
+      setSuccessMessage(null);
+      setIsChapterSubmitted(false);
+    });
   };
 
   const handleSendMessage = async (target: "all" | string, message: string) => {
@@ -972,6 +984,7 @@ export default function VecnaPage() {
     <div
       style={{
         position: "relative",
+        width: "100%",
         minHeight: "100vh",
         maxHeight: "100vh",
         overflowY: "auto",
@@ -983,6 +996,10 @@ export default function VecnaPage() {
         flexDirection: "column",
         scrollbarWidth: "thin",
         scrollbarColor: "#ff2d3a #120407",
+        border: "none",
+        outline: "none",
+        margin: 0,
+        padding: 0,
       }}
     >
       <CinematicBackground
@@ -1004,8 +1021,12 @@ export default function VecnaPage() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "10px 24px",
-          background: "rgba(10, 2, 5, 0.94)",
-          borderBottom: "1.5px solid rgba(255, 45, 58, 0.4)",
+          background: "rgba(9, 11, 16, 0.96)",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+          borderLeft: "none",
+          borderRight: "none",
+          borderTop: "none",
+          margin: 0,
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           flexWrap: "wrap",
@@ -1018,23 +1039,23 @@ export default function VecnaPage() {
             <div
               style={{
                 display: "inline-block",
-                borderTop: "2px solid #ff2d3a",
-                borderBottom: "2px solid #ff2d3a",
-                padding: "1px 4px",
+                borderTop: "1.5px solid rgba(255, 60, 75, 0.6)",
+                borderBottom: "1.5px solid rgba(255, 60, 75, 0.6)",
+                padding: "1px 6px",
                 lineHeight: "1",
-                boxShadow: "0 0 10px rgba(255, 45, 58, 0.45)",
+                boxShadow: "0 0 8px rgba(255, 45, 58, 0.2)",
               }}
             >
               <span
                 style={{
                   fontFamily:
                     '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", Georgia, serif',
-                  fontSize: "24px",
+                  fontSize: "22px",
                   fontWeight: 900,
-                  color: "#ff2d3a",
+                  color: "#ff3a48",
                   letterSpacing: "0.14em",
                   textTransform: "uppercase",
-                  textShadow: "0 0 12px rgba(255, 45, 58, 0.8)",
+                  textShadow: "0 0 10px rgba(255, 45, 58, 0.5)",
                   display: "inline-block",
                 }}
               >
@@ -1045,7 +1066,7 @@ export default function VecnaPage() {
               style={{
                 fontSize: "9px",
                 letterSpacing: "0.26em",
-                color: "#ff3a48",
+                color: "#8a91a0",
                 fontFamily: '"Share Tech Mono", monospace',
                 textTransform: "uppercase",
                 marginTop: "3px",
@@ -1068,9 +1089,9 @@ export default function VecnaPage() {
               setIsMapOpen(true);
             }}
             style={{
-              background: isMapOpen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
-              color: isMapOpen ? "#000" : "#ffb3ba",
-              border: "1.5px solid #ff2d3a",
+              background: isMapOpen ? "#c62828" : "rgba(18, 21, 29, 0.85)",
+              color: isMapOpen ? "#ffffff" : "#d0d5e2",
+              border: isMapOpen ? "1px solid #ef5350" : "1px solid rgba(255, 255, 255, 0.12)",
               padding: "7px 16px",
               borderRadius: "3px",
               fontFamily: '"Share Tech Mono", monospace',
@@ -1078,7 +1099,7 @@ export default function VecnaPage() {
               fontWeight: "bold",
               letterSpacing: "0.14em",
               cursor: "pointer",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
+              boxShadow: isMapOpen ? "0 0 10px rgba(198, 40, 40, 0.45)" : "0 2px 6px rgba(0,0,0,0.5)",
               transition: "all 0.15s ease",
             }}
           >
@@ -1094,9 +1115,9 @@ export default function VecnaPage() {
               setIsMessageOpen(true);
             }}
             style={{
-              background: isMessageOpen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
-              color: isMessageOpen ? "#000" : "#ffb3ba",
-              border: "1.5px solid #ff2d3a",
+              background: isMessageOpen ? "#c62828" : "rgba(18, 21, 29, 0.85)",
+              color: isMessageOpen ? "#ffffff" : "#d0d5e2",
+              border: isMessageOpen ? "1px solid #ef5350" : "1px solid rgba(255, 255, 255, 0.12)",
               padding: "7px 16px",
               borderRadius: "3px",
               fontFamily: '"Share Tech Mono", monospace',
@@ -1104,7 +1125,7 @@ export default function VecnaPage() {
               fontWeight: "bold",
               letterSpacing: "0.14em",
               cursor: "pointer",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
+              boxShadow: isMessageOpen ? "0 0 10px rgba(198, 40, 40, 0.45)" : "0 2px 6px rgba(0,0,0,0.5)",
               transition: "all 0.15s ease",
             }}
           >
@@ -1120,9 +1141,9 @@ export default function VecnaPage() {
               setIsPowersOpen(true);
             }}
             style={{
-              background: isPowersOpen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
-              color: isPowersOpen ? "#000" : "#ffb3ba",
-              border: "1.5px solid #ff2d3a",
+              background: isPowersOpen ? "#c62828" : "rgba(18, 21, 29, 0.85)",
+              color: isPowersOpen ? "#ffffff" : "#d0d5e2",
+              border: isPowersOpen ? "1px solid #ef5350" : "1px solid rgba(255, 255, 255, 0.12)",
               padding: "7px 16px",
               borderRadius: "3px",
               fontFamily: '"Share Tech Mono", monospace',
@@ -1130,41 +1151,11 @@ export default function VecnaPage() {
               fontWeight: "bold",
               letterSpacing: "0.14em",
               cursor: "pointer",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
+              boxShadow: isPowersOpen ? "0 0 10px rgba(198, 40, 40, 0.45)" : "0 2px 6px rgba(0,0,0,0.5)",
               transition: "all 0.15s ease",
             }}
           >
             VECNA POWERS
-          </button>
-
-          {/* Chapters Selector */}
-          <button
-            id="vecna-chapters-modal-btn"
-            type="button"
-            onClick={() => {
-              sfx("click");
-              setIsChaptersModalOpen(true);
-            }}
-            style={{
-              background: isChaptersModalOpen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
-              color: isChaptersModalOpen ? "#000000" : "#ff8a80",
-              border: "1.5px solid #ff2d3a",
-              padding: "7px 16px",
-              borderRadius: "3px",
-              fontSize: "12px",
-              fontFamily: '"Share Tech Mono", monospace',
-              fontWeight: "bold",
-              letterSpacing: "0.14em",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.35)",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <span style={{ fontSize: "11px", color: isChaptersModalOpen ? "#000" : "#ff2d3a" }}>◈</span>
-            <span>CHAPTERS</span>
           </button>
         </div>
 
@@ -1177,7 +1168,7 @@ export default function VecnaPage() {
                 fontFamily: "var(--font-mono), monospace",
                 fontSize: 9.5,
                 fontWeight: 800,
-                color: "#e61a28",
+                color: "#8a92a2",
                 letterSpacing: ".24em",
                 textTransform: "uppercase",
                 marginBottom: 2,
@@ -1201,7 +1192,7 @@ export default function VecnaPage() {
           </div>
 
           {/* Divider */}
-          <div style={{ width: 1, height: 28, background: "rgba(220, 24, 38, 0.45)" }} />
+          <div style={{ width: 1, height: 26, background: "rgba(255, 255, 255, 0.12)" }} />
 
           {/* DIGITAL NIXIE SCORE MODULE */}
           <div
@@ -1217,7 +1208,7 @@ export default function VecnaPage() {
                 fontFamily: "var(--font-mono), monospace",
                 fontSize: 9.5,
                 fontWeight: 800,
-                color: "#e61a28",
+                color: "#8a92a2",
                 letterSpacing: ".24em",
                 textTransform: "uppercase",
                 marginBottom: 2,
@@ -1231,10 +1222,10 @@ export default function VecnaPage() {
                 fontFamily: "var(--font-term), 'VT323', monospace",
                 fontSize: "22px",
                 fontWeight: "bold",
-                color: "#ff2a3a",
+                color: "#ff3b47",
                 letterSpacing: ".2em",
                 lineHeight: 1,
-                textShadow: "0 0 10px rgba(255, 42, 58, 0.85), 0 0 20px rgba(255, 42, 58, 0.4)",
+                textShadow: "0 0 8px rgba(255, 59, 71, 0.6)",
               }}
             >
               {String(vecnaScore).padStart(5, "0")}
@@ -1242,16 +1233,16 @@ export default function VecnaPage() {
           </div>
 
           {/* Divider */}
-          <div style={{ width: 1, height: 28, background: "rgba(220, 24, 38, 0.45)" }} />
+          <div style={{ width: 1, height: 26, background: "rgba(255, 255, 255, 0.12)" }} />
 
           {/* Exit Button */}
           <button
             type="button"
             onClick={handleLogout}
             style={{
-              background: "rgba(18, 4, 7, 0.85)",
-              color: "#ff3a48",
-              border: "1.5px solid #ff2d3a",
+              background: "rgba(18, 21, 29, 0.85)",
+              color: "#e07a82",
+              border: "1px solid rgba(255, 75, 90, 0.3)",
               padding: "7px 14px",
               borderRadius: "3px",
               fontSize: "11px",
@@ -1259,7 +1250,7 @@ export default function VecnaPage() {
               fontWeight: "bold",
               letterSpacing: "0.14em",
               cursor: "pointer",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.5)",
               transition: "all 0.15s ease",
             }}
           >
@@ -1269,99 +1260,175 @@ export default function VecnaPage() {
       </header>
 
       {/* ───────────────────────────────────────────────────────────────────
-          MAIN AREA: HAWKINS DOCKET BOARD (MATCHING USER SCREENSHOT 1)
+          MAIN AREA: VECNA BULLETIN BOARD (DEFAULT) OR TRIAL CONSOLE
           ─────────────────────────────────────────────────────────────────── */}
-      <main
-        style={{
-          position: "relative",
-          zIndex: 10,
-          maxWidth: "1400px",
-          width: "100%",
-          margin: "18px auto 40px auto",
-          padding: "0 18px",
-          boxSizing: "border-box",
-          flex: 1,
-        }}
-      >
-        <motion.div
-          key={`${currentTrial.id}-${activeQuestionIdx}`}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
+      {viewMode === "board" ? (
+        <VecnaBulletinBoard
+          activeTrialId={activeTrialId}
+          solvedQuestions={solvedQuestions}
+          vecnaScore={vecnaScore}
+          onSelectTrial={(trialId) => {
+            triggerTransition(() => {
+              setActiveTrialId(trialId);
+              setActiveQuestionIdx(0);
+              setIsChapterSubmitted(false);
+              setViewMode("trial");
+            });
+          }}
+          onOpenTacticalMap={() => setIsMapOpen(true)}
+          onOpenPowers={() => setIsPowersOpen(true)}
+          onOpenDispatch={() => setIsMessageOpen(true)}
+          onOpenStoryBriefing={() => setIsStoryDialogOpen(true)}
+        />
+      ) : (
+        <main
           style={{
-            background: "#f4eedf",
-            backgroundImage: "radial-gradient(#d3c6ab 1.2px, transparent 1.2px)",
-            backgroundSize: "16px 16px",
-            border: "2px solid #8f231e",
-            borderRadius: "4px",
-            boxShadow:
-              "0 14px 44px rgba(0, 0, 0, 0.85), inset 0 0 50px rgba(140, 35, 30, 0.08)",
-            padding: "20px 24px",
-            color: "#2a221a",
-            boxSizing: "border-box",
             position: "relative",
+            zIndex: 10,
+            width: "100%",
+            maxWidth: "100%",
+            minHeight: "calc(100vh - 64px)",
+            maxHeight: "calc(100vh - 64px)",
+            overflowY: "auto",
+            padding: 0,
+            margin: 0,
+            background: "#f4eedf",
+            backgroundImage:
+              "radial-gradient(#e4dac5 1px, transparent 1px), radial-gradient(#dcd0ba 1px, transparent 1px)",
+            backgroundSize: "20px 20px, 40px 40px",
+            backgroundPosition: "0 0, 20px 20px",
+            fontFamily: "'Courier New', Courier, monospace",
+            color: "#231e1a",
+            boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
           }}
         >
-          {/* Top Row: [ CASE BRIEFING ] on Left, [ ✕ ] on Right */}
-          <div
+          <motion.div
+            key={`${currentTrial.id}-${activeQuestionIdx}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
             style={{
+              width: "100%",
+              maxWidth: "100%",
+              minHeight: "100%",
+              margin: 0,
+              background: "transparent",
+              border: "none",
+              borderRadius: 0,
+              boxShadow: "none",
+              padding: "8px clamp(12px, 2.5vw, 24px) 12px",
+              position: "relative",
+              boxSizing: "border-box",
+              flex: 1,
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "16px",
+              flexDirection: "column",
             }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                sfx("click");
-                setIsStoryDialogOpen(true);
-              }}
+            {/* Box Top Controls: CASE BRIEFING on left, Cross exit button on right */}
+            <div
               style={{
-                background: "linear-gradient(180deg, #caa356 0%, #b88a38 100%)",
-                color: "#1c140e",
-                border: "1.5px solid #8f6222",
-                borderRadius: "3px",
-                padding: "7px 16px",
-                fontFamily: "'Benguiat Bold', serif",
-                fontSize: "12px",
-                fontWeight: 900,
-                letterSpacing: "0.12em",
-                cursor: "pointer",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
+                justifyContent: "space-between",
+                marginBottom: 6,
+                paddingBottom: 4,
+                borderBottom: "1.5px dashed #c9bda4",
+                gap: 10,
+                position: "relative",
+                zIndex: 10,
               }}
             >
-              <span>CASE BRIEFING</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sfx("click");
+                  setIsStoryDialogOpen(true);
+                }}
+                style={{
+                  padding: "4px 10px",
+                  background: "#d4a759",
+                  color: "#1a0f05",
+                  border: "1.5px solid #946f29",
+                  borderRadius: 3,
+                  fontFamily: "'Benguiat Bold', serif",
+                  fontWeight: 800,
+                  fontSize: 10.5,
+                  letterSpacing: ".1em",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#e5ba6a";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#d4a759";
+                }}
+                title="Open Trial Dossier & Briefing"
+              >
+                <span>CASE BRIEFING</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                sfx("click");
-                setIsStoryDialogOpen(true);
-              }}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerTransition(() => {
+                    setViewMode("board");
+                  });
+                }}
+                style={{
+                  width: 26,
+                  height: 26,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#24130d",
+                  color: "#ff945c",
+                  border: "1.5px solid #733c20",
+                  borderRadius: 3,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
+                  transition: "all 0.15s ease",
+                }}
+                title="Return to Bulletin Board"
+                aria-label="Return to Bulletin Board"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#8f1218";
+                  e.currentTarget.style.color = "#ffffff";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#24130d";
+                  e.currentTarget.style.color = "#ff945c";
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="2" y1="2" x2="12" y2="12" />
+                  <line x1="12" y1="2" x2="2" y2="12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Coffee Mug Ring Stain Overlay */}
+            <div
               style={{
-                width: "28px",
-                height: "28px",
-                background: "#24130d",
-                border: "1.5px solid #8f2d24",
-                color: "#ffffff",
-                borderRadius: "3px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "13px",
-                fontWeight: "bold",
+                position: "absolute",
+                bottom: 24,
+                right: 32,
+                width: 80,
+                height: 80,
+                borderRadius: "50%",
+                border: "4px solid rgba(139, 90, 43, 0.12)",
+                boxShadow: "inset 0 0 10px rgba(139, 90, 43, 0.08)",
+                pointerEvents: "none",
+                transform: "rotate(24deg)",
               }}
-              title="View Case Briefing"
-            >
-              ✕
-            </button>
-          </div>
+            />
 
           {/* Docket Title and Valuation Bar */}
           <div
@@ -1371,16 +1438,16 @@ export default function VecnaPage() {
               alignItems: "baseline",
               flexWrap: "wrap",
               borderBottom: "2px solid #231e1a",
-              paddingBottom: 6,
-              marginBottom: 8,
-              gap: 8,
+              paddingBottom: 3,
+              marginBottom: 4,
+              gap: 6,
             }}
           >
             <div
               style={{
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 900,
-                letterSpacing: ".12em",
+                letterSpacing: ".1em",
                 textTransform: "uppercase",
                 fontFamily: "'Courier New', Courier, monospace",
                 color: "#231e1a",
@@ -1390,10 +1457,10 @@ export default function VecnaPage() {
             </div>
             <div
               style={{
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: "bold",
                 color: "#8a5818",
-                letterSpacing: ".1em",
+                letterSpacing: ".08em",
                 fontFamily: "'Courier New', Courier, monospace",
               }}
             >
@@ -1403,12 +1470,12 @@ export default function VecnaPage() {
 
           <div
             style={{
-              fontSize: "clamp(12px, 1.2vw, 13px)",
+              fontSize: "11.5px",
               fontWeight: 900,
               color: "#b81d24",
-              letterSpacing: ".1em",
+              letterSpacing: ".08em",
               textTransform: "uppercase",
-              marginBottom: 14,
+              marginBottom: 5,
               fontFamily: "'Courier New', Courier, monospace",
             }}
           >
@@ -1421,9 +1488,9 @@ export default function VecnaPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: 12,
-              marginBottom: 18,
-              padding: "6px 12px",
+              gap: 8,
+              marginBottom: 6,
+              padding: "3px 8px",
               background: "#e4dac5",
               border: "1px solid #c9bda4",
               borderRadius: 3,
@@ -1433,11 +1500,11 @@ export default function VecnaPage() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 5,
                 flexWrap: "nowrap",
                 overflowX: "auto",
                 whiteSpace: "nowrap",
-                paddingBottom: 4,
+                paddingBottom: 2,
                 scrollbarWidth: "thin",
                 flex: 1,
                 minWidth: 0,
@@ -1445,12 +1512,12 @@ export default function VecnaPage() {
             >
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: 900,
                   color: "#544638",
-                  letterSpacing: ".1em",
+                  letterSpacing: ".08em",
                   textTransform: "uppercase",
-                  marginRight: 6,
+                  marginRight: 4,
                   flexShrink: 0,
                   whiteSpace: "nowrap",
                   fontFamily: "'Courier New', Courier, monospace",
@@ -1481,7 +1548,7 @@ export default function VecnaPage() {
                       setUnansweredPrompt(false);
                     }}
                     style={{
-                      padding: "4px 10px",
+                      padding: "2px 7px",
                       background: isCurrent
                         ? "#b81d24"
                         : isVerified
@@ -1531,7 +1598,7 @@ export default function VecnaPage() {
           </div>
 
           {/* Question Body: Typewriter Monospace Card & 2x2 Option Grid via QuestionTypeRenderer */}
-          <div style={{ marginBottom: "14px" }}>
+          <div style={{ marginBottom: "6px" }}>
             <QuestionTypeRenderer
               key={`${currentTrial.id}-${activeQuestionIdx}`}
               question={currentQuestion}
@@ -1563,7 +1630,7 @@ export default function VecnaPage() {
                   textAlign: "center",
                   fontWeight: 900,
                   letterSpacing: "0.08em",
-                  marginBottom: "12px",
+                  marginBottom: "8px",
                 }}
               >
                 {errorMessage}
@@ -1586,7 +1653,7 @@ export default function VecnaPage() {
                   textAlign: "center",
                   fontWeight: 900,
                   letterSpacing: "0.08em",
-                  marginBottom: "12px",
+                  marginBottom: "8px",
                 }}
               >
                 {successMessage}
@@ -1599,15 +1666,15 @@ export default function VecnaPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 style={{
-                  marginBottom: 14,
-                  padding: "8px 14px",
+                  marginBottom: 8,
+                  padding: "6px 12px",
                   background: "rgba(255, 140, 0, 0.12)",
                   border: "1.5px solid #d46b08",
                   color: "#a85002",
                   textAlign: "center",
                   fontWeight: 900,
-                  fontSize: 12,
-                  letterSpacing: ".1em",
+                  fontSize: 11,
+                  letterSpacing: ".08em",
                   fontFamily: "'Benguiat Bold', serif",
                 }}
               >
@@ -1619,13 +1686,13 @@ export default function VecnaPage() {
           {/* Action & Submit Answer Strip (Exact Hawkins 2-Attempt Answering Mech) */}
           <div
             style={{
-              marginTop: "12px",
+              marginTop: "5px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               flexWrap: "wrap",
-              gap: "10px",
-              padding: "9px 16px",
+              gap: "6px",
+              padding: "5px 12px",
               background: isQuestionVerified
                 ? "rgba(38, 166, 91, 0.12)"
                 : isQuestionLocked
@@ -1643,13 +1710,13 @@ export default function VecnaPage() {
               borderRadius: "3px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span
                 style={{
                   fontFamily: "'Courier New', Courier, monospace",
-                  fontSize: "12px",
+                  fontSize: "11px",
                   fontWeight: 900,
-                  letterSpacing: "0.08em",
+                  letterSpacing: "0.06em",
                   color: isQuestionVerified
                     ? "#1b7a41"
                     : isQuestionLocked
@@ -1679,7 +1746,7 @@ export default function VecnaPage() {
               onClick={handleVerifyCurrentQuestion}
               disabled={isCheckingQuestion || !selectedAnswers[currentKey]?.trim() || isQuestionLocked}
               style={{
-                padding: "8px 20px",
+                padding: "5px 14px",
                 background: isCheckingQuestion
                   ? "#332219"
                   : isQuestionVerified
@@ -1699,12 +1766,12 @@ export default function VecnaPage() {
                   : "1.5px solid #8f2d24",
                 borderRadius: "3px",
                 fontFamily: "'Benguiat Bold', serif",
-                fontSize: "12px",
+                fontSize: "11px",
                 fontWeight: 900,
-                letterSpacing: "0.12em",
+                letterSpacing: "0.1em",
                 cursor: isCheckingQuestion || !selectedAnswers[currentKey]?.trim() || isQuestionLocked ? "not-allowed" : "pointer",
                 opacity: !selectedAnswers[currentKey]?.trim() || isQuestionLocked ? 0.6 : 1,
-                boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                 transition: "all 0.15s ease",
               }}
             >
@@ -1724,11 +1791,11 @@ export default function VecnaPage() {
           {currentQuestion.hint && (
             <div
               style={{
-                marginTop: "10px",
+                marginTop: "5px",
                 background: isCurrentClueUnlocked ? "#fbf6ec" : "#ece3d0",
                 border: isCurrentClueUnlocked ? "1.5px solid #c49646" : "1.5px dashed #a8947c",
                 borderRadius: "3px",
-                padding: "8px 14px",
+                padding: "4px 10px",
                 boxShadow: isCurrentClueUnlocked
                   ? "0 2px 8px rgba(212, 167, 89, 0.2), inset 0 0 10px rgba(255,255,255,0.6)"
                   : "inset 0 0 8px rgba(0,0,0,0.06)",
@@ -1746,37 +1813,37 @@ export default function VecnaPage() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      marginBottom: 6,
+                      marginBottom: 4,
                       flexWrap: "wrap",
-                      gap: 6,
+                      gap: 4,
                     }}
                   >
                     <div
                       style={{
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: 900,
                         color: "#8a5818",
-                        letterSpacing: ".14em",
+                        letterSpacing: ".12em",
                         fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
                         textTransform: "uppercase",
                         display: "inline-flex",
                         alignItems: "center",
-                        gap: 6,
+                        gap: 5,
                       }}
                     >
                       <span>DECRYPTED INTEL DOSSIER</span>
                     </div>
                     <span
                       style={{
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: "bold",
                         fontFamily: "'Courier New', monospace",
                         color: "#7a4808",
                         background: "rgba(212, 167, 89, 0.25)",
                         border: "1px solid rgba(138, 88, 24, 0.35)",
-                        padding: "1px 6px",
+                        padding: "1px 5px",
                         borderRadius: 2,
-                        letterSpacing: ".08em",
+                        letterSpacing: ".06em",
                       }}
                     >
                       CLEARANCE LEVEL 4 GRANTED
@@ -1785,15 +1852,15 @@ export default function VecnaPage() {
 
                   <div
                     style={{
-                      fontSize: "clamp(12.5px, 1.3vw, 14px)",
+                      fontSize: "11.5px",
                       color: "#24180d",
-                      lineHeight: 1.5,
+                      lineHeight: 1.4,
                       fontFamily: "'Courier New', Courier, monospace",
                       fontWeight: 700,
                       borderLeft: "3px solid #c49646",
-                      paddingLeft: 10,
+                      paddingLeft: 8,
                       background: "rgba(255,255,255,0.45)",
-                      padding: "6px 10px",
+                      padding: "4px 8px",
                       borderRadius: "0 2px 2px 0",
                     }}
                   >
@@ -1807,15 +1874,15 @@ export default function VecnaPage() {
                     justifyContent: "space-between",
                     alignItems: "center",
                     flexWrap: "wrap",
-                    gap: 10,
+                    gap: 8,
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 200, flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 180, flex: 1 }}>
                     <span
                       style={{
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: 900,
-                        letterSpacing: ".14em",
+                        letterSpacing: ".12em",
                         fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
                         color: "#b81d24",
                         textTransform: "uppercase",
@@ -1832,7 +1899,7 @@ export default function VecnaPage() {
                         fontFamily: "monospace",
                         letterSpacing: ".2em",
                         color: "rgba(70, 50, 35, 0.45)",
-                        fontSize: 12,
+                        fontSize: 11,
                         userSelect: "none",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -1848,20 +1915,20 @@ export default function VecnaPage() {
                     onClick={handleUnlockClueClick}
                     disabled={isUnlockingClue}
                     style={{
-                      padding: "6px 14px",
+                      padding: "4px 10px",
                       background: "#24130d",
                       color: "#ffd54f",
                       border: "1.5px solid #8f2d24",
                       borderRadius: 3,
                       fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 900,
-                      letterSpacing: ".12em",
+                      letterSpacing: ".1em",
                       cursor: "pointer",
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 6,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+                      gap: 4,
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
                       transition: "all 0.15s ease",
                       textTransform: "uppercase",
                     }}
@@ -1888,29 +1955,31 @@ export default function VecnaPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              marginTop: "24px",
-              paddingTop: "16px",
+              marginTop: "8px",
+              paddingTop: "6px",
+              paddingBottom: "2px",
               borderTop: "1.5px solid #2a221a",
               flexWrap: "wrap",
-              gap: "14px",
+              gap: "8px",
+              flexShrink: 0,
             }}
           >
             {/* Left: PREVIOUS and NEXT Controls */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <button
                 type="button"
                 onClick={handlePrevLevel}
                 disabled={activeQuestionIdx === 0}
                 style={{
-                  padding: "10px 16px",
+                  padding: "6px 12px",
                   background: activeQuestionIdx === 0 ? "transparent" : "#e4dac4",
                   border: "1px solid #b5a48b",
                   borderRadius: "3px",
                   color: activeQuestionIdx === 0 ? "rgba(42, 34, 26, 0.3)" : "#2a221a",
                   fontFamily: "'Benguiat Bold', serif",
-                  fontSize: "12px",
+                  fontSize: "11px",
                   fontWeight: 800,
-                  letterSpacing: "0.1em",
+                  letterSpacing: "0.08em",
                   cursor: activeQuestionIdx === 0 ? "not-allowed" : "pointer",
                 }}
               >
@@ -1922,21 +1991,21 @@ export default function VecnaPage() {
                 onClick={handleNextLevel}
                 disabled={activeQuestionIdx === totalQuestionsForTrial - 1}
                 style={{
-                  padding: "10px 18px",
+                  padding: "6px 14px",
                   background: activeQuestionIdx === totalQuestionsForTrial - 1 ? "transparent" : "#2e2118",
                   border: "1px solid #573a2e",
                   borderRadius: "3px",
                   color: activeQuestionIdx === totalQuestionsForTrial - 1 ? "#a89d8d" : "#ffffff",
                   fontFamily: "'Benguiat Bold', serif",
-                  fontSize: "12px",
+                  fontSize: "11px",
                   fontWeight: 800,
-                  letterSpacing: "0.1em",
+                  letterSpacing: "0.08em",
                   cursor: activeQuestionIdx === totalQuestionsForTrial - 1 ? "not-allowed" : "pointer",
                   opacity: activeQuestionIdx === totalQuestionsForTrial - 1 ? 0.6 : 1,
                   transition: "all 0.15s ease",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "6px",
+                  gap: "5px",
                 }}
                 title="Next item"
               >
@@ -1945,13 +2014,13 @@ export default function VecnaPage() {
             </div>
 
             {/* Right: SUBMIT REPORT / SUBMIT [X/10] + PROCEED TO NEXT CHAPTER */}
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={handleSubmitChapter}
                 disabled={!allQuestionsAnswered || isSubmittingChapter}
                 style={{
-                  padding: "10px 24px",
+                  padding: "6px 18px",
                   background: isChapterSubmitted
                     ? "#234d31"
                     : allQuestionsAnswered
@@ -1965,15 +2034,15 @@ export default function VecnaPage() {
                     : "1px solid #776a5a",
                   borderRadius: "3px",
                   fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
-                  fontSize: "clamp(12px, 1.3vw, 14px)",
+                  fontSize: "12px",
                   fontWeight: 900,
-                  letterSpacing: "0.14em",
+                  letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   cursor: allQuestionsAnswered && !isSubmittingChapter ? "pointer" : "not-allowed",
                   boxShadow:
                     allQuestionsAnswered && !isChapterSubmitted
-                      ? "0 6px 16px rgba(184, 29, 36, 0.5), inset 0 0 10px rgba(0,0,0,0.25)"
-                      : "0 2px 6px rgba(0,0,0,0.2)",
+                      ? "0 4px 12px rgba(184, 29, 36, 0.4), inset 0 0 8px rgba(0,0,0,0.2)"
+                      : "0 2px 4px rgba(0,0,0,0.15)",
                   opacity: allQuestionsAnswered ? 1 : 0.65,
                   transition: "all 0.15s ease",
                 }}
@@ -2018,10 +2087,39 @@ export default function VecnaPage() {
                   <span>PROCEED TO CHAPTER {currentTrial.id < 6 ? currentTrial.id + 1 : 1} ▶</span>
                 </button>
               )}
+
+              {isChapterSubmitted && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerTransition(() => {
+                      setViewMode("board");
+                    });
+                  }}
+                  style={{
+                    background: "rgba(18, 4, 7, 0.95)",
+                    border: "1.5px solid #ff2d3a",
+                    color: "#ff8a80",
+                    padding: "9px 18px",
+                    borderRadius: "3px",
+                    fontFamily: '"Share Tech Mono", monospace',
+                    fontSize: "12px",
+                    fontWeight: "bold",
+                    letterSpacing: "0.14em",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>◈ RETURN TO BULLETIN BOARD</span>
+                </button>
+              )}
             </div>
           </div>
         </motion.div>
       </main>
+      )}
 
       {/* ───────────────────────────────────────────────────────────────────
           POPUP MODAL 1: 🗺️ TACTICAL VECTOR MAP MODAL
@@ -2258,12 +2356,14 @@ export default function VecnaPage() {
         activeTrialId={activeTrialId}
         solvedQuestions={solvedQuestions}
         onSelectTrial={(trialId) => {
-          setActiveTrialId(trialId);
-          setActiveQuestionIdx(0);
-          setErrorMessage(null);
-          setSuccessMessage(null);
-          setIsChapterSubmitted(false);
-          setIsStoryDialogOpen(true);
+          triggerTransition(() => {
+            setActiveTrialId(trialId);
+            setActiveQuestionIdx(0);
+            setErrorMessage(null);
+            setSuccessMessage(null);
+            setIsChapterSubmitted(false);
+            setIsStoryDialogOpen(true);
+          });
         }}
         onClose={() => setIsChaptersModalOpen(false)}
       />
@@ -2481,6 +2581,8 @@ export default function VecnaPage() {
           </div>
         )}
       </AnimatePresence>
+      {/* Retro 80s Television CRT Transition Overlay */}
+      <TelevisionOverlay />
     </div>
   );
 }

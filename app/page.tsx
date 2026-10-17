@@ -13,38 +13,64 @@ import SabotageOverlay from "@/components/SabotageOverlay";
 
 export default function Home() {
   const router = useRouter();
-  const { s, hydrated, cutscene, introSeen, setIntroSeen, session } = useGame();
+  const { s, hydrated, introSeen, setIntroSeen, session } = useGame();
   const [showVecnaChosen, setShowVecnaChosen] = useState(false);
+  const [hasEntered, setHasEntered] = useState<boolean>(false);
 
-  // Route Guard: If already logged in as Vecna and visiting "/", show Vecna Entry or redirect to /vecna
   useEffect(() => {
-    if (hydrated && session && session.role === "VECNA") {
+    if (typeof window !== "undefined") {
+      const entered = sessionStorage.getItem("hawkins_entered") === "true";
+      setHasEntered(entered);
+    }
+  }, []);
+
+  // Sync if loginPlayer was triggered
+  useEffect(() => {
+    if (s.phase === "play" && session?.role === "PLAYER") {
+      setHasEntered(true);
+    }
+  }, [s.phase, session]);
+
+  // Route Guard: If logged in as Vecna and user has entered
+  useEffect(() => {
+    if (hydrated && session && session.role === "VECNA" && hasEntered) {
       setShowVecnaChosen(true);
     }
-  }, [hydrated, session]);
+  }, [hydrated, session, hasEntered]);
 
-  if (!hydrated) {
-    return <LandingPage onEnterVecna={() => setShowVecnaChosen(true)} />;
+  // Always start with the normal Stranger Things intro page & login unless explicitly entered
+  if (!hydrated || !hasEntered) {
+    return (
+      <LandingPage
+        onEnterVecna={() => {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("hawkins_entered", "true");
+          }
+          setHasEntered(true);
+          setShowVecnaChosen(true);
+        }}
+      />
+    );
   }
 
-
-  // Vecna Entry Screen (Image 2) when user has Vecna role
+  // Vecna Entry Screen when user has Vecna role and has entered
   if (showVecnaChosen || (session && session.role === "VECNA")) {
     return <VecnaEntryScreen onEnter={() => router.push("/vecna")} />;
   }
 
-  // Allow direct viewing of landing page via query param (e.g. ?landing=1)
-  const forceLanding =
-    typeof window !== "undefined" &&
-    (window.location.search.includes("landing=1") || window.location.search.includes("force=1"));
-
-  if (forceLanding) {
-    return <LandingPage onEnterVecna={() => setShowVecnaChosen(true)} />;
-  }
-
-  // Without a valid player session, show the Image 1 Landing Page
+  // Without a valid player session, show the Landing Page
   if (!session || session.role !== "PLAYER") {
-    return <LandingPage onEnterVecna={() => setShowVecnaChosen(true)} />;
+    return (
+      <LandingPage
+        onEnterVecna={() => {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("hawkins_entered", "true");
+          }
+          setHasEntered(true);
+          setShowVecnaChosen(true);
+        }}
+      />
+    );
   }
 
   // Initial Cinematic Typewriter Intro for authenticated Player

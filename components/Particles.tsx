@@ -52,5 +52,17 @@ export default function Particles({ mode = "dust", count = 90, color = "255,255,
     raf = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
   }, [mode, count, color]);
-  return <canvas ref={ref} className="layer" style={{ width: "100%", height: "100%" }} />;
+  return (
+    <canvas
+      ref={ref}
+      className="layer"
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+      }}
+    />
+  );
 }

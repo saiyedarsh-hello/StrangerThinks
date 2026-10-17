@@ -16,7 +16,7 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": null,
+      "startedAt": "2026-10-17T07:25:20.350Z",
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "radioTower",
@@ -52,7 +52,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-10T22:48:58.653Z",
-      "updatedAt": "2026-10-15T07:32:22.144Z",
+      "updatedAt": "2026-10-17T07:25:20.350Z",
       "taskScores": {}
     },
     "T02": {
@@ -446,9 +446,9 @@
       "leaderName": "Henry Creel",
       "role": "VECNA",
       "status": "ACTIVE",
-      "totalScore": 90,
+      "totalScore": 110,
       "breakdown": {
-        "tech": 0,
+        "tech": 20,
         "puzzle": 0,
         "speed": 0,
         "clue": 0,
@@ -492,7 +492,7 @@
       "radiometerCodeSolved": true,
       "unlockedHints": {},
       "createdAt": "2026-10-09T06:18:39.429Z",
-      "updatedAt": "2026-10-15T13:13:49.027Z",
+      "updatedAt": "2026-10-17T10:24:22.721Z",
       "taskScores": {}
     },
     "VECNA-TEST-SEQ": {
@@ -2997,6 +2997,30 @@
         "attempts": 1,
         "isLocked": true,
         "submittedAt": "2026-10-15T13:13:48.832Z"
+      },
+      "3-2": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "attempts": 1,
+        "isLocked": true,
+        "submittedAt": "2026-10-15T16:28:12.840Z"
+      },
+      "3-4": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "attempts": 1,
+        "isLocked": true,
+        "submittedAt": "2026-10-15T16:28:28.754Z"
+      },
+      "3-5": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "__WRONG_REARRANGE__",
+        "attempts": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-15T16:29:36.295Z"
       }
     }
   },

@@ -3,10 +3,10 @@ import { getApiBase } from "@/lib/api";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ trialId: string }> | { trialId: string } }
+  { params }: { params: Promise<{ trialId: string }> }
 ) {
   try {
-    const resolvedParams = await Promise.resolve(params);
+    const resolvedParams = await params;
     const trialId = parseInt(resolvedParams.trialId, 10);
     if (isNaN(trialId)) {
       return NextResponse.json(

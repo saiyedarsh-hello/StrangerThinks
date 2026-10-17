@@ -380,13 +380,13 @@ export class VecnaService {
             const [teamRows] = await conn.query<any[]>(
               "SELECT team_id FROM teams WHERE role = 'PLAYER' AND is_enabled = 1"
             );
-            targetTeamIds = teamRows.map((t) => t.team_id);
+            targetTeamIds = teamRows.map((t: any) => t.team_id);
           } else {
             const [targetRows] = await conn.query<any[]>(
               "SELECT team_id FROM vecna_message_targets WHERE message_id = ?",
               [messageId]
             );
-            targetTeamIds = targetRows.map((t) => t.team_id);
+            targetTeamIds = targetRows.map((t: any) => t.team_id);
           }
 
           // 4. Create durable team_vecna_deliveries

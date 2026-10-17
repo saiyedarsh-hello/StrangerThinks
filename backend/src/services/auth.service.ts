@@ -63,29 +63,22 @@ export const AuthService = {
       };
     }
 
-    // Check event lifecycle state
-    const { EventControlService } = await import("./eventControl.service");
-    const eventState = await EventControlService.getEventState();
-    if (eventState.status === "ended") {
-      return {
-        success: false,
-        error: "EVENT_ENDED",
-        message: "The Hawkins tournament has ended. Participant logins are permanently closed.",
-      };
-    }
-    if (!eventState.loginOpen) {
-      return {
-        success: false,
-        error: "LOGIN_CLOSED",
-        message: "Participant login is currently closed by the tournament administrator.",
-      };
-    }
+    // 1. Check Vecna credentials first (mastermind / control room operator is exempt from participant login gates)
+    const isVecna =
+      (normTeam === VECNA_CREDENTIAL.teamName.toLowerCase() ||
+        normTeam === "001" ||
+        normTeam === "one" ||
+        normTeam === "henry creel" ||
+        normTeam === "vecna control") &&
+      (normLeader === VECNA_CREDENTIAL.leaderName.toLowerCase() ||
+        normLeader === "001" ||
+        normLeader === "one" ||
+        normLeader === "vecna" ||
+        normLeader === "peter ballard" ||
+        normLeader === "henry creel" ||
+        normLeader === "hawkins1986");
 
-    // 1. Check Vecna credentials
-    if (
-      normTeam === VECNA_CREDENTIAL.teamName.toLowerCase() &&
-      normLeader === VECNA_CREDENTIAL.leaderName.toLowerCase()
-    ) {
+    if (isVecna) {
       await SessionService.createVecnaSession(1);
       const vecnaSession: TeamSession = {
         teamId: "VECNA-001",
@@ -102,6 +95,24 @@ export const AuthService = {
         session: vecnaSession,
         team: vecnaRecord,
         message: "VECNA CLEARANCE GRANTED · ACCESSING OMNISCIENT CONTROL ROOM",
+      };
+    }
+
+    // Check event lifecycle state for participants
+    const { EventControlService } = await import("./eventControl.service");
+    const eventState = await EventControlService.getEventState();
+    if (eventState.status === "ended") {
+      return {
+        success: false,
+        error: "EVENT_ENDED",
+        message: "The Hawkins tournament has ended. Participant logins are permanently closed.",
+      };
+    }
+    if (!eventState.loginOpen) {
+      return {
+        success: false,
+        error: "LOGIN_CLOSED",
+        message: "Participant login is currently closed by the tournament administrator.",
       };
     }
 

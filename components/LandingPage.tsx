@@ -236,12 +236,18 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
 
         if (authResult.session.role === "VECNA") {
           saveSession({ ...authResult.session, token: authResult.token });
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("hawkins_entered", "true");
+          }
           if (onEnterVecna) {
             onEnterVecna();
           } else {
             router.push("/vecna");
           }
         } else {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("hawkins_entered", "true");
+          }
           loginPlayer({
             id: authResult.session.teamId || "T01",
             teamName: authResult.session.teamName,

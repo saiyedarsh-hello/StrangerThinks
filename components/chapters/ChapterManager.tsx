@@ -10,6 +10,7 @@ import { getCharacterForChapter } from "@/lib/characters";
 import HopperPoliceReportQuiz from "./HopperPoliceReportQuiz";
 import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
 import PushPin from "../PushPin";
+import { useTelevisionTransition } from "../TelevisionTransition";
 
 export type ChapterId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -911,6 +912,7 @@ interface ChapterManagerProps {
 }
 
 export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = {}) {
+  const { triggerTransition, TelevisionOverlay } = useTelevisionTransition(480);
   const {
     s,
     isPaused,
@@ -1144,7 +1146,9 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
                 ? () => {
                     const nextId = (completionStoryChapterId + 1) as ChapterId;
                     setCompletionStoryChapterId(null);
-                    setActiveChapterId(nextId);
+                    triggerTransition(() => {
+                      setActiveChapterId(nextId);
+                    });
                   }
                 : () => {
                     setCompletionStoryChapterId(null);
@@ -1177,9 +1181,10 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
             chapter={currentChapter}
             isLastEpisode={currentChapter.id === 7}
             onNextEpisode={() => {
-              sfx("ok");
               if (currentChapter.id < 7) {
-                setActiveChapterId((currentChapter.id + 1) as ChapterId);
+                triggerTransition(() => {
+                  setActiveChapterId((currentChapter.id + 1) as ChapterId);
+                });
               } else {
                 handleBackToBoard();
               }
@@ -1202,6 +1207,9 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
           />
         )}
       </motion.div>
+
+      {/* Retro 80s Television CRT Transition Overlay */}
+      <TelevisionOverlay />
     </div>
   );
 }

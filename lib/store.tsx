@@ -434,8 +434,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       .then((res) => res.json())
       .then((data) => {
         if (data.authenticated && data.team) {
+          const detectedRole: "PLAYER" | "VECNA" =
+            data.session?.role === "VECNA" || data.team?.role === "VECNA" || currentSession?.role === "VECNA"
+              ? "VECNA"
+              : "PLAYER";
           const sData: AuthSession = {
-            role: "PLAYER",
+            role: detectedRole,
             teamName: data.team.teamName,
             leaderName: data.team.squadLeader,
             teamId: data.team.id,
@@ -1410,6 +1414,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     disconnectSocket();
     if (typeof document !== "undefined") {
       document.cookie = "hawkins_session_token=; path=/; max-age=0";
+    }
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("hawkins_entered");
     }
     clearSession();
     setSession(null);

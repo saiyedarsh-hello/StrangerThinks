@@ -5,10 +5,12 @@ import VecnaCutscene from "./VecnaCutscene";
 import ChapterManager, { ChapterId } from "./chapters/ChapterManager";
 import InvestigationBoard from "./InvestigationBoard";
 import EventStandby from "./EventStandby";
+import { useTelevisionTransition } from "./TelevisionTransition";
 
 export default function StageView() {
   const { vecnaCutscene, dismissVecnaCutscene, setActiveChapterId, viewMode, setViewMode } = useGame();
   const [eventStatus, setEventStatus] = useState<string>("active");
+  const { triggerTransition, TelevisionOverlay } = useTelevisionTransition(480);
 
   useEffect(() => {
     let active = true;
@@ -28,10 +30,18 @@ export default function StageView() {
   }, []);
 
   const handleSelectChapter = (chapterId: number) => {
-    if (chapterId >= 1 && chapterId <= 7) {
-      setActiveChapterId(chapterId as ChapterId);
-    }
-    setViewMode("location");
+    triggerTransition(() => {
+      if (chapterId >= 1 && chapterId <= 7) {
+        setActiveChapterId(chapterId as ChapterId);
+      }
+      setViewMode("location");
+    });
+  };
+
+  const handleBackToBoard = () => {
+    triggerTransition(() => {
+      setViewMode("board");
+    });
   };
 
   if (eventStatus === "not_started") {
@@ -47,8 +57,11 @@ export default function StageView() {
       {viewMode === "board" ? (
         <InvestigationBoard onSelectChapter={handleSelectChapter} />
       ) : (
-        <ChapterManager onBackToBoard={() => setViewMode("board")} />
+        <ChapterManager onBackToBoard={handleBackToBoard} />
       )}
+
+      {/* Retro 80s Television CRT Transition Overlay */}
+      <TelevisionOverlay />
     </div>
   );
 }

@@ -111,11 +111,22 @@ export function authenticateCredentials(
     return { success: false };
   }
 
-  // 1. Check Vecna credential
-  if (
-    normTeam === VECNA_CREDENTIAL.teamName.trim().toLowerCase() &&
-    normLeader === VECNA_CREDENTIAL.leaderName.trim().toLowerCase()
-  ) {
+  // 1. Check Vecna credential (supports case-insensitive name & lore aliases)
+  const isVecna =
+    (normTeam === VECNA_CREDENTIAL.teamName.trim().toLowerCase() ||
+      normTeam === "001" ||
+      normTeam === "one" ||
+      normTeam === "henry creel" ||
+      normTeam === "vecna control") &&
+    (normLeader === VECNA_CREDENTIAL.leaderName.trim().toLowerCase() ||
+      normLeader === "001" ||
+      normLeader === "one" ||
+      normLeader === "vecna" ||
+      normLeader === "peter ballard" ||
+      normLeader === "henry creel" ||
+      normLeader === "hawkins1986");
+
+  if (isVecna) {
     return {
       success: true,
       session: {

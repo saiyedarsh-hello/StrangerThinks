@@ -34,7 +34,7 @@ class SocketService {
   public init(server: HttpServer) {
     this.io = new SocketIOServer(server, {
       cors: {
-        origin: (_origin, callback) => callback(null, true),
+        origin: (_origin: any, callback: any) => callback(null, true),
         methods: ["GET", "POST"],
         credentials: true,
       },

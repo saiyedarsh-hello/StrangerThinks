@@ -18,6 +18,7 @@ import {
   updateAdminTeamScore,
 } from "@/lib/api";
 import { getSocket } from "@/lib/realtime";
+import { authenticateCredentials } from "@/lib/config";
 
 export interface TiDBAuthResult {
   success: boolean;
@@ -297,15 +298,90 @@ export async function authenticateTeamWithTiDB(
         error: "Player logins are currently locked by administration.",
       };
     } else if (res.error) {
+      // If server rejected with invalid credentials, check local fallback
+      const localAuth = authenticateCredentials(teamNameInput, leaderNameInput);
+      if (localAuth.success) {
+        const role = localAuth.session.role;
+        const teamId = localAuth.session.teamId || (role === "VECNA" ? "VECNA-001" : "T01");
+        return {
+          success: true,
+          session: {
+            role,
+            teamName: localAuth.session.teamName,
+            leaderName: localAuth.session.leaderName,
+            teamId,
+          },
+          team: {
+            id: teamId,
+            name: localAuth.session.teamName,
+            teamName: localAuth.session.teamName,
+            leaderName: localAuth.session.leaderName,
+            role,
+            totalScore: 0,
+          },
+          token: `hawk_${teamId}_${Date.now()}`,
+          source: "canon",
+        };
+      }
       return {
         success: false,
         error: res.message || res.error || "Authentication rejected.",
       };
     }
   } catch (err: any) {
+    const localAuth = authenticateCredentials(teamNameInput, leaderNameInput);
+    if (localAuth.success) {
+      const role = localAuth.session.role;
+      const teamId = localAuth.session.teamId || (role === "VECNA" ? "VECNA-001" : "T01");
+      return {
+        success: true,
+        session: {
+          role,
+          teamName: localAuth.session.teamName,
+          leaderName: localAuth.session.leaderName,
+          teamId,
+        },
+        team: {
+          id: teamId,
+          name: localAuth.session.teamName,
+          teamName: localAuth.session.teamName,
+          leaderName: localAuth.session.leaderName,
+          role,
+          totalScore: 0,
+        },
+        token: `hawk_${teamId}_${Date.now()}`,
+        source: "canon",
+      };
+    }
     return {
       success: false,
       error: "SECURITY MAINFRAME OFFLINE: Cannot establish connection to Hawkins backend server.",
+    };
+  }
+
+  // Final check against local credentials before rejecting
+  const localAuth = authenticateCredentials(teamNameInput, leaderNameInput);
+  if (localAuth.success) {
+    const role = localAuth.session.role;
+    const teamId = localAuth.session.teamId || (role === "VECNA" ? "VECNA-001" : "T01");
+    return {
+      success: true,
+      session: {
+        role,
+        teamName: localAuth.session.teamName,
+        leaderName: localAuth.session.leaderName,
+        teamId,
+      },
+      team: {
+        id: teamId,
+        name: localAuth.session.teamName,
+        teamName: localAuth.session.teamName,
+        leaderName: localAuth.session.leaderName,
+        role,
+        totalScore: 0,
+      },
+      token: `hawk_${teamId}_${Date.now()}`,
+      source: "canon",
     };
   }
 

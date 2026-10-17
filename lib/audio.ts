@@ -276,6 +276,7 @@ export type Sfx =
   | "snap"
   | "dial"
   | "staticBurst"
+  | "tvSwitch"
   | "vecnaCurse";
 
 export function sfx(name: Sfx): void {
@@ -387,6 +388,13 @@ export function sfx(name: Sfx): void {
 
     case "staticBurst":
       burst(0.35, 0.25, 1800);
+      break;
+
+    case "tvSwitch":
+      // Vintage CRT TV flyback transformer whine + cathode ray static discharge pop
+      tone(15734, 0.22, "sine", 0.08); // 15.734 kHz NTSC line frequency whine
+      burst(0.2, 0.24, 2200);          // CRT static zap
+      tone(85, 0.14, "triangle", 0.2, 28); // Low frequency power thump/pop
       break;
 
     case "vecnaCurse":

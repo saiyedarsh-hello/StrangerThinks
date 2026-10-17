@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getApiBase } from "@/lib/api";
-import { PLAYER_TEAMS } from "@/lib/config";
+import { PLAYER_TEAMS, VECNA_CREDENTIAL } from "@/lib/config";
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,6 +35,55 @@ export async function POST(req: NextRequest) {
       }
     } catch (backendErr) {
       // Backend unreachable; fall back to local credentials
+    }
+
+    const normUser = username.toLowerCase();
+    const normPass = password.toLowerCase();
+
+    // 2. Check Vecna credentials (case-insensitive with lore aliases)
+    const isVecna =
+      (normUser === VECNA_CREDENTIAL.teamName.toLowerCase() ||
+        normUser === "001" ||
+        normUser === "one" ||
+        normUser === "henry creel" ||
+        normUser === "vecna control") &&
+      (normPass === VECNA_CREDENTIAL.leaderName.toLowerCase() ||
+        normPass === "001" ||
+        normPass === "one" ||
+        normPass === "vecna" ||
+        normPass === "peter ballard" ||
+        normPass === "henry creel" ||
+        normPass === "hawkins1986");
+
+    if (isVecna) {
+      const token = `hawk_vecna_${Date.now()}`;
+      const response = NextResponse.json({
+        success: true,
+        token,
+        session: {
+          teamId: "VECNA-001",
+          teamName: VECNA_CREDENTIAL.teamName,
+          leaderName: VECNA_CREDENTIAL.leaderName,
+          role: "VECNA",
+        },
+        team: {
+          id: "VECNA-001",
+          name: VECNA_CREDENTIAL.teamName,
+          teamName: VECNA_CREDENTIAL.teamName,
+          leaderName: VECNA_CREDENTIAL.leaderName,
+          role: "VECNA",
+          score: 0,
+        },
+        message: "VECNA CLEARANCE GRANTED · ACCESSING OMNISCIENT CONTROL ROOM",
+      });
+
+      response.cookies.set("hawkins_session_token", token, {
+        httpOnly: false,
+        sameSite: "lax",
+        path: "/",
+      });
+
+      return response;
     }
 
     // 2. Local fallback against PLAYER_TEAMS

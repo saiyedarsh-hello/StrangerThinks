@@ -35,6 +35,13 @@ async function main() {
   if (backendAlreadyOnline) {
     console.log("\x1b[32m%s\x1b[0m", "✔ Hawkins Backend is already active on http://localhost:5055");
   } else {
+    const backendModules = path.resolve(backendDir, "node_modules");
+    if (!fs.existsSync(backendModules)) {
+      console.log("\x1b[33m%s\x1b[0m", "Installing backend dependencies...");
+      const { execSync } = await import("child_process");
+      execSync("npm install", { cwd: backendDir, stdio: "inherit" });
+    }
+
     const serverDist = path.resolve(backendDir, "dist/server.js");
     if (!fs.existsSync(serverDist)) {
       console.log("\x1b[33m%s\x1b[0m", "Building backend server...");

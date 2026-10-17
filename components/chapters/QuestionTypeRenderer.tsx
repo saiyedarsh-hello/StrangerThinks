@@ -348,7 +348,7 @@ export default function QuestionTypeRenderer({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "18px",
+        gap: "8px",
         width: "100%",
         boxSizing: "border-box",
       }}
@@ -381,11 +381,11 @@ export default function QuestionTypeRenderer({
           STAGE 2: CONNECTION QUESTIONS (DRAG-AND-DROP & RED STRINGS)
           ────────────────────────────────────────────────────────── */}
       {stageType === "connection" && question.connectionData && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
           <div
             style={{
-              fontSize: "14px",
-              lineHeight: 1.5,
+              fontSize: "12px",
+              lineHeight: 1.25,
               color: textColor,
               fontWeight: 700,
               fontFamily: "'Courier New', Courier, monospace",
@@ -399,7 +399,7 @@ export default function QuestionTypeRenderer({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              fontSize: "11px",
+              fontSize: "10px",
               fontFamily: "'Courier New', monospace",
               fontWeight: 800,
               color: mutedText,
@@ -415,9 +415,9 @@ export default function QuestionTypeRenderer({
                   background: "#e4dac4",
                   border: "1px solid #b8a691",
                   borderRadius: "2px",
-                  padding: "4px 8px",
+                  padding: "1px 5px",
                   cursor: "pointer",
-                  fontSize: "10.5px",
+                  fontSize: "9.5px",
                   fontFamily: "'Courier New', monospace",
                   fontWeight: 900,
                   color: "#8f231e",
@@ -434,7 +434,7 @@ export default function QuestionTypeRenderer({
               width: "100%",
               display: "flex",
               justifyContent: "center",
-              margin: "4px auto 10px",
+              margin: "1px auto 2px",
             }}
           >
             <div
@@ -443,9 +443,9 @@ export default function QuestionTypeRenderer({
               style={{
                 position: "relative",
                 display: "grid",
-                gridTemplateColumns: "minmax(250px, 350px) minmax(250px, 350px)",
-                gap: "clamp(24px, 4vw, 56px)",
-                padding: "16px 18px",
+                gridTemplateColumns: "minmax(240px, 340px) minmax(240px, 340px)",
+                gap: "clamp(10px, 1.5vw, 20px)",
+                padding: "4px 10px",
                 background: "rgba(255, 255, 255, 0.65)",
                 border: paperBorder,
                 borderRadius: "4px",
@@ -609,15 +609,15 @@ export default function QuestionTypeRenderer({
               </svg>
 
               {/* Left Column (Column A) */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", zIndex: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", zIndex: 12 }}>
                 <div
                   style={{
-                    fontSize: "11px",
+                    fontSize: "10.5px",
                     fontWeight: 900,
-                    letterSpacing: ".12em",
+                    letterSpacing: ".1em",
                     color: paperAccent,
                     borderBottom: "1px solid #d4c4a8",
-                    paddingBottom: "4px",
+                    paddingBottom: "2px",
                     fontFamily: "'Courier New', monospace",
                   }}
                 >
@@ -648,31 +648,33 @@ export default function QuestionTypeRenderer({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        gap: "10px",
-                        padding: "8px 12px",
+                        gap: "8px",
+                        padding: "3px 8px",
+                        minHeight: "30px",
                         background: isSelected
                           ? "rgba(184, 29, 36, 0.12)"
                           : isConnected
                           ? "#fdf7f4"
                           : "#ffffff",
                         border: isSelected
-                          ? "2px solid #b81d24"
+                          ? "1.5px solid #b81d24"
                           : isConnected
                           ? "1.5px solid #c48a80"
                           : "1px solid #d4c4a8",
                         borderRadius: "3px",
-                        fontSize: "12px",
+                        fontSize: "11px",
                         fontFamily: "'Courier New', monospace",
-                        lineHeight: 1.35,
+                        lineHeight: 1.3,
                         cursor: "grab",
                         boxShadow: isSelected
-                          ? "0 2px 8px rgba(184, 29, 36, 0.25)"
-                          : "0 1px 3px rgba(0,0,0,0.05)",
-                        transition: "all 0.15s ease",
+                          ? "0 2px 6px rgba(184, 29, 36, 0.2)"
+                          : "0 1px 2px rgba(0,0,0,0.04)",
+                        transition: "background 0.15s ease, border-color 0.15s ease",
                         userSelect: "none",
+                        boxSizing: "border-box",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: 0 }}>
                         <span
                           style={{
                             fontWeight: 900,
@@ -682,21 +684,27 @@ export default function QuestionTypeRenderer({
                         >
                           [{idx + 1}]
                         </span>
-                        <div>
-                          <span style={{ color: textColor }}>{p.leftText}</span>
-                          {connectedRight && (
-                            <div
-                              style={{
-                                fontSize: "10px",
-                                color: "#8f1218",
-                                fontWeight: 800,
-                                marginTop: "2px",
-                              }}
-                            >
-                              STRING CONNECTED ({connectedRight})
-                            </div>
-                          )}
-                        </div>
+                        <span style={{ color: textColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {p.leftText}
+                        </span>
+                        {connectedRight && (
+                          <span
+                            style={{
+                              fontSize: "9.5px",
+                              color: "#8f1218",
+                              fontWeight: 800,
+                              marginLeft: "auto",
+                              marginRight: "2px",
+                              padding: "1px 4px",
+                              background: "rgba(184, 29, 36, 0.1)",
+                              borderRadius: "2px",
+                              whiteSpace: "nowrap",
+                              flexShrink: 0,
+                            }}
+                          >
+                            → {connectedRight}
+                          </span>
+                        )}
                       </div>
 
                       {/* Right Connection Pin Socket */}
@@ -705,8 +713,8 @@ export default function QuestionTypeRenderer({
                           leftPinsRef.current[p.leftId] = el;
                         }}
                         style={{
-                          width: "14px",
-                          height: "14px",
+                          width: "12px",
+                          height: "12px",
                           borderRadius: "50%",
                           background: isConnected ? "#c41e24" : isSelected ? "#ff2d3a" : "#d4c4a8",
                           border: "2px solid #fff",
@@ -721,15 +729,15 @@ export default function QuestionTypeRenderer({
               </div>
 
               {/* Right Column (Column B) */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", zIndex: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", zIndex: 12 }}>
                 <div
                   style={{
-                    fontSize: "11px",
+                    fontSize: "10.5px",
                     fontWeight: 900,
-                    letterSpacing: ".12em",
+                    letterSpacing: ".1em",
                     color: "#184070",
                     borderBottom: "1px solid #d4c4a8",
-                    paddingBottom: "4px",
+                    paddingBottom: "2px",
                     fontFamily: "'Courier New', monospace",
                   }}
                 >
@@ -763,8 +771,9 @@ export default function QuestionTypeRenderer({
                         position: "relative",
                         display: "flex",
                         alignItems: "center",
-                        gap: "10px",
-                        padding: "8px 12px",
+                        gap: "8px",
+                        padding: "3px 8px",
+                        minHeight: "30px",
                         background: connectedFromLeft ? "#fdf7f4" : "#fdfbf7",
                         border: connectedFromLeft
                           ? "1.5px solid #c48a80"
@@ -772,13 +781,14 @@ export default function QuestionTypeRenderer({
                           ? "1.5px dashed #205080"
                           : "1px solid #c9bda4",
                         borderRadius: "3px",
-                        fontSize: "12px",
+                        fontSize: "11px",
                         fontFamily: "'Courier New', monospace",
-                        lineHeight: 1.35,
+                        lineHeight: 1.3,
                         cursor: selectedLeftId ? "pointer" : "default",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                        transition: "all 0.15s ease",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                        transition: "background 0.15s ease, border-color 0.15s ease",
                         userSelect: "none",
+                        boxSizing: "border-box",
                       }}
                     >
                       {/* Left Connection Pin Socket */}
@@ -787,8 +797,8 @@ export default function QuestionTypeRenderer({
                           rightPinsRef.current[p.rightId] = el;
                         }}
                         style={{
-                          width: "14px",
-                          height: "14px",
+                          width: "12px",
+                          height: "12px",
                           borderRadius: "50%",
                           background: connectedFromLeft ? "#c41e24" : "#c9bda4",
                           border: "2px solid #fff",
@@ -798,7 +808,7 @@ export default function QuestionTypeRenderer({
                         title="Drop target socket"
                       />
 
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: 0 }}>
                         <span
                           style={{
                             fontWeight: 900,
@@ -808,21 +818,26 @@ export default function QuestionTypeRenderer({
                         >
                           ({p.rightId})
                         </span>
-                        <div>
-                          <span style={{ color: textColor }}>{p.rightText}</span>
-                          {connectedFromLeft && (
-                            <div
-                              style={{
-                                fontSize: "10px",
-                                color: "#8f1218",
-                                fontWeight: 800,
-                                marginTop: "2px",
-                              }}
-                            >
-                              CONNECTED FROM [{connectedFromLeft}]
-                            </div>
-                          )}
-                        </div>
+                        <span style={{ color: textColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {p.rightText}
+                        </span>
+                        {connectedFromLeft && (
+                          <span
+                            style={{
+                              fontSize: "9.5px",
+                              color: "#8f1218",
+                              fontWeight: 800,
+                              marginLeft: "auto",
+                              padding: "1px 4px",
+                              background: "rgba(184, 29, 36, 0.1)",
+                              borderRadius: "2px",
+                              whiteSpace: "nowrap",
+                              flexShrink: 0,
+                            }}
+                          >
+                            ← [{connectedFromLeft}]
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -834,18 +849,18 @@ export default function QuestionTypeRenderer({
           {/* Connection Summary Bar */}
           <div
             style={{
-              padding: "8px 12px",
+              padding: "4px 8px",
               background: "#e9dfcb",
               borderRadius: "2px",
               borderLeft: `3px solid ${paperAccent}`,
-              fontSize: "12px",
+              fontSize: "10px",
               fontFamily: "'Courier New', Courier, monospace",
               color: "#2b1c11",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
               flexWrap: "wrap",
-              gap: "8px",
+              gap: "6px",
             }}
           >
             <div>

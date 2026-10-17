@@ -49,7 +49,23 @@ export default function CinematicBackground({
   }, [vignette]);
 
   return (
-    <>
+    <div
+      className="cinematic-bg-container"
+      style={{
+        position: "fixed",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: 0,
+        overflow: "hidden",
+        border: "none",
+        outline: "none",
+        margin: 0,
+        padding: 0,
+      }}
+      aria-hidden="true"
+    >
       {/* Cinematic Photorealistic Background with slow breathing zoom */}
       <div
         className="layer"
@@ -60,6 +76,10 @@ export default function CinematicBackground({
           zIndex: 1,
           pointerEvents: "none",
           backgroundColor: "#000000",
+          border: "none",
+          outline: "none",
+          margin: 0,
+          padding: 0,
         }}
       >
         {videoSrc ? (
@@ -129,7 +149,15 @@ export default function CinematicBackground({
 
       {/* Floating Upside Down Spores/Embers */}
       {particles !== "none" && (
-        <div className="layer" style={{ zIndex: 2, pointerEvents: "none" }}>
+        <div
+          className="layer"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 2,
+            pointerEvents: "none",
+          }}
+        >
           <Particles
             mode={particles}
             count={particleCount}
@@ -142,11 +170,13 @@ export default function CinematicBackground({
       <div
         className="layer"
         style={{
+          position: "absolute",
+          inset: 0,
           zIndex: 3,
           background: vignetteGradient,
           pointerEvents: "none",
         }}
       />
-    </>
+    </div>
   );
 }

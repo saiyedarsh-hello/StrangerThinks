@@ -323,6 +323,8 @@ export default function HopperPoliceReportQuiz({
         position: "relative",
         width: "100%",
         minHeight: "calc(100vh - 64px)",
+        maxHeight: "calc(100vh - 64px)",
+        overflowY: "auto",
         padding: 0,
         margin: 0,
         background: "#f4eedf",
@@ -350,7 +352,7 @@ export default function HopperPoliceReportQuiz({
           border: "none",
           borderRadius: 0,
           boxShadow: "none",
-          padding: "clamp(10px, 1.6vw, 16px) clamp(14px, 3vw, 36px) 20px",
+          padding: "8px clamp(12px, 2.5vw, 24px) 12px",
           position: "relative",
           boxSizing: "border-box",
           flex: 1,
@@ -364,10 +366,10 @@ export default function HopperPoliceReportQuiz({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 16,
-            paddingBottom: 10,
+            marginBottom: 6,
+            paddingBottom: 4,
             borderBottom: "1.5px dashed #c9bda4",
-            gap: 12,
+            gap: 10,
             position: "relative",
             zIndex: 10,
           }}
@@ -377,20 +379,20 @@ export default function HopperPoliceReportQuiz({
             type="button"
             onClick={onOpenLore}
             style={{
-              padding: "7px 14px",
+              padding: "4px 10px",
               background: "#d4a759",
               color: "#1a0f05",
               border: "1.5px solid #946f29",
-              borderRadius: 4,
+              borderRadius: 3,
               fontFamily: "'Benguiat Bold', serif",
               fontWeight: 800,
-              fontSize: 11.5,
-              letterSpacing: ".12em",
+              fontSize: 10.5,
+              letterSpacing: ".1em",
               cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
               display: "inline-flex",
               alignItems: "center",
-              gap: 6,
+              gap: 5,
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
@@ -464,9 +466,9 @@ export default function HopperPoliceReportQuiz({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: 12,
-              marginBottom: 18,
-              padding: "6px 12px",
+              gap: 8,
+              marginBottom: 6,
+              padding: "3px 8px",
               background: "#e4dac5",
               border: "1px solid #c9bda4",
               borderRadius: 3,
@@ -476,11 +478,11 @@ export default function HopperPoliceReportQuiz({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 5,
                 flexWrap: "nowrap",
                 overflowX: "auto",
                 whiteSpace: "nowrap",
-                paddingBottom: 4,
+                paddingBottom: 2,
                 scrollbarWidth: "thin",
                 flex: 1,
                 minWidth: 0,
@@ -520,7 +522,7 @@ export default function HopperPoliceReportQuiz({
                       setUnansweredPrompt(false);
                     }}
                     style={{
-                      padding: "4px 10px",
+                      padding: "2px 7px",
                       background: isCurrent
                         ? "#b81d24"
                         : isVerified
@@ -572,7 +574,7 @@ export default function HopperPoliceReportQuiz({
         {/* ─── SECTION DYNAMIC: THE INCIDENT STATEMENT & QUERY ─── */}
         <div
           key={`question-${currentIdx}`}
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: 6 }}
         >
             {/* Specialized Question Formation by Stage */}
             <QuestionTypeRenderer
@@ -590,13 +592,13 @@ export default function HopperPoliceReportQuiz({
             {/* In-Question Submit & Check Action Bar (Submits without going back) */}
             <div
               style={{
-                marginTop: 12,
+                marginTop: 5,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 flexWrap: "wrap",
-                gap: 10,
-                padding: "8px 14px",
+                gap: 6,
+                padding: "5px 12px",
                 background: isCurrentVerified
                   ? "rgba(38, 166, 91, 0.12)"
                   : isCurrentLocked
@@ -647,7 +649,7 @@ export default function HopperPoliceReportQuiz({
                 onClick={handleCheckCurrentQuestion}
                 disabled={isCheckingQuestion || !selectedAnswers[currentIdx]?.trim() || isPaused || isCurrentLocked}
                 style={{
-                  padding: "8px 20px",
+                  padding: "5px 14px",
                   background: isCheckingQuestion
                     ? "#332219"
                     : isCurrentVerified
@@ -667,12 +669,12 @@ export default function HopperPoliceReportQuiz({
                     : "1.5px solid #8f2d24",
                   borderRadius: 3,
                   fontFamily: "'Benguiat Bold', serif",
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 900,
-                  letterSpacing: ".12em",
+                  letterSpacing: ".1em",
                   cursor: isCheckingQuestion || !selectedAnswers[currentIdx]?.trim() || isPaused || isCurrentLocked ? "not-allowed" : "pointer",
                   opacity: !selectedAnswers[currentIdx]?.trim() || isPaused || isCurrentLocked ? 0.6 : 1,
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                   transition: "all 0.15s ease",
                 }}
               >
@@ -943,32 +945,34 @@ export default function HopperPoliceReportQuiz({
         {/* ─── FOOTER NAVIGATION & SUBMIT BUTTONS ─── */}
         <div
           style={{
-            borderTop: "2px solid #2a221a",
-            paddingTop: 12,
+            borderTop: "1.5px solid #2a221a",
+            paddingTop: 6,
+            paddingBottom: 2,
             marginTop: "auto",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexWrap: "wrap",
-            gap: 10,
+            gap: 8,
+            flexShrink: 0,
           }}
         >
           {/* Previous / Next Paging Controls */}
           {totalQuestions > 1 ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <button
                 type="button"
                 onClick={handlePrev}
                 disabled={currentIdx === 0}
                 style={{
-                  padding: "10px 16px",
+                  padding: "6px 12px",
                   background: currentIdx === 0 ? "transparent" : "#e4dac4",
                   color: currentIdx === 0 ? "#a89d8d" : "#2a221a",
                   border: "1px solid #b5a48b",
                   borderRadius: 3,
                   fontFamily: "'Benguiat Bold', serif",
-                  fontSize: 12,
-                  letterSpacing: ".1em",
+                  fontSize: 11,
+                  letterSpacing: ".08em",
                   cursor: currentIdx === 0 ? "not-allowed" : "pointer",
                   fontWeight: 800,
                 }}
@@ -981,19 +985,19 @@ export default function HopperPoliceReportQuiz({
                   type="button"
                   onClick={handleNext}
                   style={{
-                    padding: "10px 18px",
+                    padding: "6px 14px",
                     background: "#2e2118",
                     color: "#fff",
                     border: "1px solid #573a2e",
                     borderRadius: 3,
                     fontFamily: "'Benguiat Bold', serif",
-                    fontSize: 12,
-                    letterSpacing: ".1em",
+                    fontSize: 11,
+                    letterSpacing: ".08em",
                     cursor: "pointer",
                     fontWeight: 800,
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 6,
+                    gap: 5,
                   }}
                   title="Next question"
                 >
@@ -1011,20 +1015,20 @@ export default function HopperPoliceReportQuiz({
             onClick={handleFinalSubmit}
             disabled={!allQuestionsDone || isPaused}
             style={{
-              padding: "10px 24px",
+              padding: "6px 18px",
               background: isPaused ? "#443a34" : allQuestionsDone ? "#b81d24" : "#8c7b68",
               color: "#fff",
               border: isPaused ? "1.5px solid #665245" : allQuestionsDone ? "1.5px solid #8f1218" : "1px solid #776a5a",
               borderRadius: 3,
               fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
               fontWeight: 900,
-              fontSize: "clamp(13px, 1.4vw, 15px)",
-              letterSpacing: ".14em",
+              fontSize: "12px",
+              letterSpacing: ".12em",
               textTransform: "uppercase",
               cursor: allQuestionsDone && !isPaused ? "pointer" : "not-allowed",
               opacity: allQuestionsDone && !isPaused ? 1 : 0.65,
               boxShadow: allQuestionsDone && !isPaused
-                ? "0 6px 16px rgba(184, 29, 36, 0.5), inset 0 0 10px rgba(0,0,0,0.25)"
+                ? "0 4px 12px rgba(184, 29, 36, 0.4), inset 0 0 8px rgba(0,0,0,0.2)"
                 : "none",
               transition: "all 0.15s ease",
             }}
