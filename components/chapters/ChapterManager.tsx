@@ -901,6 +901,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
     s,
     isPaused,
     say,
+    sabotage,
     submitTask,
     activeChapterId,
     setActiveChapterId,
@@ -909,6 +910,13 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
     radiometerPinCount,
     setViewMode,
   } = useGame();
+
+  const isLocationLocked = Boolean(
+    sabotage &&
+    sabotage.kind === "LOCK" &&
+    sabotage.until &&
+    sabotage.until > Date.now()
+  );
 
   const handleBackToBoard = useCallback(() => {
     sfx("click");
@@ -1075,6 +1083,11 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
             onNextEpisode={
               completionStoryChapterId < 7
                 ? () => {
+                    if (isLocationLocked) {
+                      sfx("err");
+                      say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
+                      return;
+                    }
                     const nextId = (completionStoryChapterId + 1) as ChapterId;
                     setCompletionStoryChapterId(null);
                     setActiveChapterId(nextId);
@@ -1118,6 +1131,11 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
             chapter={currentChapter}
             isLastEpisode={currentChapter.id === 7}
             onNextEpisode={() => {
+              if (isLocationLocked) {
+                sfx("err");
+                say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
+                return;
+              }
               sfx("ok");
               if (currentChapter.id < 7) {
                 setActiveChapterId((currentChapter.id + 1) as ChapterId);

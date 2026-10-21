@@ -6,6 +6,13 @@ import { mmss } from "@/lib/results";
 import { sfx } from "@/lib/audio";
 import Glitch from "./Glitch";
 
+const CORRUPT_QUESTIONS = [
+  { id: 1, prompt: "Convert hexadecimal 0x2A to decimal:", placeholder: "e.g. 42" },
+  { id: 2, prompt: "Evaluate bitwise logic (12 & 10) in decimal:", placeholder: "e.g. 8" },
+  { id: 3, prompt: "What is the standard TCP port for HTTPS?", placeholder: "e.g. 443" },
+  { id: 4, prompt: "Evaluate modulo arithmetic: 100 mod 7 =", placeholder: "e.g. 2" },
+];
+
 const QS: [string, RegExp][] = [
   ["Binary of 5?", /^101$/],
   ["7 × 8 = ?", /^56$/],
@@ -27,14 +34,27 @@ const NAME: Record<string, string> = {
 };
 
 export default function SabotageOverlay() {
-  const { sabotage, clearSabotage } = useGame();
+  const { s, sabotage, clearSabotage } = useGame();
   const [val, setVal] = useState("");
   const [hide, setHide] = useState(false);
   const [left, setLeft] = useState(0);
 
+  // 4-question state for System Corrupted (80s technical challenge)
+  const [corruptAnswers, setCorruptAnswers] = useState<Record<number, string>>({
+    1: "",
+    2: "",
+    3: "",
+    4: "",
+  });
+  const [corruptFeedback, setCorruptFeedback] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
   useEffect(() => {
     setVal("");
     setHide(false);
+    setCorruptAnswers({ 1: "", 2: "", 3: "", 4: "" });
+    setCorruptFeedback(null);
+
     if (!sabotage) return;
     if (sabotage.kind === "MESSAGE") {
       try {
@@ -61,9 +81,62 @@ export default function SabotageOverlay() {
 
   useEffect(() => {
     if (!sabotage) return;
-    const i = setInterval(() => setLeft(Math.max(0, Math.round((sabotage.until - Date.now()) / 1000))), 250);
+    const i = setInterval(() => {
+      const remaining = Math.max(0, Math.round((sabotage.until - Date.now()) / 1000));
+      setLeft(remaining);
+      if (remaining <= 0) {
+        clearSabotage();
+      }
+    }, 250);
     return () => clearInterval(i);
-  }, [sabotage]);
+  }, [sabotage, clearSabotage]);
+
+  const handleCorruptSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isVerifying) return;
+    setIsVerifying(true);
+    setCorruptFeedback(null);
+
+    try {
+      const res = await fetch("/api/vecna/challenge/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId: s.team?.id || "T01",
+          answers: corruptAnswers,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (data && data.allCorrect) {
+        sfx("boom");
+        clearSabotage();
+      } else {
+        sfx("err");
+        setCorruptFeedback(
+          data?.message ||
+            `${data?.correctCount || 0}/4 verification codes accurate. Complete all 4 to unlock early.`
+        );
+      }
+    } catch {
+      // Local fallback evaluation
+      let correct = 0;
+      if (corruptAnswers[1].trim().toLowerCase() === "42") correct++;
+      if (corruptAnswers[2].trim().toLowerCase() === "8") correct++;
+      if (corruptAnswers[3].trim().toLowerCase() === "443") correct++;
+      if (corruptAnswers[4].trim().toLowerCase() === "2") correct++;
+
+      if (correct === 4) {
+        sfx("boom");
+        clearSabotage();
+      } else {
+        sfx("err");
+        setCorruptFeedback(`${correct}/4 verification codes accurate. Complete all 4 to unlock.`);
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const q = sabotage ? QS[sabotage.id % QS.length] : null;
   const overlay = sabotage && !hide && sabotage.kind !== "WATCH";
@@ -421,8 +494,246 @@ export default function SabotageOverlay() {
 
   return (
     <>
+      {/* ─────────────────────────────────────────────────────────────────
+          1. Dedicated 4-Question Blocking Modal for SYSTEM CORRUPTED (80s limit)
+          ───────────────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {overlay && sabotage.kind !== "MESSAGE" && (
+        {sabotage && sabotage.kind === "CORRUPT" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 99999,
+              background: "rgba(10, 2, 4, 0.96)",
+              backdropFilter: "blur(12px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+            }}
+          >
+            <div
+              style={{
+                width: "min(680px, 94vw)",
+                maxHeight: "90vh",
+                overflowY: "auto",
+                background: "#0d0205",
+                border: "2px solid #ff2d3a",
+                borderRadius: "6px",
+                padding: "24px",
+                boxShadow: "0 0 60px rgba(255, 45, 58, 0.6)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px",
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  borderBottom: "1.5px solid rgba(255, 45, 58, 0.4)",
+                  paddingBottom: "12px",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      color: "#ff2d3a",
+                      fontFamily: "var(--font-title)",
+                      fontSize: "20px",
+                      fontWeight: 900,
+                      letterSpacing: "0.15em",
+                    }}
+                  >
+                    SYSTEM CORRUPTED · RECOVERY OVERRIDE
+                  </div>
+                  <div
+                    style={{
+                      color: "rgba(255, 180, 180, 0.75)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "11px",
+                      marginTop: "4px",
+                    }}
+                  >
+                    Solve all 4 technical challenge vectors or remain locked out until the 80s countdown finishes.
+                  </div>
+                </div>
+
+                {/* 80s Timer Badge */}
+                <div
+                  style={{
+                    background: "rgba(0, 0, 0, 0.8)",
+                    border: "1.5px solid #ff2d3a",
+                    padding: "6px 12px",
+                    borderRadius: "4px",
+                    textAlign: "center",
+                    minWidth: "90px",
+                  }}
+                >
+                  <div
+                    style={{
+                      color: "rgba(255, 180, 180, 0.6)",
+                      fontSize: "9px",
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    LOCKOUT
+                  </div>
+                  <div
+                    style={{
+                      color: left <= 15 ? "#ff2d3a" : "#00ffcc",
+                      fontSize: "18px",
+                      fontFamily: "var(--font-mono)",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {mmss(left)}
+                  </div>
+                </div>
+              </div>
+
+              {corruptFeedback && (
+                <div
+                  style={{
+                    background: "rgba(150, 20, 30, 0.6)",
+                    border: "1px solid #ff4d58",
+                    padding: "8px 12px",
+                    borderRadius: "3px",
+                    color: "#ffcdd2",
+                    fontSize: "12px",
+                    fontFamily: "var(--font-mono)",
+                    textAlign: "center",
+                  }}
+                >
+                  {corruptFeedback}
+                </div>
+              )}
+
+              {/* 4 Technical Questions Form */}
+              <form onSubmit={handleCorruptSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {CORRUPT_QUESTIONS.map((qItem, idx) => (
+                  <div
+                    key={qItem.id}
+                    style={{
+                      background: "rgba(0, 0, 0, 0.6)",
+                      border: "1px solid rgba(255, 45, 58, 0.25)",
+                      padding: "10px 14px",
+                      borderRadius: "4px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                    }}
+                  >
+                    <label
+                      style={{
+                        color: "#ffffff",
+                        fontSize: "12px",
+                        fontFamily: "var(--font-mono)",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      VECTOR {idx + 1}: {qItem.prompt}
+                    </label>
+                    <input
+                      type="text"
+                      value={corruptAnswers[qItem.id] || ""}
+                      onChange={(e) =>
+                        setCorruptAnswers((prev) => ({ ...prev, [qItem.id]: e.target.value }))
+                      }
+                      placeholder={qItem.placeholder}
+                      style={{
+                        background: "#120306",
+                        border: "1px solid rgba(255, 45, 58, 0.4)",
+                        borderRadius: "3px",
+                        padding: "7px 10px",
+                        color: "#00ffcc",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "13px",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                ))}
+
+                <button
+                  type="submit"
+                  disabled={isVerifying}
+                  style={{
+                    marginTop: "6px",
+                    padding: "12px",
+                    background: "#ff2d3a",
+                    border: "none",
+                    borderRadius: "3px",
+                    color: "#000000",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "13px",
+                    fontWeight: "bold",
+                    letterSpacing: "0.15em",
+                    cursor: isVerifying ? "wait" : "pointer",
+                    boxShadow: "0 0 16px rgba(255, 45, 58, 0.6)",
+                  }}
+                >
+                  {isVerifying ? "VERIFYING CRYPTOGRAPHIC OVERRIDES..." : "SUBMIT & RESTORE TERMINAL INTEGRITY"}
+                </button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─────────────────────────────────────────────────────────────────
+          2. Restrained Lock Location Banner (120s stage advance restriction)
+          ───────────────────────────────────────────────────────────────── */}
+      {sabotage && sabotage.kind === "LOCK" && (
+        <div
+          style={{
+            position: "fixed",
+            top: "16px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 9999,
+            background: "rgba(18, 2, 4, 0.95)",
+            border: "1.5px solid #ff2d3a",
+            borderRadius: "4px",
+            padding: "10px 20px",
+            boxShadow: "0 0 25px rgba(255, 45, 58, 0.7)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          <span
+            style={{
+              width: "10px",
+              height: "10px",
+              borderRadius: "50%",
+              background: "#ff2d3a",
+              boxShadow: "0 0 10px #ff2d3a",
+            }}
+          />
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ color: "#ffffff", fontWeight: "bold", fontSize: "12px", letterSpacing: "0.1em" }}>
+              VECNA INTERFERENCE — LOCATION LOCKED
+            </span>
+            <span style={{ color: "rgba(255, 180, 180, 0.8)", fontSize: "10.5px" }}>
+              Stage movement restricted · Stage advance available in{" "}
+              <strong style={{ color: "#ff2d3a" }}>{mmss(left)}</strong>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────
+          3. Generic Overlays for Other Minor Sabotages
+          ───────────────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {overlay && sabotage.kind !== "MESSAGE" && sabotage.kind !== "CORRUPT" && sabotage.kind !== "LOCK" && (
           <motion.div className="sab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="sab-box" style={{ maxWidth: 620 }}>
               <div className="term" style={{ color: "var(--danger)", fontSize: 24, letterSpacing: ".3em" }}>
@@ -434,61 +745,28 @@ export default function SabotageOverlay() {
               </h2>
 
               <div className="eyebrow" style={{ marginBottom: 18 }}>
-                {sabotage.kind === "LOCK" && sabotage.pinIndex !== undefined
-                  ? `PIN ${sabotage.pinIndex + 1} LOCKED BY VECNA`
-                  : NAME[sabotage.kind]}
+                {NAME[sabotage.kind]}
                 {sabotage.operatorName && (
                   <span className="dim" style={{ marginLeft: 8 }}>
                     · DISPATCHED BY {sabotage.operatorName.toUpperCase()}
                   </span>
                 )}
               </div>
-
-              {(sabotage.kind === "LOCK" || sabotage.kind === "CORRUPT") && q && (
-                <>
-                  <div className="term dim" style={{ marginBottom: 14 }}>
-                    Solve the challenge to restore access.
-                  </div>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (q[1].test(val.trim())) clearSabotage();
-                      else setVal("");
-                    }}
-                  >
-                    <div className="term" style={{ marginBottom: 8 }}>
-                      {q[0]}
-                    </div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <input
-                        className="field"
-                        value={val}
-                        onChange={(e) => setVal(e.target.value)}
-                        autoFocus
-                        placeholder="answer"
-                      />
-                      <button className="btn red sm" style={{ whiteSpace: "nowrap", flex: "0 0 auto" }}>
-                        RESTORE
-                      </button>
-                    </div>
-                  </form>
-                </>
-              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {sabotage && sabotage.kind !== "MESSAGE" && (hide || sabotage.kind === "WATCH") && (
-        <div className="sab-banner">
-          [ALERT]{" "}
-          {sabotage.kind === "LOCK" && sabotage.pinIndex !== undefined
-            ? `PIN ${sabotage.pinIndex + 1} LOCKED`
-            : NAME[sabotage.kind]}
-          {sabotage.operatorName ? ` [${sabotage.operatorName.toUpperCase()}]` : ""}{" "}
-          · {mmss(left)}
-        </div>
-      )}
+      {sabotage &&
+        sabotage.kind !== "MESSAGE" &&
+        sabotage.kind !== "LOCK" &&
+        sabotage.kind !== "CORRUPT" &&
+        (hide || sabotage.kind === "WATCH") && (
+          <div className="sab-banner">
+            [ALERT] {NAME[sabotage.kind]}
+            {sabotage.operatorName ? ` [${sabotage.operatorName.toUpperCase()}]` : ""} · {mmss(left)}
+          </div>
+        )}
     </>
   );
 }

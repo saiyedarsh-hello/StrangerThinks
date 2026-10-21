@@ -19,7 +19,7 @@ export const TRIGGER_ACTIONS: TriggerAction[] = [
   {
     id: "CORRUPT",
     label: "SYSTEM CORRUPTED",
-    sublabel: "Scramble challenge screen",
+    sublabel: "4-Cipher Recovery Challenge · 80s Lockout",
     costPerTeam: 10,
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -32,7 +32,7 @@ export const TRIGGER_ACTIONS: TriggerAction[] = [
   {
     id: "LOCK",
     label: "LOCK LOCATION",
-    sublabel: "Lock teams for 120s (Access Denied)",
+    sublabel: "Restrain Stage Progression for 120s",
     costPerTeam: 10,
     icon: (
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -43,13 +43,20 @@ export const TRIGGER_ACTIONS: TriggerAction[] = [
   },
 ];
 
-const AVAILABLE_TEAMS = [
-  "Null Pointers",
-  "Stack Smashers",
-  "Rift Runners",
-  "Byte Byters",
-  "Signal Seekers",
-  "Hellfire Club",
+export interface TargetSquadItem {
+  id: string;
+  name: string;
+  leader?: string;
+  status?: string;
+}
+
+const DEFAULT_FALLBACK_TEAMS: TargetSquadItem[] = [
+  { id: "T01", name: "Null Pointers" },
+  { id: "T02", name: "Stack Smashers" },
+  { id: "T03", name: "Rift Runners" },
+  { id: "T04", name: "Byte Byters" },
+  { id: "T05", name: "Signal Seekers" },
+  { id: "T06", name: "Hellfire Club" },
 ];
 
 interface VecnaTriggerPanelProps {
@@ -58,6 +65,7 @@ interface VecnaTriggerPanelProps {
   onTriggerAction: (action: TriggerAction) => void;
   activeActionId?: string | null;
   currentVecnaScore?: number;
+  availableSquads?: TargetSquadItem[];
 }
 
 export default function VecnaTriggerPanel({
@@ -66,23 +74,29 @@ export default function VecnaTriggerPanel({
   onTriggerAction,
   activeActionId,
   currentVecnaScore = 50,
+  availableSquads,
 }: VecnaTriggerPanelProps) {
-  const [selectedTeams, setSelectedTeams] = useState<string[]>(["Null Pointers"]);
-  const [selectedPower, setSelectedPower] = useState<TriggerActionKind>("LOCK");
+  const squads =
+    availableSquads && availableSquads.length > 0 ? availableSquads : DEFAULT_FALLBACK_TEAMS;
 
-  const toggleTeam = (tm: string) => {
+  const [selectedTeams, setSelectedTeams] = useState<string[]>(() => [squads[0]?.name || "Null Pointers"]);
+  const [selectedPower, setSelectedPower] = useState<TriggerActionKind>("LOCK");
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const toggleTeam = (tmName: string) => {
     sfx("click");
     setSelectedTeams((prev) =>
-      prev.includes(tm) ? prev.filter((t) => t !== tm) : [...prev, tm]
+      prev.includes(tmName) ? prev.filter((t) => t !== tmName) : [...prev, tmName]
     );
   };
 
   const selectAllTeams = () => {
     sfx("click");
-    if (selectedTeams.length === AVAILABLE_TEAMS.length) {
+    const allNames = squads.map((s) => s.name);
+    if (selectedTeams.length === allNames.length) {
       setSelectedTeams([]);
     } else {
-      setSelectedTeams([...AVAILABLE_TEAMS]);
+      setSelectedTeams([...allNames]);
     }
   };
 
@@ -92,7 +106,13 @@ export default function VecnaTriggerPanel({
 
   const handleExecute = () => {
     if (!canAfford) return;
+    sfx("click");
+    setShowConfirm(true);
+  };
+
+  const confirmExecution = () => {
     sfx("boom");
+    setShowConfirm(false);
     onTriggerAction({
       ...activeAction,
       targetTeams: selectedTeams,
@@ -111,6 +131,7 @@ export default function VecnaTriggerPanel({
         flexDirection: "column",
         gap: "14px",
         height: "100%",
+        position: "relative",
       }}
     >
       {/* Header */}
@@ -139,7 +160,7 @@ export default function VecnaTriggerPanel({
               marginTop: "2px",
             }}
           >
-            Target specific teams · 10 PTS charged per target · 120s Lockout
+            Authoritative Server Deductions · 10 PTS / Team Affected · Real-Time Sync
           </div>
         </div>
 
@@ -151,130 +172,98 @@ export default function VecnaTriggerPanel({
             padding: "4px 10px",
             borderRadius: "3px",
             fontFamily: "var(--font-mono)",
-            fontSize: "11px",
-            color: "#ff8a80",
-            letterSpacing: "0.1em",
+            fontSize: "12px",
+            color: "#ffffff",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
           }}
         >
-          AVAILABLE: <span style={{ color: "#ffffff", fontWeight: "bold" }}>{currentVecnaScore} PTS</span>
+          <span style={{ color: "rgba(255,180,180,0.6)" }}>BALANCE:</span>
+          <span style={{ color: currentVecnaScore < 10 ? "#ff4d58" : "#00ffcc", fontWeight: "bold" }}>
+            {currentVecnaScore} PTS
+          </span>
         </div>
       </div>
 
-      {/* Target Location Dropdown */}
-      <div>
-        <label style={{ fontSize: "10.5px", fontFamily: "var(--font-mono)", color: "rgba(255,180,180,0.8)", letterSpacing: "0.12em" }}>
-          LOCATION SECTOR:
-        </label>
-        <select
-          value={selectedLocation}
-          onChange={(e) => {
-            sfx("click");
-            onSelectLocation(e.target.value);
-          }}
-          style={{
-            width: "100%",
-            marginTop: "4px",
-            padding: "8px 12px",
-            background: "rgba(0, 0, 0, 0.8)",
-            border: "1px solid rgba(255, 45, 58, 0.4)",
-            borderRadius: "3px",
-            color: "#ffffff",
-            fontFamily: "var(--font-mono)",
-            fontSize: "12px",
-            letterSpacing: "0.08em",
-            outline: "none",
-            cursor: "pointer",
-          }}
-        >
-          <option value="all">ALL LOCATIONS (BROADCAST SECTOR)</option>
-          {MAP_LOCATIONS.map((loc) => (
-            <option key={loc.id} value={loc.id}>
-              {loc.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Team Selection Section (Checkboxes / Chips) */}
+      {/* Target Selection: Select Squads + Select All Button */}
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "rgba(255,200,200,0.9)", fontWeight: "bold", letterSpacing: "0.1em" }}>
-            SELECT TARGET TEAMS (10 PTS EACH):
-          </span>
+          <label
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "11px",
+              fontWeight: "bold",
+              letterSpacing: "0.1em",
+              color: "rgba(255, 200, 200, 0.9)",
+            }}
+          >
+            TARGET SQUADS ({selectedTeams.length} SELECTED · {totalCost} PTS):
+          </label>
           <button
             type="button"
             onClick={selectAllTeams}
             style={{
-              background: "transparent",
-              border: "none",
-              color: "#ff2d3a",
+              background: selectedTeams.length === squads.length ? "rgba(255, 45, 58, 0.3)" : "rgba(0, 0, 0, 0.6)",
+              border: "1px solid #ff2d3a",
+              color: "#ffffff",
+              padding: "2px 8px",
+              borderRadius: "2px",
               fontFamily: "var(--font-mono)",
-              fontSize: "10.5px",
+              fontSize: "10px",
               cursor: "pointer",
               letterSpacing: "0.08em",
-              textDecoration: "underline",
             }}
           >
-            {selectedTeams.length === AVAILABLE_TEAMS.length ? "DESELECT ALL" : "SELECT ALL"}
+            {selectedTeams.length === squads.length ? "DESELECT ALL" : "SELECT ALL TEAMS"}
           </button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "6px" }}>
-          {AVAILABLE_TEAMS.map((tm) => {
-            const isChecked = selectedTeams.includes(tm);
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", maxHeight: "110px", overflowY: "auto" }}>
+          {squads.map((sq) => {
+            const isChecked = selectedTeams.includes(sq.name);
             return (
               <button
-                key={tm}
+                key={sq.id}
                 type="button"
-                onClick={() => toggleTeam(tm)}
+                onClick={() => toggleTeam(sq.name)}
                 style={{
+                  padding: "5px 10px",
+                  background: isChecked ? "rgba(255, 45, 58, 0.3)" : "rgba(0, 0, 0, 0.6)",
+                  border: isChecked ? "1.5px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.2)",
+                  color: isChecked ? "#ffffff" : "rgba(255, 255, 255, 0.6)",
+                  borderRadius: "3px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "11px",
+                  fontWeight: isChecked ? "bold" : "normal",
+                  cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   gap: "6px",
-                  padding: "6px 8px",
-                  background: isChecked ? "rgba(255, 45, 58, 0.25)" : "rgba(0, 0, 0, 0.5)",
-                  border: isChecked ? "1.5px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.15)",
-                  borderRadius: "3px",
-                  color: isChecked ? "#ffffff" : "rgba(255, 255, 255, 0.6)",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10.5px",
-                  fontWeight: isChecked ? "bold" : "normal",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "all 0.12s ease",
                 }}
               >
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "12px",
-                    height: "12px",
-                    borderRadius: "2px",
-                    border: `1px solid ${isChecked ? "#ff2d3a" : "rgba(255,255,255,0.4)"}`,
-                    background: isChecked ? "#ff2d3a" : "transparent",
-                    color: "#000",
-                    fontSize: "9px",
-                    fontWeight: 900,
-                  }}
-                >
-                  {isChecked ? "✓" : ""}
-                </span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {tm}
-                </span>
+                <span>{isChecked ? "☑" : "☐"}</span>
+                <span>{sq.name}</span>
+                {sq.leader && <span style={{ fontSize: "9px", opacity: 0.6 }}>({sq.leader})</span>}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Power Selection: 2 Available Powers */}
+      {/* Power Selection Cards (LOCK LOCATION vs SYSTEM CORRUPTED) */}
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-        <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "rgba(255,200,200,0.9)", fontWeight: "bold", letterSpacing: "0.1em" }}>
-          CHOOSE POWER:
-        </span>
+        <label
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "11px",
+            fontWeight: "bold",
+            letterSpacing: "0.1em",
+            color: "rgba(255, 200, 200, 0.9)",
+          }}
+        >
+          SELECT VECNA POWER:
+        </label>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
           {TRIGGER_ACTIONS.map((act) => {
             const isSelected = selectedPower === act.id;
@@ -331,7 +320,7 @@ export default function VecnaTriggerPanel({
         </div>
       </div>
 
-      {/* Cost & Confirmation Summary */}
+      {/* Cost & Action Bar */}
       <div
         style={{
           background: "rgba(20, 4, 8, 0.8)",
@@ -343,15 +332,16 @@ export default function VecnaTriggerPanel({
           alignItems: "center",
           flexWrap: "wrap",
           gap: "8px",
+          marginTop: "auto",
         }}
       >
         <div>
           <div style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "rgba(255,180,180,0.8)" }}>
-            TARGETS: <span style={{ color: "#ffffff", fontWeight: "bold" }}>{selectedTeams.length} TEAMS</span>
-            {selectedPower === "LOCK" && " · DURATION: 120s (2 MIN)"}
+            TARGETS: <span style={{ color: "#ffffff", fontWeight: "bold" }}>{selectedTeams.length} SQUADS</span>
+            {selectedPower === "LOCK" ? " · 120s STAGE RESTRAINT" : " · 80s 4-CIPHER CHALLENGE"}
           </div>
           <div style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: "#ff8a80", fontWeight: "bold", marginTop: "2px" }}>
-            TOTAL COST: <span style={{ color: "#ffffff" }}>{totalCost} PTS</span> (10 PTS / TEAM)
+            POWER CHARGE: <span style={{ color: "#ffffff" }}>{totalCost} PTS</span> (10 PTS / TEAM)
           </div>
         </div>
 
@@ -377,6 +367,71 @@ export default function VecnaTriggerPanel({
           {canAfford ? `ACTIVATE (-${totalCost} PTS)` : "INSUFFICIENT PTS / NO TARGETS"}
         </button>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(10, 2, 4, 0.94)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            zIndex: 100,
+            borderRadius: "4px",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ color: "#ff2d3a", fontFamily: "var(--font-title)", fontSize: "16px", fontWeight: 900, letterSpacing: "0.15em", marginBottom: "8px" }}>
+            CONFIRM VECNA POWER ACTIVATION
+          </div>
+          <div style={{ color: "#ffffff", fontFamily: "var(--font-mono)", fontSize: "12px", lineHeight: 1.5, maxWidth: "380px", marginBottom: "16px" }}>
+            Unleash <span style={{ color: "#ff4d58", fontWeight: "bold" }}>{activeAction.label}</span> on{" "}
+            <span style={{ color: "#00ffcc", fontWeight: "bold" }}>{selectedTeams.length} squads</span>?
+            <br />
+            <span style={{ color: "#ff8a80" }}>Cost: {totalCost} PTS</span> will be authoritatively deducted from your score.
+          </div>
+          <div style={{ display: "flex", gap: "12px" }}>
+            <button
+              type="button"
+              onClick={() => setShowConfirm(false)}
+              style={{
+                padding: "8px 16px",
+                background: "rgba(255, 255, 255, 0.1)",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
+                color: "#ffffff",
+                fontFamily: "var(--font-mono)",
+                fontSize: "11px",
+                cursor: "pointer",
+                borderRadius: "3px",
+              }}
+            >
+              CANCEL
+            </button>
+            <button
+              type="button"
+              onClick={confirmExecution}
+              style={{
+                padding: "8px 18px",
+                background: "#ff2d3a",
+                border: "none",
+                color: "#000000",
+                fontFamily: "var(--font-mono)",
+                fontSize: "11px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                borderRadius: "3px",
+                boxShadow: "0 0 12px rgba(255, 45, 58, 0.6)",
+              }}
+            >
+              CONFIRM (-{totalCost} PTS)
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -486,7 +486,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (m.kind === "MESSAGE") {
           sfx("vecnaCurse");
         }
-        applySabotage(m.kind as SabKind, m.pinIndex, m.message, m.operatorName);
+        applySabotage(
+          m.kind as SabKind,
+          m.pinIndex,
+          m.message,
+          m.operatorName,
+          m.duration || m.durationSec,
+          m.until
+        );
+      }
+
+      if (m.type === "sabotage:clear") {
+        clearSabotage();
       }
 
       if (m.type === "story_event") {
@@ -713,11 +724,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const applySabotage = (kind: SabKind, pinIndex?: number, message?: string, operatorName?: string) => {
+  const applySabotage = (
+    kind: SabKind,
+    pinIndex?: number,
+    message?: string,
+    operatorName?: string,
+    duration?: number,
+    until?: number
+  ) => {
     const dur: Record<SabKind, number> = {
-      CORRUPT: 30,
+      CORRUPT: 80,
       TIME_FREEZE: 5,
-      LOCK: 20,
+      LOCK: 120,
       DISTORT: 40,
       SIGNAL_JAM: 30,
       WATCH: 8,
@@ -738,13 +756,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setS((p) => ({ ...p, timeLeft: Math.max(0, p.timeLeft - 120) }));
     }
 
+    const durationSec = duration || dur[kind] || 20;
+    const expiresAt = until && until > Date.now() ? until : Date.now() + durationSec * 1000;
+
     setSabotage({
       id: Date.now(),
       kind,
       pinIndex,
       message,
       operatorName,
-      until: Date.now() + (dur[kind] || 20) * 1000,
+      until: expiresAt,
     });
   };
 

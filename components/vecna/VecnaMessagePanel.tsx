@@ -1,10 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { sfx } from "@/lib/audio";
+import { API_BASE } from "@/lib/api";
+import { getStoredSession } from "@/lib/config";
+import { subscribe, getSocket } from "@/lib/realtime";
 
 interface VecnaMessagePanelProps {
-  onSendMessage: (target: "all" | string, message: string) => void;
+  onSendMessage: (target: "all" | string, message: string) => Promise<boolean> | void;
   selectedTeamName?: string;
+  initialQuota?: number;
 }
 
 const AVAILABLE_TEAMS = [
@@ -19,25 +23,62 @@ const AVAILABLE_TEAMS = [
 export default function VecnaMessagePanel({
   onSendMessage,
   selectedTeamName,
+  initialQuota = 5,
 }: VecnaMessagePanelProps) {
   const [targetType, setTargetType] = useState<"all" | "specific">("all");
   const [chosenTeam, setChosenTeam] = useState<string>(selectedTeamName || AVAILABLE_TEAMS[0]);
   const [message, setMessage] = useState("I KNOW WHERE YOU ARE.");
 
-  // Limits:
-  // "all": limit 5 times, cooldown 120s (2 minutes)
-  // individual team: limit 5 times per team, cooldown 60s (1 minute)
-  const [allCount, setAllCount] = useState<number>(0);
-  const [allLastSent, setAllLastSent] = useState<number>(0);
+  // Event-wide dispatch quota: 5 messages maximum shared across all Vecna teams
+  const [remainingQuota, setRemainingQuota] = useState<number>(initialQuota);
+  const [usedQuota, setUsedQuota] = useState<number>(5 - initialQuota);
+  const [isSending, setIsSending] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [teamCounts, setTeamCounts] = useState<Record<string, number>>({});
-  const [teamLastSent, setTeamLastSent] = useState<Record<string, number>>({});
-
-  const [now, setNow] = useState<number>(Date.now());
-
+  // Fetch live authoritative quota from backend on mount
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
+    let isCancelled = false;
+    const fetchQuota = async () => {
+      try {
+        const stored = getStoredSession();
+        const token = stored && (stored as any).token ? (stored as any).token : "";
+        const res = await fetch(`${API_BASE}/vecna/dispatch/quota`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok && !isCancelled) {
+          const data = await res.json();
+          if (data && typeof data.remaining === "number") {
+            setRemainingQuota(data.remaining);
+            setUsedQuota(data.used ?? (5 - data.remaining));
+          }
+        }
+      } catch {}
+    };
+    fetchQuota();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // Real-time synchronization across all Vecna teams & admin sessions
+  useEffect(() => {
+    const handleQuota = (data: any) => {
+      if (data && typeof data.remaining === "number") {
+        setRemainingQuota(data.remaining);
+        setUsedQuota(data.used ?? (5 - data.remaining));
+      }
+    };
+    const unsub = subscribe((event: any) => {
+      if (event && event.type === "vecna:dispatch_quota") {
+        handleQuota(event);
+      }
+    });
+    const sock = getSocket();
+    sock?.on("vecna:dispatch_quota", handleQuota);
+    return () => {
+      unsub();
+      sock?.off("vecna:dispatch_quota", handleQuota);
+    };
   }, []);
 
   useEffect(() => {
@@ -46,41 +87,35 @@ export default function VecnaMessagePanel({
     }
   }, [selectedTeamName]);
 
-  // Calculate cooldowns
-  const allCooldownRemaining = Math.max(0, Math.ceil((allLastSent + 120000 - now) / 1000));
-  const selectedTeamCooldownRemaining = Math.max(
-    0,
-    Math.ceil(((teamLastSent[chosenTeam] || 0) + 60000 - now) / 1000)
-  );
+  const isQuotaExhausted = remainingQuota <= 0;
+  const isSendDisabled = isSending || !message.trim() || isQuotaExhausted;
 
-  const isAllDisabled = allCount >= 5 || allCooldownRemaining > 0;
-  const currentTeamCount = teamCounts[chosenTeam] || 0;
-  const isTeamDisabled = currentTeamCount >= 5 || selectedTeamCooldownRemaining > 0;
-
-  const isSendDisabled =
-    !message.trim() || (targetType === "all" ? isAllDisabled : isTeamDisabled);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSendDisabled) return;
 
-    sfx("boom");
-    const currentTime = Date.now();
+    if (isQuotaExhausted) {
+      setErrorMessage("Dispatch limit reached for this event.");
+      sfx("err");
+      return;
+    }
 
-    if (targetType === "all") {
-      setAllCount((prev) => prev + 1);
-      setAllLastSent(currentTime);
-      onSendMessage("all", message.trim());
-    } else {
-      setTeamCounts((prev) => ({
-        ...prev,
-        [chosenTeam]: (prev[chosenTeam] || 0) + 1,
-      }));
-      setTeamLastSent((prev) => ({
-        ...prev,
-        [chosenTeam]: currentTime,
-      }));
-      onSendMessage(chosenTeam, message.trim());
+    setIsSending(true);
+    setErrorMessage(null);
+
+    try {
+      const target = targetType === "all" ? "all" : chosenTeam;
+      const result = await onSendMessage(target, message.trim());
+      if (result === false) {
+        // Submission rejected (e.g. quota exhausted on server)
+        setErrorMessage("Dispatch limit reached for this event.");
+        sfx("err");
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Failed to dispatch message.");
+      sfx("err");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -117,19 +152,40 @@ export default function VecnaMessagePanel({
           justifyContent: "space-between",
         }}
       >
-        <span>SEND MESSAGE</span>
+        <span>VECNA DISPATCH TRANSMITTER</span>
         <span
           style={{
-            fontSize: "10px",
+            fontSize: "11px",
             fontFamily: "var(--font-mono)",
-            color: "rgba(255, 180, 180, 0.7)",
-            letterSpacing: "0.1em",
+            color: isQuotaExhausted ? "#ff4d58" : "#00ffcc",
+            letterSpacing: "0.12em",
+            fontWeight: "bold",
+            background: "rgba(0, 0, 0, 0.6)",
+            padding: "3px 8px",
+            borderRadius: "3px",
+            border: `1px solid ${isQuotaExhausted ? "rgba(255, 77, 88, 0.5)" : "rgba(0, 255, 204, 0.3)"}`,
           }}
         >
-          {targetType === "all"
-            ? `ALL TEAMS: ${5 - allCount}/5 REMAINING`
-            : `${chosenTeam}: ${5 - currentTeamCount}/5 REMAINING`}
+          {remainingQuota}/5 REMAINING
         </span>
+      </div>
+
+      {/* Event-Wide Shared Quota Info Badge */}
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "10.5px",
+          color: "rgba(255, 200, 200, 0.75)",
+          letterSpacing: "0.06em",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderBottom: "1px dashed rgba(255, 45, 58, 0.25)",
+          paddingBottom: "8px",
+        }}
+      >
+        <span>EVENT ALLOWANCE: 5 MESSAGES SHARED BY ALL VECNA TEAMS</span>
+        <span style={{ color: "#ff8a80" }}>USED: {usedQuota}/5</span>
       </div>
 
       {/* Target Toggle Tabs */}
@@ -154,7 +210,7 @@ export default function VecnaMessagePanel({
             borderRadius: "2px",
           }}
         >
-          ALL TEAMS ({5 - allCount}/5)
+          ALL TEAMS
         </button>
         <button
           type="button"
@@ -176,7 +232,7 @@ export default function VecnaMessagePanel({
             borderRadius: "2px",
           }}
         >
-          INDIVIDUAL TEAM
+          INDIVIDUAL SQUAD
         </button>
       </div>
 
@@ -191,7 +247,7 @@ export default function VecnaMessagePanel({
               letterSpacing: "0.12em",
             }}
           >
-            TARGET TEAM:
+            TARGET SQUAD:
           </label>
           <select
             value={chosenTeam}
@@ -215,81 +271,48 @@ export default function VecnaMessagePanel({
           >
             {AVAILABLE_TEAMS.map((tm) => (
               <option key={tm} value={tm} style={{ background: "#140407", color: "#ffffff" }}>
-                {tm} ({5 - (teamCounts[tm] || 0)} messages left)
+                {tm}
               </option>
             ))}
           </select>
         </div>
       )}
 
-      {/* Rate Limit / Cooldown Status Banner */}
-      {targetType === "all" && allCooldownRemaining > 0 && (
+      {/* Quota Exhausted Warning Banner */}
+      {isQuotaExhausted && (
         <div
           style={{
-            background: "rgba(255, 45, 58, 0.15)",
-            border: "1px dashed #ff2d3a",
-            padding: "6px 10px",
+            background: "rgba(100, 20, 25, 0.5)",
+            border: "1.5px solid #ff2d3a",
+            padding: "8px 12px",
             borderRadius: "3px",
-            fontSize: "11px",
-            color: "#ff8a80",
-            fontFamily: "var(--font-mono)",
-            letterSpacing: "0.08em",
-            textAlign: "center",
-          }}
-        >
-          ⏳ COOLDOWN: {allCooldownRemaining}s REMAINING (ALL TEAMS: 1 PER 2 MIN)
-        </div>
-      )}
-      {targetType === "all" && allCount >= 5 && (
-        <div
-          style={{
-            background: "rgba(100, 20, 25, 0.4)",
-            border: "1px solid #ff2d3a",
-            padding: "6px 10px",
-            borderRadius: "3px",
-            fontSize: "11px",
+            fontSize: "11.5px",
             color: "#ff6666",
             fontFamily: "var(--font-mono)",
             letterSpacing: "0.08em",
             textAlign: "center",
+            fontWeight: "bold",
           }}
         >
-          🚫 QUOTA REACHED: 5/5 ALL TEAMS TRANSMISSIONS USED
+          🚫 Dispatch limit reached for this event. (0/5 REMAINING)
         </div>
       )}
 
-      {targetType === "specific" && selectedTeamCooldownRemaining > 0 && (
+      {errorMessage && (
         <div
           style={{
-            background: "rgba(255, 45, 58, 0.15)",
-            border: "1px dashed #ff2d3a",
+            background: "rgba(120, 10, 20, 0.6)",
+            border: "1px dashed #ff4d58",
             padding: "6px 10px",
             borderRadius: "3px",
             fontSize: "11px",
-            color: "#ff8a80",
+            color: "#ff99a0",
             fontFamily: "var(--font-mono)",
-            letterSpacing: "0.08em",
+            letterSpacing: "0.06em",
             textAlign: "center",
           }}
         >
-          ⏳ COOLDOWN: {selectedTeamCooldownRemaining}s REMAINING FOR {chosenTeam.toUpperCase()} (1 PER MIN)
-        </div>
-      )}
-      {targetType === "specific" && currentTeamCount >= 5 && (
-        <div
-          style={{
-            background: "rgba(100, 20, 25, 0.4)",
-            border: "1px solid #ff2d3a",
-            padding: "6px 10px",
-            borderRadius: "3px",
-            fontSize: "11px",
-            color: "#ff6666",
-            fontFamily: "var(--font-mono)",
-            letterSpacing: "0.08em",
-            textAlign: "center",
-          }}
-        >
-          🚫 QUOTA REACHED FOR {chosenTeam.toUpperCase()}: 5/5 MESSAGES USED
+          {errorMessage}
         </div>
       )}
 
@@ -299,8 +322,9 @@ export default function VecnaMessagePanel({
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, 150))}
-            placeholder="TYPE TRANSMISSION MESSAGE..."
+            placeholder="TYPE PSYCHIC TRANSMISSION..."
             rows={3}
+            disabled={isQuotaExhausted || isSending}
             style={{
               width: "100%",
               height: "100%",
@@ -309,7 +333,7 @@ export default function VecnaMessagePanel({
               background: "rgba(0, 0, 0, 0.7)",
               border: "1px solid rgba(255, 45, 58, 0.3)",
               borderRadius: "3px",
-              color: "#ffffff",
+              color: isQuotaExhausted ? "rgba(255, 255, 255, 0.3)" : "#ffffff",
               fontFamily: "var(--font-mono)",
               fontSize: "13px",
               letterSpacing: "0.05em",
@@ -337,6 +361,7 @@ export default function VecnaMessagePanel({
             <button
               key={idx}
               type="button"
+              disabled={isQuotaExhausted || isSending}
               onClick={() => {
                 sfx("click");
                 setMessage(msg);
@@ -348,7 +373,7 @@ export default function VecnaMessagePanel({
                 background: "rgba(255, 45, 58, 0.1)",
                 border: "1px solid rgba(255, 45, 58, 0.2)",
                 color: "rgba(255, 180, 180, 0.8)",
-                cursor: "pointer",
+                cursor: isQuotaExhausted ? "not-allowed" : "pointer",
                 borderRadius: "2px",
               }}
             >
@@ -391,9 +416,13 @@ export default function VecnaMessagePanel({
             }
           }}
         >
-          {targetType === "all"
-            ? `SEND TO ALL TEAMS (${5 - allCount} LEFT)`
-            : `SEND TO ${chosenTeam.toUpperCase()} (${5 - currentTeamCount} LEFT)`}
+          {isSending
+            ? "TRANSMITTING..."
+            : isQuotaExhausted
+            ? "DISPATCH LIMIT REACHED (0/5)"
+            : targetType === "all"
+            ? `DISPATCH TO ALL TEAMS (${remainingQuota}/5 REMAINING)`
+            : `DISPATCH TO ${chosenTeam.toUpperCase()} (${remainingQuota}/5 REMAINING)`}
         </button>
       </form>
     </div>

@@ -131,6 +131,35 @@ export interface SessionSupersededPayload {
   ts?: number;
 }
 
+export interface SabotageClearPayload {
+  type: "sabotage:clear";
+  target?: string;
+  teamId?: string;
+  clearedBy?: string;
+  ts?: number;
+}
+
+export interface VecnaDispatchQuotaPayload {
+  type: "vecna:dispatch_quota";
+  remaining: number;
+  used: number;
+  max: number;
+  ts?: number;
+}
+
+export interface PresenceUpdatePayload {
+  type: "presence:update";
+  teamId?: string;
+  online?: boolean;
+  status?: string;
+  ts?: number;
+}
+
+export interface VecnaTacticalUpdatePayload {
+  type: "vecna:tactical_update";
+  ts?: number;
+}
+
 export type RealtimeMessage =
   | PresencePayload
   | SabotagePayload
@@ -140,7 +169,11 @@ export type RealtimeMessage =
   | ForceLogoutPayload
   | ScoreUpdatePayload
   | EventStatePayload
-  | SessionSupersededPayload;
+  | SessionSupersededPayload
+  | SabotageClearPayload
+  | VecnaDispatchQuotaPayload
+  | PresenceUpdatePayload
+  | VecnaTacticalUpdatePayload;
 
 type Handler = (msg: RealtimeMessage) => void;
 
@@ -346,6 +379,34 @@ export function getSocket(): Socket | null {
           target: data?.teamId || "all",
           ts: data?.ts || Date.now(),
         });
+      });
+
+      socketInstance.on("vecna:dispatch_quota", (data: any) => {
+        dispatchToSubscribers({
+          type: "vecna:dispatch_quota",
+          ...data,
+        } as any);
+      });
+
+      socketInstance.on("presence:update", (data: any) => {
+        dispatchToSubscribers({
+          type: "presence:update",
+          ...data,
+        } as any);
+      });
+
+      socketInstance.on("vecna:tactical_update", (data: any) => {
+        dispatchToSubscribers({
+          type: "vecna:tactical_update",
+          ...data,
+        } as any);
+      });
+
+      socketInstance.on("sabotage:clear", (data: any) => {
+        dispatchToSubscribers({
+          type: "sabotage:clear",
+          ...data,
+        } as any);
       });
     } catch (e) {
       console.warn("[SOCKET.IO] Connection error:", e);

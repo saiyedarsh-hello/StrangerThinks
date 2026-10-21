@@ -176,10 +176,101 @@ export const VecnaController = {
   },
 
   /**
+   * GET /api/vecna/dispatch/quota — Returns authoritative event-wide dispatch quota (5 max shared)
+   */
+  async getDispatchQuota(_req: Request, res: Response) {
+    const quota = await VecnaService.getDispatchQuota();
+    return res.json({ success: true, ...quota });
+  },
+
+  /**
+   * POST /api/vecna/powers/activate — Authoritative power activation with atomic 10 PTS deduction per team
+   */
+  async activatePower(req: Request, res: Response) {
+    const vecnaTeamId = (req.user as any)?.teamId || "VECNA-001";
+    const { power, targetTeams, targetScope, location, clientRequestId } = req.body;
+
+    if (!power || (power !== "LOCK" && power !== "CORRUPT")) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_POWER",
+        message: "Power must be 'LOCK' or 'CORRUPT'.",
+      });
+    }
+
+    const result = await VecnaService.activatePower({
+      vecnaTeamId,
+      power,
+      targetTeams,
+      targetScope,
+      location,
+      clientRequestId,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  },
+
+  /**
+   * POST /api/vecna/challenge/verify — Verifies 4-question technical challenge for System Corrupted
+   */
+  verifyChallenge(req: Request, res: Response) {
+    const teamId = (req.user as any)?.teamId || String(req.body.teamId || "");
+    const { answers } = req.body;
+
+    if (!teamId || !answers) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_FIELDS",
+        message: "teamId and answers required.",
+      });
+    }
+
+    const result = VecnaService.verifyChallenge(teamId, answers);
+    return res.json(result);
+  },
+
+  /**
+   * GET /api/vecna/tactical-map — Returns occupancy for 6 actual stages with online Hawkins teams
+   */
+  getTacticalMap(_req: Request, res: Response) {
+    const data = VecnaService.getTacticalMap();
+    return res.json({ success: true, ...data });
+  },
+
+  /**
    * POST /api/vecna/sabotage — Trigger real-time power sabotage
    */
   async triggerSabotage(req: Request, res: Response) {
-    const { target = "all", kind = "GLITCH", message, duration = 45, operatorName = "HENRY CREEL" } = req.body;
+    const {
+      target = "all",
+      kind = "GLITCH",
+      message,
+      duration = 45,
+      operatorName = "HENRY CREEL",
+      targetTeams,
+      location,
+    } = req.body;
+
+    // Route LOCK and CORRUPT through authoritative power activation (with point deduction)
+    if (kind === "LOCK" || kind === "CORRUPT") {
+      const vecnaTeamId = (req.user as any)?.teamId || "VECNA-001";
+      const powerResult = await VecnaService.activatePower({
+        vecnaTeamId,
+        power: kind,
+        targetTeams: targetTeams || (target === "all" ? undefined : [target]),
+        targetScope: target === "all" ? "all" : "selected",
+        location,
+      });
+
+      if (!powerResult.success) {
+        return res.status(400).json(powerResult);
+      }
+      return res.json(powerResult);
+    }
+
     const pool = tidb.pool;
     let sabotageId = Date.now();
 
@@ -428,17 +519,27 @@ export const VecnaController = {
     db.recordVecnaAttempt(teamId, trialId, questionIdx, status, pointsAwarded, answer);
 
     if (pointsAwarded > 0) {
-      const team = db.getTeamById(teamId);
-      if (team) {
-        db.updateTeam(team.id, {
-          totalScore: team.totalScore + pointsAwarded,
-          breakdown: {
-            ...team.breakdown,
-            tech: team.breakdown.tech + pointsAwarded,
-          },
-        });
-        socketService.broadcastLeaderboard();
+      let team =
+        db.getTeamById(teamId) ||
+        db.getTeamById("VECNA-001") ||
+        db.getAllTeams().find((t) => t.role === "VECNA");
+      if (!team) {
+        team = db.createTeam(
+          "Henry Creel (Vecna)",
+          "Henry Creel",
+          teamId,
+          0
+        );
+        db.updateTeam(team.id, { role: "VECNA" });
       }
+      db.updateTeam(team.id, {
+        totalScore: team.totalScore + pointsAwarded,
+        breakdown: {
+          ...team.breakdown,
+          tech: team.breakdown.tech + pointsAwarded,
+        },
+      });
+      socketService.broadcastLeaderboard();
     }
 
     return res.json({

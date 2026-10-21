@@ -163,6 +163,7 @@ export interface ValidationResponse {
   totalCount?: number;
   message?: string;
   error?: string;
+  remainingSeconds?: number;
   completionLore?: {
     title: string;
     text: string;

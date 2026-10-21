@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   CONFIG,
@@ -22,7 +22,7 @@ import { sfx } from "@/lib/audio";
 import { motion, AnimatePresence } from "framer-motion";
 
 import VecnaTacticalMap, { MapTeamInfo } from "@/components/vecna/VecnaTacticalMap";
-import VecnaTriggerPanel, { TriggerAction } from "@/components/vecna/VecnaTriggerPanel";
+import VecnaTriggerPanel, { TriggerAction, TargetSquadItem } from "@/components/vecna/VecnaTriggerPanel";
 import VecnaMessagePanel from "@/components/vecna/VecnaMessagePanel";
 import VecnaStoryDialog from "@/components/vecna/VecnaStoryDialog";
 import VecnaChaptersModal from "@/components/vecna/VecnaChaptersModal";
@@ -157,15 +157,109 @@ export default function VecnaPage() {
   const [selectedLocation, setSelectedLocation] = useState("town");
   const [selectedTeamName, setSelectedTeamName] = useState<string | undefined>("Null Pointers");
 
-  // Fallback Teams for simulation
-  const teamsAtLocation: Record<string, MapTeamInfo[]> = {
-    town: [{ id: "T01", name: "Null Pointers", status: "Online" }],
-    lab: [{ id: "T02", name: "Stack Smashers", status: "Stuck" }],
-    police: [{ id: "T03", name: "Rift Runners", status: "Online" }],
-    forest: [{ id: "T04", name: "Byte Byters", status: "Online" }],
-    radioTower: [{ id: "T05", name: "Signal Seekers", status: "Online" }],
-    upsideDown: [{ id: "T06", name: "Hellfire Club", status: "Stuck" }],
-  };
+  // Live Tactical Map state for 6 canonical tournament stages
+  const [tacticalMapData, setTacticalMapData] = useState<Record<string, MapTeamInfo[]>>({
+    town: [],
+    police: [],
+    byers: [],
+    lab: [],
+    radioTower: [],
+    gate: [],
+  });
+  const [availableSquads, setAvailableSquads] = useState<TargetSquadItem[]>([]);
+
+  const refreshTacticalMap = useCallback(async () => {
+    try {
+      const stored = getStoredSession();
+      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const res = await fetch(`${API_BASE}/vecna/tactical-map`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && Array.isArray(data.stages)) {
+        const nextMap: Record<string, MapTeamInfo[]> = {
+          town: [],
+          police: [],
+          byers: [],
+          lab: [],
+          radioTower: [],
+          gate: [],
+        };
+        const squads: TargetSquadItem[] = [];
+        data.stages.forEach((stg: any) => {
+          const locKey =
+            stg.slug ||
+            (stg.id === 1
+              ? "town"
+              : stg.id === 2
+              ? "police"
+              : stg.id === 3
+              ? "byers"
+              : stg.id === 4
+              ? "lab"
+              : stg.id === 5
+              ? "radioTower"
+              : "gate");
+          const teamList: MapTeamInfo[] = Array.isArray(stg.teams)
+            ? stg.teams.map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                leader: t.leader,
+                status: t.status || "Online",
+              }))
+            : [];
+          nextMap[locKey] = teamList;
+          teamList.forEach((t) => {
+            squads.push({
+              id: t.id,
+              name: t.name,
+              leader: t.leader,
+              status: t.status,
+            });
+          });
+        });
+        setTacticalMapData(nextMap);
+        if (squads.length > 0) {
+          setAvailableSquads(squads);
+          if (!selectedTeamName && squads[0]) {
+            setSelectedTeamName(squads[0].name);
+          }
+        }
+      }
+    } catch (err) {
+      // Ignore transient fetch errors
+    }
+  }, [selectedTeamName]);
+
+  useEffect(() => {
+    refreshTacticalMap();
+    const interval = setInterval(refreshTacticalMap, 10000);
+    const unsub = subscribe((msg: any) => {
+      if (
+        msg.type === "presence" ||
+        msg.type === "presence:update" ||
+        msg.type === "vecna:tactical_update" ||
+        msg.type === "event_state" ||
+        msg.type === "SCORE_UPDATE"
+      ) {
+        refreshTacticalMap();
+      }
+    });
+    const sock = getSocket();
+    const onUpdate = () => refreshTacticalMap();
+    sock?.on("presence:update", onUpdate);
+    sock?.on("vecna:tactical_update", onUpdate);
+    sock?.on("event:state_changed", onUpdate);
+
+    return () => {
+      clearInterval(interval);
+      unsub();
+      sock?.off("presence:update", onUpdate);
+      sock?.off("vecna:tactical_update", onUpdate);
+      sock?.off("event:state_changed", onUpdate);
+    };
+  }, [refreshTacticalMap]);
 
   useEffect(() => {
     const s = getStoredSession();
@@ -295,8 +389,54 @@ export default function VecnaPage() {
 
   // Unified scoring rules: 1 question solved = +10 PTS across all questions
   const [spentPowerPoints, setSpentPowerPoints] = useState(0);
+  const [serverVecnaScore, setServerVecnaScore] = useState<number | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const fetchMe = async () => {
+      try {
+        const stored = getStoredSession();
+        const token = stored && (stored as any).token ? (stored as any).token : "";
+        if (!token) return;
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok && !isCancelled) {
+          const data = await res.json();
+          if (data && data.team && typeof data.team.score === "number") {
+            setServerVecnaScore(data.team.score);
+          }
+        }
+      } catch {}
+    };
+    fetchMe();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleScore = (data: any) => {
+      if (data && typeof data.score === "number") {
+        setServerVecnaScore(data.score);
+      }
+    };
+    const unsub = subscribe((data: any) => {
+      if (data && (data.type === "SCORE_UPDATE" || data.type === "score:update")) {
+        handleScore(data);
+      }
+    });
+    const sock = getSocket();
+    sock?.on("score:update", handleScore);
+    return () => {
+      unsub();
+      sock?.off("score:update", handleScore);
+    };
+  }, []);
+
   const totalVecnaSolved = Object.values(solvedQuestions).filter(Boolean).length;
-  const totalVecnaScore = totalVecnaSolved * 10 - spentPowerPoints;
+  const computedVecnaScore = Math.max(0, totalVecnaSolved * 10 - spentPowerPoints);
+  const effectiveVecnaScore = serverVecnaScore !== null ? serverVecnaScore : computedVecnaScore;
   const currentTrialSolvedCount = currentQuestions.filter((_, idx) => !!solvedQuestions[`${currentTrial.id}-${idx}`]).length;
   const currentTrialScore = currentTrialSolvedCount * 10;
 
@@ -424,7 +564,7 @@ export default function VecnaPage() {
     }
   };
 
-  const handleSendMessage = (target: "all" | string, message: string) => {
+  const handleSendMessage = async (target: "all" | string, message: string): Promise<boolean> => {
     sfx("boom");
 
     const TEAM_MAP: Record<string, string> = {
@@ -441,23 +581,12 @@ export default function VecnaPage() {
     const targetTeamId = target === "all" ? undefined : (TEAM_MAP[target] || target);
     const targetTeamName = target === "all" ? undefined : target;
 
-    publish({
-      type: "sabotage",
-      kind: "MESSAGE",
-      target,
-      targetTeamId,
-      targetTeamName,
-      message,
-      duration: 10,
-      durationSec: 10,
-      ts: Date.now(),
-    });
-
-    // Persist to Express backend Vecna approval queue (Port 5055/5000)
     try {
       const stored = getStoredSession();
       const token = stored && (stored as any).token ? (stored as any).token : "";
-      fetch(`${API_BASE}/vecna/messages`, {
+      const clientRequestId = `dispatch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const res = await fetch(`${API_BASE}/vecna/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -468,48 +597,99 @@ export default function VecnaPage() {
           recipientScope: target === "all" ? "all_teams" : "selected_teams",
           selectedTeamIds: target === "all" ? undefined : [targetTeamId || target],
           bodyText: message.slice(0, 150),
+          clientRequestId,
         }),
-      }).catch(() => {});
-    } catch {}
+      });
 
-    // Fallback to Next.js route
-    fetch("/api/vecna/sabotage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target, kind: "MESSAGE", message: message.slice(0, 150), duration: 45 }),
-    }).catch(() => {});
-    setIsMessageOpen(false);
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (data.error === "DISPATCH_LIMIT_REACHED" || res.status === 429) {
+          return false;
+        }
+        throw new Error(data.message || data.error || "Failed to dispatch message.");
+      }
+
+      // Realtime publication for local preview and immediate delivery
+      publish({
+        type: "sabotage",
+        kind: "MESSAGE",
+        target,
+        targetTeamId,
+        targetTeamName,
+        message,
+        duration: 10,
+        durationSec: 10,
+        ts: Date.now(),
+      });
+
+      setIsMessageOpen(false);
+      return true;
+    } catch (err: any) {
+      console.error("[VECNA DISPATCH ERROR]", err);
+      throw err;
+    }
   };
 
-  const handleExecuteTrigger = (action: TriggerAction) => {
+  const handleExecuteTrigger = async (action: TriggerAction) => {
     sfx("boom");
-    const cost = action.totalCost || (action.targetTeams && action.targetTeams.length > 0 ? action.targetTeams.length * 10 : 10);
-    setSpentPowerPoints((prev) => prev + cost);
+    const kind = action.id; // "LOCK" | "CORRUPT"
+    const targetTeams = action.targetTeams && action.targetTeams.length > 0 ? action.targetTeams : [];
+    const clientRequestId = `power-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-    const kind = action.id;
-    const duration = action.id === "LOCK" ? 120 : 45;
-    const targetTeams = action.targetTeams || [];
+    try {
+      const stored = getStoredSession();
+      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const res = await fetch(`${API_BASE}/vecna/powers/activate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          power: kind,
+          targetTeams: targetTeams.length > 0 ? targetTeams : undefined,
+          targetScope: targetTeams.length > 0 ? "selected" : "all",
+          location: selectedLocation,
+          clientRequestId,
+        }),
+      });
 
-    publish({
-      type: "sabotage",
-      kind,
-      target: selectedLocation,
-      teams: targetTeams,
-      duration,
-      ts: Date.now(),
-    });
-    // Persist in database
-    fetch("/api/vecna/sabotage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        target: selectedLocation,
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setErrorMessage(data.message || data.error || "Failed to unleash power.");
+        sfx("err");
+        setTimeout(() => setErrorMessage(null), 3500);
+        return;
+      }
+
+      if (typeof data.newScore === "number") {
+        setServerVecnaScore(data.newScore);
+      }
+
+      setSuccessMessage(data.message || `POWER ACTIVATED: ${action.label}`);
+      sfx("boom");
+      setTimeout(() => setSuccessMessage(null), 3000);
+
+      // Local publication for immediate UI response
+      const duration = kind === "LOCK" ? 120 : 80;
+      publish({
+        type: "sabotage",
         kind,
+        target: selectedLocation,
+        teams: targetTeams,
         duration,
-        targetTeams,
-      }),
-    }).catch(() => {});
-    setIsPowersOpen(false);
+        ts: Date.now(),
+      });
+
+      setIsPowersOpen(false);
+    } catch (err: any) {
+      console.error("[EXECUTE TRIGGER ERROR]", err);
+      setErrorMessage(err?.message || "Network error while unleashing power.");
+      sfx("err");
+      setTimeout(() => setErrorMessage(null), 3500);
+    }
   };
 
   return (
@@ -636,7 +816,7 @@ export default function VecnaPage() {
                 textShadow: "0 0 10px rgba(255, 45, 58, 0.8)",
               }}
             >
-              {totalVecnaScore}
+              {effectiveVecnaScore}
             </div>
           </div>
         </div>
@@ -649,6 +829,7 @@ export default function VecnaPage() {
             type="button"
             onClick={() => {
               sfx("click");
+              refreshTacticalMap();
               setIsMapOpen(true);
             }}
             style={{
@@ -701,6 +882,7 @@ export default function VecnaPage() {
             type="button"
             onClick={() => {
               sfx("click");
+              refreshTacticalMap();
               setIsPowersOpen(true);
             }}
             style={{
@@ -1074,7 +1256,7 @@ export default function VecnaPage() {
                   letterSpacing: "0.06em",
                 }}
               >
-                TRIAL: {currentTrialScore} PTS · TOTAL: {totalVecnaScore} PTS
+                TRIAL: {currentTrialScore} PTS · TOTAL: {effectiveVecnaScore} PTS
               </div>
             </div>
           </div>
@@ -1328,7 +1510,7 @@ export default function VecnaPage() {
               <VecnaTacticalMap
                 selectedLocationId={selectedLocation}
                 onSelectLocation={(locId) => setSelectedLocation(locId)}
-                teamsAtLocation={teamsAtLocation}
+                teamsAtLocation={tacticalMapData}
                 onInspectTeam={(tId) => {
                   setSelectedTeamName(tId);
                 }}
@@ -1479,7 +1661,8 @@ export default function VecnaPage() {
                 selectedLocation={selectedLocation}
                 onSelectLocation={(locId) => setSelectedLocation(locId)}
                 onTriggerAction={handleExecuteTrigger}
-                currentVecnaScore={totalVecnaScore}
+                currentVecnaScore={effectiveVecnaScore}
+                availableSquads={availableSquads}
               />
             </motion.div>
           </motion.div>

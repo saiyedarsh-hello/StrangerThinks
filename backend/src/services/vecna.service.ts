@@ -65,6 +65,179 @@ export class VecnaService {
   private static nextMessageId = 1;
   private static nextDeliveryId = 1;
 
+  private static localDispatchUsed = 0;
+  public static readonly MAX_DISPATCH_MESSAGES = 5;
+  private static acceptedRequestIds = new Set<string>();
+
+  /**
+   * Ensures the TiDB event_dispatch_quota table exists and is initialized
+   */
+  public static async ensureQuotaTable(): Promise<void> {
+    const pool = tidb.pool;
+    if (!pool) return;
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS event_dispatch_quota (
+          event_id BIGINT UNSIGNED PRIMARY KEY,
+          used_count INT NOT NULL DEFAULT 0,
+          max_count INT NOT NULL DEFAULT 5,
+          updated_at DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+      `);
+      await pool.query(`
+        INSERT IGNORE INTO event_dispatch_quota (event_id, used_count, max_count)
+        VALUES (1, 0, 5)
+      `);
+    } catch (err: any) {
+      console.warn("[VECNA SERVICE] ensureQuotaTable warning:", err.message);
+    }
+  }
+
+  /**
+   * Returns authoritative remaining and used dispatch quota for active event (5 maximum shared)
+   */
+  public static async getDispatchQuota(): Promise<{ remaining: number; used: number; max: number }> {
+    await this.ensureQuotaTable();
+    const pool = tidb.pool;
+    if (pool) {
+      try {
+        const [rows] = await pool.query<any[]>(
+          "SELECT used_count, max_count FROM event_dispatch_quota WHERE event_id = 1"
+        );
+        if (Array.isArray(rows) && rows.length > 0) {
+          const used = Number(rows[0].used_count || 0);
+          const max = Number(rows[0].max_count || this.MAX_DISPATCH_MESSAGES);
+          this.localDispatchUsed = used;
+          return {
+            remaining: Math.max(0, max - used),
+            used,
+            max,
+          };
+        }
+      } catch (err: any) {
+        console.warn("[VECNA SERVICE] getDispatchQuota TiDB fallback:", err.message);
+      }
+    }
+    return {
+      remaining: Math.max(0, this.MAX_DISPATCH_MESSAGES - this.localDispatchUsed),
+      used: this.localDispatchUsed,
+      max: this.MAX_DISPATCH_MESSAGES,
+    };
+  }
+
+  /**
+   * Atomically consumes one message slot from the event-wide quota (shared by all Vecna teams).
+   * Idempotent for identical clientRequestId retries.
+   */
+  public static async consumeDispatchQuota(clientRequestId?: string): Promise<{
+    success: boolean;
+    remaining: number;
+    used: number;
+    max: number;
+    error?: string;
+  }> {
+    if (clientRequestId && this.acceptedRequestIds.has(clientRequestId)) {
+      const q = await this.getDispatchQuota();
+      return { success: true, ...q };
+    }
+
+    await this.ensureQuotaTable();
+    const pool = tidb.pool;
+    if (pool) {
+      try {
+        if (clientRequestId) {
+          const [existing] = await pool.query<any[]>(
+            "SELECT message_id FROM vecna_messages WHERE client_request_id = ?",
+            [clientRequestId]
+          );
+          if (Array.isArray(existing) && existing.length > 0) {
+            this.acceptedRequestIds.add(clientRequestId);
+            const q = await this.getDispatchQuota();
+            return { success: true, ...q };
+          }
+        }
+
+        const [result]: any = await pool.query(
+          "UPDATE event_dispatch_quota SET used_count = used_count + 1 WHERE event_id = 1 AND used_count < max_count"
+        );
+
+        if (result && result.affectedRows > 0) {
+          if (clientRequestId) this.acceptedRequestIds.add(clientRequestId);
+          const [rows] = await pool.query<any[]>(
+            "SELECT used_count, max_count FROM event_dispatch_quota WHERE event_id = 1"
+          );
+          const used = Number(rows?.[0]?.used_count || 0);
+          const max = Number(rows?.[0]?.max_count || this.MAX_DISPATCH_MESSAGES);
+          this.localDispatchUsed = used;
+          const remaining = Math.max(0, max - used);
+
+          socketService.broadcast("vecna:dispatch_quota", { remaining, used, max });
+          return { success: true, remaining, used, max };
+        } else {
+          const [rows] = await pool.query<any[]>(
+            "SELECT used_count, max_count FROM event_dispatch_quota WHERE event_id = 1"
+          );
+          const used = Number(rows?.[0]?.used_count || this.MAX_DISPATCH_MESSAGES);
+          const max = Number(rows?.[0]?.max_count || this.MAX_DISPATCH_MESSAGES);
+          this.localDispatchUsed = used;
+          return {
+            success: false,
+            error: "DISPATCH_LIMIT_REACHED",
+            remaining: Math.max(0, max - used),
+            used,
+            max,
+          };
+        }
+      } catch (err: any) {
+        console.warn("[VECNA SERVICE] consumeDispatchQuota TiDB fallback:", err.message);
+      }
+    }
+
+    if (this.localDispatchUsed >= this.MAX_DISPATCH_MESSAGES) {
+      return {
+        success: false,
+        error: "DISPATCH_LIMIT_REACHED",
+        remaining: 0,
+        used: this.localDispatchUsed,
+        max: this.MAX_DISPATCH_MESSAGES,
+      };
+    }
+
+    this.localDispatchUsed += 1;
+    if (clientRequestId) this.acceptedRequestIds.add(clientRequestId);
+    const remaining = Math.max(0, this.MAX_DISPATCH_MESSAGES - this.localDispatchUsed);
+    socketService.broadcast("vecna:dispatch_quota", {
+      remaining,
+      used: this.localDispatchUsed,
+      max: this.MAX_DISPATCH_MESSAGES,
+    });
+    return {
+      success: true,
+      remaining,
+      used: this.localDispatchUsed,
+      max: this.MAX_DISPATCH_MESSAGES,
+    };
+  }
+
+  /**
+   * Resets the event-wide dispatch quota back to 5/5 upon starting a fresh event
+   */
+  public static async resetDispatchQuota(): Promise<void> {
+    this.localDispatchUsed = 0;
+    this.acceptedRequestIds.clear();
+    const pool = tidb.pool;
+    if (pool) {
+      try {
+        await pool.query("UPDATE event_dispatch_quota SET used_count = 0 WHERE event_id = 1");
+      } catch {}
+    }
+    socketService.broadcast("vecna:dispatch_quota", {
+      remaining: this.MAX_DISPATCH_MESSAGES,
+      used: 0,
+      max: this.MAX_DISPATCH_MESSAGES,
+    });
+  }
+
   /**
    * Returns list of safe team labels so Vecna senders can choose targets
    */
@@ -198,6 +371,15 @@ export class VecnaService {
           };
         }
 
+        // 5. Consume event-wide dispatch quota atomically (5 max shared across all Vecna teams)
+        const quotaRes = await this.consumeDispatchQuota(clientRequestId);
+        if (!quotaRes.success) {
+          return {
+            success: false,
+            error: quotaRes.error || "DISPATCH_LIMIT_REACHED",
+          };
+        }
+
         // Insert new message in pending_approval
         const [insertRes]: any = await pool.query(
           `INSERT INTO vecna_messages 
@@ -241,7 +423,25 @@ export class VecnaService {
           sentAt: null,
         };
 
-        // Emit real-time review notification to admins room ONLY (Hawkins teams receive NOTHING)
+        // Deliver message immediately to Hawkins teams
+        const deliveryPayload = {
+          type: "sabotage",
+          kind: "MESSAGE",
+          message: resolvedBody,
+          duration: 10,
+          durationSec: 10,
+          operatorName: "HENRY CREEL",
+          ts: Date.now(),
+        };
+        if (input.recipientScope === "all_teams") {
+          socketService.broadcastEvent("sabotage", deliveryPayload);
+        } else if (input.selectedTeamIds) {
+          for (const tId of input.selectedTeamIds) {
+            socketService.emitToTeam(tId, "sabotage", deliveryPayload);
+          }
+        }
+
+        // Emit real-time review notification to admins room
         socketService.broadcastToAdmins("admin:vecna_message_pending", {
           messageId,
           senderId: input.senderId,
@@ -251,13 +451,28 @@ export class VecnaService {
           requestedAt: now,
         });
 
+        // Broadcast authoritative updated quota to all Vecna and admin clients
+        socketService.broadcast("vecna:dispatch_quota", {
+          remaining: quotaRes.remaining,
+          used: quotaRes.used,
+          max: quotaRes.max,
+        });
+
         return { success: true, message: msgRecord };
       } catch (err: any) {
         console.warn("[VECNA SERVICE] TiDB submitMessage fallback:", err.message);
       }
     }
 
-    // Local fallback
+    // Local fallback: consume quota atomically
+    const quotaRes = await this.consumeDispatchQuota(clientRequestId);
+    if (!quotaRes.success) {
+      return {
+        success: false,
+        error: quotaRes.error || "DISPATCH_LIMIT_REACHED",
+      };
+    }
+
     const messageId = this.nextMessageId++;
     const msgRecord: VecnaMessageRecord = {
       messageId,
@@ -277,6 +492,23 @@ export class VecnaService {
     };
     this.messages.push(msgRecord);
 
+    const deliveryPayload = {
+      type: "sabotage",
+      kind: "MESSAGE",
+      message: resolvedBody,
+      duration: 10,
+      durationSec: 10,
+      operatorName: "HENRY CREEL",
+      ts: Date.now(),
+    };
+    if (input.recipientScope === "all_teams") {
+      socketService.broadcastEvent("sabotage", deliveryPayload);
+    } else if (input.selectedTeamIds) {
+      for (const tId of input.selectedTeamIds) {
+        socketService.emitToTeam(tId, "sabotage", deliveryPayload);
+      }
+    }
+
     socketService.broadcastToAdmins("admin:vecna_message_pending", {
       messageId,
       senderId: input.senderId,
@@ -284,6 +516,12 @@ export class VecnaService {
       recipientScope: input.recipientScope,
       selectedRecipientSummary: input.selectedTeamIds || ["ALL_HAWKINS_TEAMS"],
       requestedAt: now,
+    });
+
+    socketService.broadcast("vecna:dispatch_quota", {
+      remaining: quotaRes.remaining,
+      used: quotaRes.used,
+      max: quotaRes.max,
     });
 
     return { success: true, message: msgRecord };
@@ -694,5 +932,335 @@ export class VecnaService {
     };
     this.templates.push(template);
     return { success: true, template };
+  }
+
+  /**
+   * Activates a Vecna power (LOCK or CORRUPT) targeting specific or all Hawkins teams.
+   * Costs 10 PTS per affected Hawkins team.
+   * Authoritatively verifies balance, updates TiDB teams & score_ledger,
+   * broadcasts score:update and leaderboard:update to Admin Standings,
+   * creates active_sabotage records (120s for LOCK, 80s for CORRUPT) and notifies targets.
+   */
+  public static async activatePower(input: {
+    vecnaTeamId: string;
+    power: "LOCK" | "CORRUPT";
+    targetTeams?: string[];
+    targetScope?: "all" | "selected";
+    location?: string;
+    clientRequestId?: string;
+  }): Promise<{
+    success: boolean;
+    cost: number;
+    newScore: number;
+    targets: string[];
+    message: string;
+    error?: string;
+  }> {
+    const allTeams = db.getAllTeams().filter((t) => t.role === "PLAYER" && t.status !== "DISQUALIFIED");
+
+    // 1. Resolve affected targets
+    let targetTeamList: typeof allTeams = [];
+    const scope = input.targetScope || (input.targetTeams?.includes("all") ? "all" : "selected");
+
+    if (scope === "all" || !input.targetTeams || input.targetTeams.length === 0) {
+      // Target all online Hawkins squads (or all eligible squads if none online)
+      const onlineTargets = allTeams.filter((t) => socketService.isTeamOnline(t.id));
+      targetTeamList = onlineTargets.length > 0 ? onlineTargets : allTeams.slice(0, 6);
+    } else {
+      // Match by ID or Name
+      targetTeamList = allTeams.filter((t) =>
+        input.targetTeams!.some(
+          (idOrName) =>
+            idOrName.trim().toLowerCase() === t.id.toLowerCase() ||
+            idOrName.trim().toLowerCase() === t.teamName.toLowerCase()
+        )
+      );
+    }
+
+    if (targetTeamList.length === 0) {
+      return {
+        success: false,
+        cost: 0,
+        newScore: 0,
+        targets: [],
+        error: "NO_TARGETS",
+        message: "No eligible Hawkins teams selected for power activation.",
+      };
+    }
+
+    // 2. Cost calculation: exactly 10 PTS per targeted team
+    const totalCost = targetTeamList.length * 10;
+
+    // 3. Resolve activating Vecna squad
+    let vecnaTeam =
+      db.getTeamById(input.vecnaTeamId) ||
+      db.getTeamById("VECNA-001") ||
+      db.getAllTeams().find((t) => t.role === "VECNA");
+
+    if (!vecnaTeam) {
+      // Create fallback Vecna team record with standard 100 PTS balance
+      vecnaTeam = db.createTeam(
+        "Henry Creel (Vecna)",
+        "Henry Creel",
+        input.vecnaTeamId || "VECNA-001",
+        100
+      );
+    }
+
+    const currentScore = vecnaTeam.totalScore || 0;
+    if (currentScore < totalCost) {
+      return {
+        success: false,
+        cost: totalCost,
+        newScore: currentScore,
+        targets: targetTeamList.map((t) => t.teamName),
+        error: "INSUFFICIENT_POINTS",
+        message: `Insufficient points to unleash power. Required: ${totalCost} PTS, Available: ${currentScore} PTS.`,
+      };
+    }
+
+    // 4. Atomically deduct points from Vecna squad balance
+    const newScore = currentScore - totalCost;
+    db.updateTeam(vecnaTeam.id, { totalScore: newScore });
+
+    const pool = tidb.pool;
+    if (pool) {
+      try {
+        await pool.query("UPDATE teams SET total_score = total_score - ? WHERE team_id = ?", [
+          totalCost,
+          vecnaTeam.id,
+        ]);
+        await pool.query(
+          `INSERT INTO score_ledger (team_id, round_id, points_delta, source_type, source_id, created_at)
+           VALUES (?, 1, ?, 'VECNA_POWER_PURCHASE', ?, NOW(3))`,
+          [vecnaTeam.id, -totalCost, `${input.power}_${Date.now()}`]
+        );
+      } catch (err: any) {
+        console.warn("[VECNA SERVICE] TiDB power point deduction fallback:", err.message);
+      }
+    }
+
+    // Broadcast authoritative updated score to activating squad and live standings
+    socketService.emitToTeam(vecnaTeam.id, "score:update", {
+      teamId: vecnaTeam.id,
+      totalScore: newScore,
+      delta: -totalCost,
+    });
+    socketService.broadcastLeaderboard();
+    socketService.broadcast("leaderboard:update", db.getLeaderboard());
+
+    // 5. Unleash power effects on target teams
+    // Lock Location = 120s (120000ms), System Corrupted = 80s (80000ms)
+    const durationSec = input.power === "LOCK" ? 120 : 80;
+    const durationMs = durationSec * 1000;
+    const expiresAt = Date.now() + durationMs;
+
+    for (const tgt of targetTeamList) {
+      const sabotageRecord = {
+        id: Date.now() + Math.floor(Math.random() * 10000),
+        kind: input.power as any,
+        target: tgt.id,
+        operatorName: "HENRY CREEL",
+        message:
+          input.power === "LOCK"
+            ? "VECNA INTERFERENCE — LOCATION LOCKED"
+            : "SYSTEM CORRUPTED · 4-CIPHER OVERRIDE REQUIRED",
+        expiresAt,
+      };
+
+      db.addSabotage(sabotageRecord);
+
+      // Emit real-time sabotage event directly to target team
+      socketService.emitToTeam(tgt.id, "sabotage", {
+        type: "sabotage",
+        ...sabotageRecord,
+        duration: durationSec,
+        durationSec,
+        until: expiresAt,
+        targetTeamId: tgt.id,
+        targetTeamName: tgt.teamName,
+        ts: Date.now(),
+      });
+    }
+
+    // Broadcast to Admins & Vecna for monitoring
+    socketService.broadcastToAdmins("sabotage", {
+      type: "sabotage",
+      kind: input.power,
+      targets: targetTeamList.map((t) => t.id),
+      targetNames: targetTeamList.map((t) => t.teamName),
+      duration: durationSec,
+      until: expiresAt,
+      cost: totalCost,
+      ts: Date.now(),
+    });
+
+    return {
+      success: true,
+      cost: totalCost,
+      newScore,
+      targets: targetTeamList.map((t) => t.teamName),
+      message: `Vecna power [${input.power}] unleashed on ${targetTeamList.length} teams (-${totalCost} PTS).`,
+    };
+  }
+
+  /**
+   * Technical questions for System Corrupted 4-cipher challenge
+   */
+  public static readonly CORRUPT_QUESTIONS = [
+    { id: 1, prompt: "Convert hexadecimal 0x2A to decimal:", answer: "42" },
+    { id: 2, prompt: "Evaluate bitwise logic (12 & 10) in decimal:", answer: "8" },
+    { id: 3, prompt: "What is the standard TCP port for HTTPS?", answer: "443" },
+    { id: 4, prompt: "Evaluate modulo arithmetic: 100 mod 7 =", answer: "2" },
+  ];
+
+  /**
+   * Evaluates answers submitted for the 4-cipher System Corrupted challenge.
+   * If all 4 are correct, immediately clears the challenge for the team.
+   */
+  public static verifyChallenge(
+    teamId: string,
+    answers: Record<string | number, string>
+  ): {
+    success: boolean;
+    allCorrect: boolean;
+    correctCount: number;
+    totalCount: number;
+    message: string;
+  } {
+    let correctCount = 0;
+    for (let idx = 0; idx < this.CORRUPT_QUESTIONS.length; idx++) {
+      const q = this.CORRUPT_QUESTIONS[idx];
+      const rawUserAns = String(
+        answers[q.id] ||
+        answers[String(q.id)] ||
+        answers[idx] ||
+        answers[String(idx)] ||
+        ""
+      ).trim().toLowerCase();
+      if (rawUserAns === q.answer.toLowerCase()) {
+        correctCount++;
+      }
+    }
+
+    const allCorrect = correctCount === this.CORRUPT_QUESTIONS.length;
+    if (allCorrect) {
+      // Clear active CORRUPT sabotage from local store & TiDB
+      const activeSabs = db.getActiveSabotages();
+      for (const s of activeSabs) {
+        if (
+          (s.target === teamId || (s as any).targetTeamId === teamId || s.target === "all") &&
+          s.kind === "CORRUPT"
+        ) {
+          db.removeSabotage(s.id);
+        }
+      }
+
+      const pool = tidb.pool;
+      if (pool) {
+        pool
+          .query(
+            "DELETE FROM active_sabotages WHERE (target_team = ? OR target_team = 'all') AND kind = 'CORRUPT'",
+            [teamId]
+          )
+          .catch(() => {});
+      }
+
+      socketService.emitToTeam(teamId, "sabotage:clear", {
+        type: "sabotage:clear",
+        kind: "CORRUPT",
+        teamId,
+        ts: Date.now(),
+      });
+
+      return {
+        success: true,
+        allCorrect: true,
+        correctCount,
+        totalCount: this.CORRUPT_QUESTIONS.length,
+        message: "SECURITY INTEGRITY RESTORED · SYSTEM CORRUPTION OVERRIDDEN.",
+      };
+    }
+
+    return {
+      success: true,
+      allCorrect: false,
+      correctCount,
+      totalCount: this.CORRUPT_QUESTIONS.length,
+      message: `${correctCount}/${this.CORRUPT_QUESTIONS.length} verification codes accurate. Complete all 4 to unlock.`,
+    };
+  }
+
+  public static readonly TACTICAL_STAGES = [
+    { id: 1, name: "HAWKINS TOWN", slug: "town", x: 395, y: 220 },
+    { id: 2, name: "POLICE STATION", slug: "police", x: 635, y: 215 },
+    { id: 3, name: "BYERS HOUSE", slug: "byers", x: 175, y: 195 },
+    { id: 4, name: "HAWKINS LAB", slug: "lab", x: 490, y: 120 },
+    { id: 5, name: "RADIO TOWER", slug: "radioTower", x: 220, y: 290 },
+    { id: 6, name: "THE GATE RIFT", slug: "gate", x: 490, y: 300 },
+  ];
+
+  /**
+   * Returns live occupancy for the 6 actual stages with ONLINE Hawkins teams
+   */
+  public static getTacticalMap(): {
+    stages: Array<{
+      id: number;
+      name: string;
+      slug: string;
+      x: number;
+      y: number;
+      onlineCount: number;
+      teams: Array<{
+        id: string;
+        name: string;
+        leader: string;
+        status: "Online";
+        stageId: number;
+      }>;
+    }>;
+    totalOnline: number;
+  } {
+    const allTeams = db.getAllTeams().filter((t) => t.role === "PLAYER" && t.status !== "DISQUALIFIED");
+    let totalOnline = 0;
+
+    const stages = this.TACTICAL_STAGES.map((stg) => {
+      const stageTeams = allTeams.filter((t) => {
+        let teamStage = 1;
+        if (t.solvedChapters && t.solvedChapters.length > 0) {
+          teamStage = Math.min(6, Math.max(1, Math.max(...t.solvedChapters.map(Number)) + 1));
+        } else if (t.location) {
+          const loc = t.location.toLowerCase();
+          if (loc.includes("police")) teamStage = 2;
+          else if (loc.includes("byers")) teamStage = 3;
+          else if (loc.includes("lab")) teamStage = 4;
+          else if (loc.includes("radio")) teamStage = 5;
+          else if (loc.includes("gate") || loc.includes("upside") || loc.includes("final")) teamStage = 6;
+          else teamStage = 1;
+        }
+        return teamStage === stg.id;
+      });
+
+      // Show strictly online teams
+      const onlineTeams = stageTeams
+        .filter((t) => socketService.isTeamOnline(t.id))
+        .map((t) => ({
+          id: t.id,
+          name: t.teamName,
+          leader: t.leaderName,
+          status: "Online" as const,
+          stageId: stg.id,
+        }));
+
+      totalOnline += onlineTeams.length;
+
+      return {
+        ...stg,
+        onlineCount: onlineTeams.length,
+        teams: onlineTeams,
+      };
+    });
+
+    return { stages, totalOnline };
   }
 }

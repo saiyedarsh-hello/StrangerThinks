@@ -200,9 +200,21 @@ export const AdminController = {
       });
     }
 
-    const team = db.getTeamById(teamId);
+    let team = db.getTeamById(teamId);
     if (!team) {
-      return res.status(404).json({ success: false, error: "TEAM_NOT_FOUND" });
+      if (teamId.startsWith("VECNA") || teamId.startsWith("T") || teamId.startsWith("TEAM")) {
+        team = db.createTeam(
+          teamId.startsWith("VECNA") ? "Henry Creel (Vecna)" : `Team ${teamId}`,
+          teamId.startsWith("VECNA") ? "Henry Creel" : "Player Leader",
+          teamId,
+          0
+        );
+        if (teamId.startsWith("VECNA")) {
+          db.updateTeam(team.id, { role: "VECNA" });
+        }
+      } else {
+        return res.status(404).json({ success: false, error: "TEAM_NOT_FOUND" });
+      }
     }
 
     const updated = db.updateTeam(teamId, { role });
@@ -228,9 +240,21 @@ export const AdminController = {
     const teamId = req.params.id;
     const { points, status, reason } = req.body;
 
-    const team = db.getTeamById(teamId);
+    let team = db.getTeamById(teamId);
     if (!team) {
-      return res.status(404).json({ success: false, error: "TEAM_NOT_FOUND" });
+      if (teamId.startsWith("VECNA") || teamId.startsWith("T") || teamId.startsWith("TEAM")) {
+        team = db.createTeam(
+          teamId.startsWith("VECNA") ? "Henry Creel (Vecna)" : `Team ${teamId}`,
+          teamId.startsWith("VECNA") ? "Henry Creel" : "Player Leader",
+          teamId,
+          0
+        );
+        if (teamId.startsWith("VECNA")) {
+          db.updateTeam(team.id, { role: "VECNA" });
+        }
+      } else {
+        return res.status(404).json({ success: false, error: "TEAM_NOT_FOUND" });
+      }
     }
 
     const ptsDelta = points !== undefined ? Number(points) : 0;
