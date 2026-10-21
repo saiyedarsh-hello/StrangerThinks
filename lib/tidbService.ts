@@ -22,11 +22,14 @@ import { getSocket } from "@/lib/realtime";
 export interface TiDBAuthResult {
   success: boolean;
   session?: {
-    role: "PLAYER" | "VECNA";
+    role: "PLAYER" | "VECNA" | "ADMIN";
     teamName: string;
     leaderName: string;
     teamId: string;
+    adminId?: string;
   };
+  requiresPassword?: boolean;
+  adminLeader?: string;
   team?: any;
   token?: string;
   source?: "tidb" | "backend" | "canon";
@@ -250,7 +253,8 @@ export function subscribeToPresence(onPresence: (data: { teamId: string; isOnlin
  */
 export async function authenticateTeamWithTiDB(
   teamNameInput: string,
-  leaderNameInput: string
+  leaderNameInput: string,
+  passwordInput?: string
 ): Promise<TiDBAuthResult> {
   const normTeam = teamNameInput.trim().toLowerCase();
   const normLeader = leaderNameInput.trim().toLowerCase();
@@ -261,9 +265,16 @@ export async function authenticateTeamWithTiDB(
 
   // 1. Try server-side authentication (TiDB + JWT)
   try {
-    const res = await loginOnServer(teamNameInput, leaderNameInput);
+    const res = await loginOnServer(teamNameInput, leaderNameInput, passwordInput);
+    if (res.requiresPassword) {
+      return {
+        success: false,
+        requiresPassword: true,
+        adminLeader: res.adminLeader,
+      };
+    }
     if (res.success && res.session) {
-      const role: "PLAYER" | "VECNA" = res.session.role === "VECNA" ? "VECNA" : "PLAYER";
+      const role: "PLAYER" | "VECNA" | "ADMIN" = res.session.role;
       return {
         success: true,
         session: {
@@ -271,6 +282,7 @@ export async function authenticateTeamWithTiDB(
           teamName: res.session.teamName,
           leaderName: res.session.leaderName,
           teamId: res.session.teamId,
+          adminId: res.session.adminId,
         },
         team: res.team,
         token: res.token,
@@ -325,14 +337,31 @@ export async function registerTeamInTiDB(
   token?: string
 ): Promise<{ success: boolean; team?: any; error?: string }> {
   try {
-    if (token) {
-      const res = await createAdminTeam(teamName, leaderName, initialScore, token);
+    const sessionToken = token || (typeof window !== "undefined" ? (
+      localStorage.getItem("admin_token") ||
+      localStorage.getItem("token") ||
+      (() => {
+        try {
+          return JSON.parse(localStorage.getItem("hawkins-protocol:session") || "{}")?.token;
+        } catch {
+          return undefined;
+        }
+      })()
+    ) : undefined);
+
+    if (sessionToken) {
+      const res = await createAdminTeam(teamName, leaderName, initialScore, sessionToken);
       return { success: res.success, team: res.team, error: res.error };
+    }
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (sessionToken) {
+      headers["Authorization"] = `Bearer ${sessionToken}`;
     }
 
     const res = await fetch(`${API_BASE}/admin/teams`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ teamName, leaderName, initialScore }),
     });
     const data = await res.json();

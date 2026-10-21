@@ -22,6 +22,7 @@ router.post("/chapters/reset", AdminController.resetChapters);
 router.get("/leaderboard", AdminController.getLeaderboard);
 router.post("/leaderboard/score", updateAdminTeamScore);
 router.get("/teams", AdminController.getTeams);
+router.get("/teams/:id/performance", AdminController.getTeamPerformance);
 router.post("/teams", AdminController.createTeam);
 router.put("/teams/:id/role", AdminController.updateTeamRole);
 router.put("/teams/:id/score", AdminController.updateTeamScore);

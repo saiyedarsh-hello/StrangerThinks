@@ -35,6 +35,7 @@ export interface TeamSession {
   teamName: string;
   leaderName: string;
   role: Role;
+  adminId?: string;
 }
 
 export interface TeamRecord {
@@ -50,6 +51,7 @@ export interface TeamRecord {
   startedAt: string | null;
   finishedAt: string | null;
   lastSolvedAt: string | null;
+  lastScoreAchievedAt?: string | null;
   location: string;
   stage: string;
   storyProgress: number; // 0-100
@@ -153,6 +155,8 @@ export interface LeaderboardEntry {
   completedTasks: string[];
   lastSubmissionTime: string;
   status: "ACTIVE" | "COMPLETED" | "DISQUALIFIED";
+  lastScoreAchievedAt?: string | null;
+  lastSolvedAt?: string | null;
 }
 
 export interface ValidationResponse {

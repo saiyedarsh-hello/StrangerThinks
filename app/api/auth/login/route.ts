@@ -4,12 +4,13 @@ import { getApiBase } from "@/lib/api";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const username = (body.username || body.teamName || "").trim();
-    const password = (body.password || body.leaderName || "").trim();
+    const teamName = (body.teamName || body.username || "").trim();
+    const leaderName = (body.leaderName || "").trim();
+    const password = body.password !== undefined ? String(body.password).trim() : undefined;
 
-    if (!username || !password) {
+    if (!teamName || !leaderName) {
       return NextResponse.json(
-        { success: false, error: "MISSING_CREDENTIALS", message: "Username and password are required." },
+        { success: false, error: "MISSING_CREDENTIALS", message: "Team Name and Team Leader Name are required." },
         { status: 400 }
       );
     }
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(`${base}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName: username, leaderName: password }),
+      body: JSON.stringify({ teamName, leaderName, password }),
     });
 
     const data = await res.json().catch(() => ({}));

@@ -54,21 +54,25 @@ export interface LoginResponse {
     teamName: string;
     leaderName: string;
     role: "PLAYER" | "VECNA" | "ADMIN";
+    adminId?: string;
   };
   team?: any;
+  requiresPassword?: boolean;
+  adminLeader?: string;
   error?: string;
   message?: string;
 }
 
 export async function loginOnServer(
   teamName: string,
-  leaderName: string
+  leaderName: string,
+  password?: string
 ): Promise<LoginResponse> {
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName, leaderName }),
+      body: JSON.stringify({ teamName, leaderName, password }),
     });
     if (res.ok) {
       return await res.json();
@@ -80,7 +84,7 @@ export async function loginOnServer(
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName, leaderName }),
+      body: JSON.stringify({ teamName, leaderName, password }),
     });
     return await res.json();
   } catch (err) {

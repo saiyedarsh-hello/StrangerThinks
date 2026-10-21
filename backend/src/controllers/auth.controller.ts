@@ -5,7 +5,7 @@ import { db } from "../services/db.service";
 
 export const AuthController = {
   async login(req: Request, res: Response) {
-    const { teamName, leaderName } = req.body;
+    const { teamName, leaderName, password } = req.body;
 
     if (!teamName || !leaderName) {
       return res.status(400).json({
@@ -15,10 +15,38 @@ export const AuthController = {
       });
     }
 
-    const result = await AuthService.login(teamName, leaderName);
+    const result = await AuthService.login(teamName, leaderName, password);
+
+    if (result.requiresPassword) {
+      // 200 OK with challenge flag so client prompts for clearance key
+      return res.status(200).json(result);
+    }
+
     if (!result.success) {
-      const statusCode = result.error === "ALREADY_LOGGED_IN" ? 409 : 401;
+      const statusCode =
+        result.error === "ALREADY_LOGGED_IN"
+          ? 409
+          : result.error === "LOGIN_CLOSED" || result.error === "EVENT_ENDED"
+          ? 403
+          : 401;
       return res.status(statusCode).json(result);
+    }
+
+    // Set auth cookie
+    res.cookie("hawkins_session_token", result.token, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    if (result.session?.role === "ADMIN") {
+      res.cookie("hawkins_admin_token", result.token, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000,
+      });
     }
 
     return res.json(result);

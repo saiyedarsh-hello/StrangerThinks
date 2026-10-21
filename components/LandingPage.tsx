@@ -179,12 +179,14 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
 
 export default function LandingPage({ onEnterVecna }: LandingPageProps) {
   const router = useRouter();
-  const { loginPlayer, setSoundOn } = useGame();
+  const { loginPlayer, loginSession, setSoundOn } = useGame();
 
   const [flashLevel, setFlashLevel] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [leaderName, setLeaderName] = useState("");
+  const [password, setPassword] = useState("");
+  const [isPasswordRequired, setIsPasswordRequired] = useState(false);
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -228,6 +230,13 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
     e.preventDefault();
     if (!teamName.trim() || !leaderName.trim()) return;
 
+    const isAdminAttempt = teamName.trim().toLowerCase() === "admin bolte";
+    if (isAdminAttempt && isPasswordRequired && !password.trim()) {
+      setError(true);
+      setErrorMessage("SECURITY CLEARANCE PASSWORD REQUIRED");
+      return;
+    }
+
     if (typeof document !== "undefined" && !document.fullscreenElement) {
       try {
         document.documentElement.requestFullscreen?.().catch(() => {});
@@ -238,14 +247,23 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
     setError(false);
 
     try {
-      const authResult = await authenticateTeamWithTiDB(teamName, leaderName);
+      const authResult = await authenticateTeamWithTiDB(teamName, leaderName, password);
 
-      if (authResult.success) {
+      if (authResult.requiresPassword) {
+        setIsPasswordRequired(true);
+        setError(false);
+        setIsAuthenticating(false);
+        return;
+      }
+
+      if (authResult.success && authResult.session) {
         setError(false);
         sfx("boom");
 
-        if (authResult.session.role === "VECNA") {
-          saveSession({ ...authResult.session, token: authResult.token });
+        if (authResult.session.role === "ADMIN") {
+          loginSession({ ...authResult.session, token: authResult.token });
+        } else if (authResult.session.role === "VECNA") {
+          loginSession({ ...authResult.session, token: authResult.token });
           if (onEnterVecna) {
             onEnterVecna();
           } else {
@@ -545,6 +563,47 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
                   />
                 </div>
 
+                {(isPasswordRequired || teamName.trim().toLowerCase() === "admin bolte") && (
+                  <div style={{ marginBottom: "20px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "12px",
+                        letterSpacing: "0.2em",
+                        color: "#ff2d3a",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      CLEARANCE PASSWORD
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (error) setError(false);
+                      }}
+                      placeholder="ENTER CLEARANCE PASSWORD..."
+                      maxLength={64}
+                      autoFocus
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        background: "rgba(0, 0, 0, 0.6)",
+                        border: error
+                          ? "1.5px solid #ff2d3a"
+                          : "1px solid rgba(255, 45, 58, 0.6)",
+                        color: "#ffffff",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "16px",
+                        letterSpacing: "0.1em",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                )}
+
                 {error && (
                   <div
                     style={{
@@ -566,7 +625,10 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
                 <button
                   type="submit"
                   disabled={
-                    !teamName.trim() || !leaderName.trim() || isAuthenticating
+                    !teamName.trim() ||
+                    !leaderName.trim() ||
+                    ((isPasswordRequired || teamName.trim().toLowerCase() === "admin bolte") && !password.trim()) ||
+                    isAuthenticating
                   }
                   style={{
                     width: "100%",

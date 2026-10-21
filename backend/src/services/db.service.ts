@@ -572,6 +572,12 @@ class DatabaseService {
       updated.totalScore = Math.max(0, (Number(existing.totalScore) || 0) - deltaPenalty);
     }
 
+    if (updated.totalScore !== existing.totalScore) {
+      const nowIso = new Date().toISOString();
+      updated.lastScoreAchievedAt = nowIso;
+      updated.lastSolvedAt = nowIso;
+    }
+
     this.teams.set(teamId, updated);
     this.saveSnapshot();
     this.persistTeamToTiDB(updated);
@@ -654,18 +660,24 @@ class DatabaseService {
   // ─────────────────────────────────────────────────────────────────────────────
 
   public getLeaderboard(): LeaderboardEntry[] {
-    const playerTeams = this.getAllTeams();
+    const playerTeams = this.getAllTeams().filter((t) => t.role !== "ADMIN" && t.teamName.toLowerCase() !== "admin bolte");
 
     playerTeams.sort((a, b) => {
       if (b.totalScore !== a.totalScore) {
         return b.totalScore - a.totalScore;
       }
-      // Tie-breaker: earlier last solve timestamp wins
-      if (a.lastSolvedAt && b.lastSolvedAt) {
-        return new Date(a.lastSolvedAt).getTime() - new Date(b.lastSolvedAt).getTime();
+      // Tie-breaker: earlier last score achieved timestamp wins
+      const parseTime = (item: TeamRecord) => {
+        const raw = item.lastScoreAchievedAt || item.lastSolvedAt;
+        if (!raw) return Infinity;
+        const ts = new Date(raw).getTime();
+        return isNaN(ts) ? Infinity : ts;
+      };
+      const timeA = parseTime(a);
+      const timeB = parseTime(b);
+      if (timeA !== timeB) {
+        return timeA - timeB;
       }
-      if (a.lastSolvedAt) return -1;
-      if (b.lastSolvedAt) return 1;
       return a.teamName.localeCompare(b.teamName);
     });
 
@@ -698,6 +710,8 @@ class DatabaseService {
         completedTasks: distinctCompleted,
         lastSubmissionTime: t.lastSolvedAt || t.updatedAt,
         status: t.status,
+        lastScoreAchievedAt: t.lastScoreAchievedAt || t.lastSolvedAt || null,
+        lastSolvedAt: t.lastSolvedAt || null,
       };
     });
   }

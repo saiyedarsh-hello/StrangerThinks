@@ -166,6 +166,7 @@ interface Ctx {
   cutscene: StageId | null;
   endCutscene: () => void;
   start: () => void;
+  loginSession: (sessionData: AuthSession) => void;
   loginPlayer: (team: {
     id: string;
     teamName: string;
@@ -784,6 +785,29 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setS((p) => ({ ...p, phase: "login" }));
   }, []);
 
+  const loginSession = useCallback((sessionData: AuthSession) => {
+    saveSession(sessionData);
+    setSession(sessionData);
+
+    if (typeof document !== "undefined" && sessionData.token) {
+      document.cookie = `hawkins_session_token=${sessionData.token}; path=/; max-age=86400; SameSite=Lax`;
+      if (sessionData.role === "ADMIN") {
+        document.cookie = `hawkins_admin_token=${sessionData.token}; path=/; max-age=86400; SameSite=Lax`;
+      }
+    }
+    if (typeof window !== "undefined" && sessionData.token && sessionData.role === "ADMIN") {
+      localStorage.setItem("admin_token", sessionData.token);
+      localStorage.setItem("hawkins_admin_token", sessionData.token);
+      if (sessionData.leaderName) {
+        localStorage.setItem("hawkins_admin_leader", sessionData.leaderName);
+      }
+    }
+
+    if (sessionData.token) {
+      authenticateSocket(sessionData.token);
+    }
+  }, []);
+
   const loginPlayer = useCallback(
     (team: {
       id: string;
@@ -1339,6 +1363,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     disconnectSocket();
     if (typeof document !== "undefined") {
       document.cookie = "hawkins_session_token=; path=/; max-age=0";
+      document.cookie = "hawkins_admin_token=; path=/; max-age=0";
+    }
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("hawkins_admin_token");
+      localStorage.removeItem("hawkins_admin_leader");
     }
     clearSession();
     setSession(null);
@@ -1484,6 +1514,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       cutscene,
       endCutscene,
       start,
+      loginSession,
       loginPlayer,
       register,
       logout,
@@ -1533,6 +1564,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       cutscene,
       endCutscene,
       start,
+      loginSession,
       loginPlayer,
       register,
       logout,
