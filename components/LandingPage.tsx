@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
 import { authenticateTeamWithTiDB } from "@/lib/tidbService";
@@ -177,8 +176,7 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
   );
 }
 
-export default function LandingPage({ onEnterVecna }: LandingPageProps) {
-  const router = useRouter();
+export default function LandingPage(_props: LandingPageProps) {
   const { loginPlayer, loginSession, setSoundOn } = useGame();
 
   const [flashLevel, setFlashLevel] = useState(0);
@@ -264,11 +262,6 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
           loginSession({ ...authResult.session, token: authResult.token });
         } else if (authResult.session.role === "VECNA") {
           loginSession({ ...authResult.session, token: authResult.token });
-          if (onEnterVecna) {
-            onEnterVecna();
-          } else {
-            router.push("/vecna");
-          }
         } else {
           loginPlayer({
             id: authResult.session.teamId || "T01",
@@ -650,64 +643,6 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
                     : "CONFIRM & ENTER"}
                 </button>
 
-                {/* Quick Autofill Chips */}
-                <div style={{ marginTop: "20px", textAlign: "center" }}>
-                  <div
-                    style={{
-                      fontSize: "11px",
-                      color: "rgba(255, 255, 255, 0.4)",
-                      letterSpacing: "0.15em",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    DEMO TEAMS / OPERATORS
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      justifyContent: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    {[
-                      { t: "Null Pointers", l: "Aarav Sharma" },
-                      { t: "Hellfire Club", l: "Eddie Munson" },
-                      { t: "Vecna", l: "Henry Creel" },
-                    ].map((chip) => (
-                      <button
-                        key={chip.t}
-                        type="button"
-                        onClick={() => {
-                          setTeamName(chip.t);
-                          setLeaderName(chip.l);
-                          setError(false);
-                        }}
-                        style={{
-                          fontSize: "11px",
-                          letterSpacing: "0.08em",
-                          padding: "4px 8px",
-                          border:
-                            chip.t === "Vecna"
-                              ? "1px solid #ff2d3a"
-                              : "1px solid rgba(255, 255, 255, 0.15)",
-                          color:
-                            chip.t === "Vecna"
-                              ? "#ff4d58"
-                              : "rgba(255, 255, 255, 0.7)",
-                          background:
-                            chip.t === "Vecna"
-                              ? "rgba(255, 45, 58, 0.15)"
-                              : "rgba(255, 255, 255, 0.05)",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {chip.t === "Vecna" ? "👁️ " : "⚡ "}
-                        {chip.t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </form>
             </motion.div>
           </div>

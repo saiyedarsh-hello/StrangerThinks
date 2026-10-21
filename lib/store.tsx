@@ -160,6 +160,7 @@ export const totalScore = (b: Breakdown, penalty = 0) =>
 interface Ctx {
   s: GameState;
   hydrated: boolean;
+  sessionVerified: boolean;
   session: AuthSession | null;
   score: number;
   sabotage: Sabotage | null;
@@ -236,6 +237,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const isGame = path === "/";
   const [s, setS] = useState<GameState>(INITIAL);
   const [hydrated, setHydrated] = useState(false);
+  const [sessionVerified, setSessionVerified] = useState(false);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [sabotage, setSabotage] = useState<Sabotage | null>(null);
   const [cutscene, setCutscene] = useState<StageId | null>(null);
@@ -275,6 +277,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     const currentSession = getStoredSession();
     setSession(currentSession);
+    setSessionVerified(false);
 
     try {
       const raw = localStorage.getItem(KEY);
@@ -351,18 +354,27 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.authenticated && data.team) {
+        if (data.authenticated) {
+          const serverRole: AuthSession["role"] =
+            data.role === "ADMIN" || data.role === "VECNA" ? data.role : "PLAYER";
           const sData: AuthSession = {
-            role: "PLAYER",
-            teamName: data.team.teamName,
-            leaderName: data.team.squadLeader,
-            teamId: data.team.id,
+            role: serverRole,
+            teamName: data.session?.teamName || data.team?.teamName || "",
+            leaderName: data.session?.leaderName || data.team?.squadLeader || "",
+            teamId: data.session?.teamId || data.team?.id || "",
+            ...(data.session?.adminId ? { adminId: data.session.adminId } : {}),
             ...(sessionToken ? { token: sessionToken } : {}),
           };
           saveSession(sData);
           setSession(sData);
+          setSessionVerified(true);
 
-          const teamScore = data.team.totalScore ?? data.team.score ?? 0;
+          if (serverRole !== "PLAYER") {
+            if (sessionToken) authenticateSocket(sessionToken);
+            return;
+          }
+
+          const teamScore = data.team?.totalScore ?? data.team?.score ?? 0;
           const sBreakdown: Breakdown = data.team.breakdown || {
             tech: teamScore,
             puzzle: 0,
@@ -407,9 +419,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           if (sessionToken) {
             authenticateSocket(sessionToken);
           }
+        } else {
+          clearSession();
+          setSession(null);
+          setSessionVerified(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        // Without an authoritative server response we cannot trust a locally
+        // stored role. Require a fresh login instead.
+        clearSession();
+        setSession(null);
+        setSessionVerified(true);
+      });
   }, [isGame]);
 
   // Persist to localStorage
@@ -423,14 +445,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Theme on <html>
   useEffect(() => {
     const isMind = s.location === "upsidedown" || s.stage === "mind" || s.stage === "final";
-    const theme = path?.startsWith("/vecna")
+    const theme = session?.role === "VECNA"
       ? "upside"
       : isGame && s.phase === "play"
       ? (s.stage === "mind" || s.location === "upsidedown" ? "upside" : STAGES[s.stage]?.theme || "normal")
       : "normal";
     document.documentElement.dataset.theme = theme;
     setDroneTheme(isMind ? "mind" : theme);
-  }, [s.stage, s.phase, s.location, path, isGame]);
+  }, [s.stage, s.phase, s.location, path, isGame, session?.role]);
 
   // Clock
   useEffect(() => {
@@ -788,6 +810,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const loginSession = useCallback((sessionData: AuthSession) => {
     saveSession(sessionData);
     setSession(sessionData);
+    setSessionVerified(true);
 
     if (typeof document !== "undefined" && sessionData.token) {
       document.cookie = `hawkins_session_token=${sessionData.token}; path=/; max-age=86400; SameSite=Lax`;
@@ -833,6 +856,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       };
       saveSession(sessionData);
       setSession(sessionData);
+      setSessionVerified(true);
 
       if (typeof document !== "undefined" && team.token) {
         document.cookie = `hawkins_session_token=${team.token}; path=/; max-age=86400; SameSite=Lax`;
@@ -1342,10 +1366,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     try {
       const stored = getStoredSession();
-      const token = stored && (stored as any).token ? (stored as any).token : "";
-      const teamId = (stored as any)?.teamId || s.team?.id;
+      const token = (session as any)?.token || (stored && (stored as any).token ? (stored as any).token : "");
+      const teamId = (session as any)?.teamId || (stored as any)?.teamId || s.team?.id;
       if (token || teamId) {
         await fetch(`${API_BASE}/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ teamId }),
+        }).catch(() => {});
+        await fetch(`${API_BASE}/vecna/auth/logout`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1362,20 +1394,24 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     disconnectSocket();
     if (typeof document !== "undefined") {
-      document.cookie = "hawkins_session_token=; path=/; max-age=0";
-      document.cookie = "hawkins_admin_token=; path=/; max-age=0";
+      document.cookie = "hawkins_session_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "hawkins_admin_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
     if (typeof window !== "undefined") {
       localStorage.removeItem("admin_token");
       localStorage.removeItem("hawkins_admin_token");
       localStorage.removeItem("hawkins_admin_leader");
+      localStorage.removeItem(KEY);
+      localStorage.removeItem("hawkins-protocol:session");
+      sessionStorage.clear();
     }
     clearSession();
     setSession(null);
+    setSessionVerified(true);
     reset();
     setS({ ...INITIAL, phase: "login", introSeen: false });
     sfx("click");
-  }, [reset, s.team?.id]);
+  }, [reset, s.team?.id, session]);
 
   // Periodic session heartbeat & presence refresh
   useEffect(() => {
@@ -1499,6 +1535,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     () => ({
       s,
       hydrated,
+      sessionVerified,
       session,
       score:
         typeof s.team?.totalScore === "number"
@@ -1559,6 +1596,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     [
       s,
       hydrated,
+      sessionVerified,
       session,
       sabotage,
       cutscene,

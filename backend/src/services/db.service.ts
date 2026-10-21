@@ -8,7 +8,7 @@ import {
   LeaderboardEntry,
   ScoreBreakdown,
 } from "../types";
-import { ENV, INITIAL_REGISTERED_TEAMS, VECNA_CREDENTIAL } from "../config/env";
+import { ENV } from "../config/env";
 import { buildDefaultChapters, sanitizeChapter } from "../config/vault";
 import { ScoreService } from "./score.service";
 import { tidb } from "../config/tidb";
@@ -186,91 +186,8 @@ class DatabaseService {
   }
 
   private ensureSeedData() {
-    const emptyBreakdown: ScoreBreakdown = {
-      tech: 0,
-      puzzle: 0,
-      speed: 0,
-      clue: 0,
-      story: 0,
-      teamwork: 0,
-    };
-
-    const initialUnlocked = {
-      town: true,
-      policeStation: true,
-      byersHouse: true,
-      radioTower: true,
-      lab: false,
-      forest: false,
-      gate: false,
-      upsidedown: false,
-      mind: false,
-    };
-
-    // Seed default 8 teams
-    INITIAL_REGISTERED_TEAMS.forEach((team) => {
-      if (!this.teams.has(team.id)) {
-        const now = new Date().toISOString();
-        const record: TeamRecord = {
-          id: team.id,
-          teamName: team.teamName,
-          leaderName: team.leaderName,
-          role: "PLAYER",
-          status: "ACTIVE",
-          totalScore: 0,
-          breakdown: { ...emptyBreakdown },
-          penalty: 0,
-          startedAt: null,
-          finishedAt: null,
-          lastSolvedAt: null,
-          location: "town",
-          stage: "hawkins",
-          storyProgress: 5,
-          completedTasks: [],
-          solvedChapters: [],
-          unlockedLocations: { ...initialUnlocked },
-          radiometerPins: [null, null, null, null, null],
-          radiometerSolved: [false, false, false, false, false],
-          radiometerCodeSolved: false,
-          unlockedHints: {},
-          createdAt: now,
-          updatedAt: now,
-        };
-        this.teams.set(team.id, record);
-      }
-    });
-
-    // Seed Vecna account
-    if (!this.teams.has("VECNA-001")) {
-      const now = new Date().toISOString();
-      const vecnaRecord: TeamRecord = {
-        id: "VECNA-001",
-        teamName: VECNA_CREDENTIAL.teamName,
-        leaderName: VECNA_CREDENTIAL.leaderName,
-        role: "VECNA",
-        status: "ACTIVE",
-        totalScore: 0,
-        breakdown: { ...emptyBreakdown },
-        penalty: 0,
-        startedAt: null,
-        finishedAt: null,
-        lastSolvedAt: null,
-        location: "mind",
-        stage: "mind",
-        storyProgress: 100,
-        completedTasks: [],
-        solvedChapters: [],
-        unlockedLocations: { ...initialUnlocked, lab: true, forest: true, gate: true, upsidedown: true, mind: true },
-        radiometerPins: ["8", "3", "4", "7", "9"],
-        radiometerSolved: [true, true, true, true, true],
-        radiometerCodeSolved: true,
-        unlockedHints: {},
-        createdAt: now,
-        updatedAt: now,
-      };
-      this.teams.set("VECNA-001", vecnaRecord);
-    }
-
+    // Participant teams are registered explicitly by an administrator.
+    // Never auto-create demo/participant teams on application startup.
     this.saveSnapshot();
   }
 
@@ -283,13 +200,18 @@ class DatabaseService {
     if (!pool) return;
 
     try {
+      const teamCode = String(t.id).slice(0, 40);
+      const username = String(t.id).toLowerCase();
+      const usernameNormalized = username;
+
       const query = `
         INSERT INTO teams (
-          team_id, team_name, squad_leader, role, access_passcode, total_score, penalty,
-          status, location, stage, story_progress, started_at, finished_at, last_solved_at,
-          breakdown_json, radiometer_pins, radiometer_solved, radiometer_code_solved,
-          unlocked_locations, unlocked_hints, completed_tasks, solved_chapters, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          team_id, event_id, team_code, team_name, squad_leader, username, username_normalized,
+          role, total_score, penalty, status, location, stage, story_progress,
+          started_at, finished_at, last_solved_at, breakdown_json, radiometer_pins,
+          radiometer_solved, radiometer_code_solved, unlocked_locations, unlocked_hints,
+          completed_tasks, solved_chapters, updated_at
+        ) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           role = VALUES(role),
           team_name = VALUES(team_name),
@@ -316,10 +238,12 @@ class DatabaseService {
 
       await pool.query(query, [
         t.id,
+        teamCode,
         t.teamName,
         t.leaderName,
+        username,
+        usernameNormalized,
         t.role,
-        "salt_pass_player",
         t.totalScore,
         t.penalty,
         t.status,
@@ -340,8 +264,8 @@ class DatabaseService {
         new Date(),
       ]);
     } catch (err: any) {
-      // Non-blocking background persistence failure
-      // console.warn(`[TIDB PERSISTENCE NOTICE] Team ${t.id} sync postponed:`, err.message);
+      // Non-blocking, but visible: silent failures hide registration bugs.
+      console.warn(`[TIDB PERSISTENCE] Team ${t.id} sync failed:`, err.code || err.message);
     }
   }
 
@@ -421,7 +345,13 @@ class DatabaseService {
     return Array.from(this.teams.values()).filter((t) => t.role === "PLAYER" || t.role === "VECNA");
   }
 
-  public createTeam(teamName: string, leaderName: string, customId?: string, initialScore = 0): TeamRecord {
+  public createTeam(
+    teamName: string,
+    leaderName: string,
+    customId?: string,
+    initialScore = 0,
+    role: "PLAYER" | "VECNA" = "PLAYER"
+  ): TeamRecord {
     const id = customId || `T${String(this.teams.size + 1).padStart(2, "0")}`;
     const now = new Date().toISOString();
 
@@ -438,7 +368,7 @@ class DatabaseService {
       id,
       teamName,
       leaderName,
-      role: "PLAYER",
+      role,
       status: "ACTIVE",
       totalScore: initialScore,
       breakdown: emptyBreakdown,

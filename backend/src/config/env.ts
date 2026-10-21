@@ -22,6 +22,9 @@ export const ENV = {
 
   TOTAL_GAME_TIME: process.env.TOTAL_GAME_TIME ? parseInt(process.env.TOTAL_GAME_TIME, 10) : 90 * 60, // 90 min (5400s)
   ADMIN_PASSKEY: process.env.ADMIN_PASSKEY || "HAWKINS_CHIEF_1983",
+  // Temporary shared clearance password for local development/testing only.
+  // Leave unset in production (render.env does not define it).
+  TEST_CLEARANCE_PASSWORD: process.env.TEST_CLEARANCE_PASSWORD || "",
   ANSWER_HMAC_SECRET: process.env.ANSWER_HMAC_SECRET || "HAWKINS_SECRET_HMAC_KEY_1983",
   SESSION_TOKEN_PEPPER: process.env.SESSION_TOKEN_PEPPER || "HAWKINS_SESSION_PEPPER_1983",
   ADMIN_SESSION_SECRET: process.env.ADMIN_SESSION_SECRET || "HAWKINS_CHIEF_ADMIN_SECRET_1983",
@@ -35,16 +38,8 @@ export const ENV = {
   },
 };
 
-export const INITIAL_REGISTERED_TEAMS = [
-  { id: "T01", teamName: "Null Pointers", leaderName: "Aarav Sharma" },
-  { id: "T02", teamName: "Stack Smashers", leaderName: "Maya Lin" },
-  { id: "T03", teamName: "Rift Runners", leaderName: "Lucas Sinclair" },
-  { id: "T04", teamName: "Byte Byters", leaderName: "Dustin Henderson" },
-  { id: "T05", teamName: "Shadow Walkers", leaderName: "Mike Wheeler" },
-  { id: "T06", teamName: "Hellfire Club", leaderName: "Eddie Munson" },
-  { id: "T07", teamName: "Hawkins AV Club", leaderName: "Will Byers" },
-  { id: "T08", teamName: "Mind Flayers", leaderName: "Max Mayfield" },
-];
+// Participant teams are created explicitly through the Admin registration/import
+// flow. No demo teams are seeded on startup.
 
 export const VECNA_CREDENTIAL = {
   teamName: "Vecna",

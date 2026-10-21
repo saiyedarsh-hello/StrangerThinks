@@ -55,6 +55,9 @@ export class SessionService {
             console.log(`[SESSION SERVICE] Team ${teamId} reconnecting: replacing orphaned/offline session`);
             await pool.query("DELETE FROM team_active_sessions WHERE team_id = ?", [teamId]);
             this.localTeamSessions.delete(teamId);
+    if (teamId.startsWith("VECNA")) {
+      await this.deleteVecnaSession(1);
+    }
           } else {
             // Record blocked login audit for truly concurrent live session
             await pool.query(
@@ -85,6 +88,9 @@ export class SessionService {
 
       if (!isOnline) {
         this.localTeamSessions.delete(teamId);
+    if (teamId.startsWith("VECNA")) {
+      await this.deleteVecnaSession(1);
+    }
       } else {
         return {
           success: false,
@@ -217,6 +223,9 @@ export class SessionService {
     }
 
     this.localTeamSessions.delete(teamId);
+    if (teamId.startsWith("VECNA")) {
+      await this.deleteVecnaSession(1);
+    }
   }
 
   /**
@@ -260,6 +269,7 @@ export class SessionService {
     }
 
     this.localTeamSessions.clear();
+    this.localVecnaSessions.clear();
 
     const payload = {
       teamId: "all",
@@ -333,6 +343,10 @@ export class SessionService {
 
     const local = this.localVecnaSessions.get(senderId);
     return !!local && local.tokenHash === tokenHash;
+  }
+
+  public static hasActiveVecnaSessionSync(senderId: number = 1): boolean {
+    return this.localVecnaSessions.has(senderId);
   }
 
   public static async deleteVecnaSession(senderId: number): Promise<void> {

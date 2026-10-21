@@ -3,7 +3,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   CONFIG,
-  PLAYER_TEAMS,
   getStoredSession,
   clearSession,
   AuthSession,
@@ -20,6 +19,7 @@ import { API_BASE } from "@/lib/api";
 import CinematicBackground from "@/components/CinematicBackground";
 import { sfx } from "@/lib/audio";
 import { motion, AnimatePresence } from "framer-motion";
+import { useGame } from "@/lib/store";
 
 import VecnaTacticalMap, { MapTeamInfo } from "@/components/vecna/VecnaTacticalMap";
 import VecnaTriggerPanel, { TriggerAction, TargetSquadItem } from "@/components/vecna/VecnaTriggerPanel";
@@ -110,8 +110,9 @@ const VECNA_TRIALS: VecnaTrial[] = [
   },
 ];
 
-export default function VecnaPage() {
+export default function VecnaDashboard() {
   const router = useRouter();
+  const { logout } = useGame();
   const [session, setSession] = useState<AuthSession | null>(null);
 
   // Active Trial & Question Selection
@@ -300,16 +301,56 @@ export default function VecnaPage() {
     return () => clearInterval(interval);
   }, [session]);
 
+  const handleLogout = useCallback(async () => {
+    sfx("click");
+    try {
+      getSocket()?.emit("team:logout");
+    } catch {}
+    try {
+      if (logout) {
+        await logout();
+      }
+    } catch {}
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    try {
+      const stored = getStoredSession();
+      const token = (stored as any)?.token;
+      if (token) {
+        await fetch(`${API_BASE}/vecna/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }).catch(() => {});
+      }
+    } catch {}
+    clearSession();
+    if (typeof document !== "undefined") {
+      document.cookie = "hawkins_session_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "hawkins_admin_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    }
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("hawkins_admin_token");
+      localStorage.removeItem("hawkins_admin_leader");
+      localStorage.removeItem("hawkins-protocol:session");
+      sessionStorage.clear();
+      window.location.href = "/";
+    }
+  }, [logout]);
+
   // Realtime logout & event termination handler (Issue 4 & 5)
   useEffect(() => {
     const unsub = subscribe((msg: any) => {
       if (msg.type === "force_logout" || (msg.type === "event_state" && msg.status === "ended")) {
-        clearSession();
-        router.push("/");
+        handleLogout();
       }
     });
     return () => unsub();
-  }, [router]);
+  }, [handleLogout]);
 
   // Fetch authoritative trial progress from backend to enforce sequential progression (Issue 3)
   useEffect(() => {
@@ -347,15 +388,6 @@ export default function VecnaPage() {
       isCancelled = true;
     };
   }, [activeTrialId]);
-
-  const handleLogout = () => {
-    sfx("click");
-    try {
-      getSocket()?.emit("team:logout");
-    } catch {}
-    clearSession();
-    router.push("/");
-  };
 
   const handleSelectOption = (trialId: number, qIdx: number, optionId: string) => {
     if (isLevelAttempted(trialId, qIdx)) return;
@@ -963,6 +995,7 @@ export default function VecnaPage() {
           </button>
 
           <button
+            id="vecna-logout-btn"
             type="button"
             onClick={handleLogout}
             style={{

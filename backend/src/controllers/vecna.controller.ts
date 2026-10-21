@@ -88,6 +88,7 @@ export const VecnaController = {
   async logout(req: Request, res: Response) {
     const senderId = (req.user as any)?.senderId || 1;
     await SessionService.deleteVecnaSession(senderId);
+    await SessionService.deleteTeamSession("VECNA-001");
     return res.json({ success: true, message: "Vecna sender logged out." });
   },
 

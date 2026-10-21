@@ -540,26 +540,8 @@ VALUES
 (7, 7, '44bee7a923df58eeb33d03cdd65317fbf2888351b2c223f78e066be9b57d6995', 1, 1)
 ON DUPLICATE KEY UPDATE is_active = VALUES(is_active);
 
--- 3.9 Hawkins Teams
-INSERT INTO teams (team_id, event_id, team_code, team_name, squad_leader, username, username_normalized, role, total_score, status)
-VALUES
-('T01', 1, 'TEAM_01', 'Null Pointers', 'Aarav Sharma', 'nullpointers', 'nullpointers', 'PLAYER', 0, 'ACTIVE'),
-('T02', 1, 'TEAM_02', 'Stack Smashers', 'Maya Lin', 'stacksmashers', 'stacksmashers', 'PLAYER', 0, 'ACTIVE'),
-('T03', 1, 'TEAM_03', 'Rift Runners', 'Lucas Sinclair', 'riftrunners', 'riftrunners', 'PLAYER', 0, 'ACTIVE'),
-('T04', 1, 'TEAM_04', 'Byte Byters', 'Dustin Henderson', 'bytebyters', 'bytebyters', 'PLAYER', 0, 'ACTIVE'),
-('T05', 1, 'TEAM_05', 'Shadow Walkers', 'Mike Wheeler', 'shadowwalkers', 'shadowwalkers', 'PLAYER', 0, 'ACTIVE'),
-('T06', 1, 'TEAM_06', 'Hellfire Club', 'Eddie Munson', 'hellfireclub', 'hellfireclub', 'PLAYER', 0, 'ACTIVE'),
-('T07', 1, 'TEAM_07', 'Hawkins AV Club', 'Will Byers', 'hawkinsavclub', 'hawkinsavclub', 'PLAYER', 0, 'ACTIVE'),
-('T08', 1, 'TEAM_08', 'Mind Flayers', 'Max Mayfield', 'mindflayers', 'mindflayers', 'PLAYER', 0, 'ACTIVE')
-ON DUPLICATE KEY UPDATE
-  team_name = VALUES(team_name),
-  squad_leader = VALUES(squad_leader);
-
--- 3.10 Initialize Round 1 Unlocked for all teams
-INSERT INTO team_round_progress (team_id, round_id, status, unlocked_at)
-SELECT t.team_id, 1, 'unlocked', CURRENT_TIMESTAMP(3)
-FROM teams t
-ON DUPLICATE KEY UPDATE status = VALUES(status);
+-- 3.9 Participant teams are registered explicitly by an administrator.
+-- No demo/participant teams are seeded by the schema.
 
 -- ==============================================================================
 -- 4. CHAPTER DEFINITIONS FOR BACKWARD COMPATIBILITY

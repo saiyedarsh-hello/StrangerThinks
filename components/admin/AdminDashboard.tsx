@@ -32,12 +32,16 @@ import {
   AdminLogItem,
   ConnectionStatus,
 } from "@/lib/tidbService";
-import { authenticateSocket, publish } from "@/lib/realtime";
+import { authenticateSocket, publish, getSocket } from "@/lib/realtime";
 import { sfx } from "@/lib/audio";
 import { getStoredSession, clearSession } from "@/lib/config";
 
-export default function AdminPage() {
-  const [token, setToken] = useState<string | null>(null);
+export default function AdminDashboard() {
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = getStoredSession();
+    return stored?.role === "ADMIN" && stored.token ? stored.token : null;
+  });
   const [passkeyInput, setPasskeyInput] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -82,6 +86,7 @@ export default function AdminPage() {
   // New squad creation modal state
   const [showAddTeamModal, setShowAddTeamModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamRole, setNewTeamRole] = useState<"PLAYER" | "VECNA">("PLAYER");
   const [newLeaderName, setNewLeaderName] = useState("");
   const [newTeamScore, setNewTeamScore] = useState<number>(0);
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
@@ -164,10 +169,7 @@ export default function AdminPage() {
   useEffect(() => {
     try {
       const stored = getStoredSession();
-      const adminTok =
-        (stored && stored.role === "ADMIN" ? stored.token : null) ||
-        localStorage.getItem("hawkins_admin_token") ||
-        localStorage.getItem("admin_token");
+      const adminTok = stored && stored.role === "ADMIN" ? stored.token : null;
       if (adminTok) {
         setToken(adminTok);
         authenticateSocket(adminTok);
@@ -215,16 +217,18 @@ export default function AdminPage() {
     }
 
     // Query live authoritative backend service (connected to TiDB)
-    const activeToken = token || "HAWKINS_CHIEF_1983";
+    const activeToken = token || "";
     let beLeaderboard: AdminLeaderboardItem[] = [];
     let beChapterList: AdminChapterData[] = [];
+    let serverResponded = false;
     try {
       const [beLb, beCh] = await Promise.all([
         fetchAdminLeaderboard(activeToken),
         fetchAdminChapters(activeToken),
       ]);
 
-      if (beLb.success && Array.isArray(beLb.leaderboard) && beLb.leaderboard.length > 0) {
+      if (beLb.success && Array.isArray(beLb.leaderboard)) {
+        serverResponded = true;
         beLeaderboard = beLb.leaderboard;
         loadedFromTiDB = true;
       }
@@ -236,9 +240,9 @@ export default function AdminPage() {
       console.warn("[ADMIN] Backend live fetch failed:", e);
     }
 
-    // TiDB direct check if proxy returned empty
+    // TiDB direct check only when the proxy did not answer at all
     let tidbLeaderboard: AdminLeaderboardItem[] = [];
-    if (beLeaderboard.length === 0) {
+    if (!serverResponded) {
       try {
         const tdLb = await getTiDBLeaderboard(activeToken);
         if (tdLb.success && tdLb.leaderboard && tdLb.leaderboard.length > 0) {
@@ -274,9 +278,18 @@ export default function AdminPage() {
         const onlineCount = finalLb.filter((t) => t.isOnline).length;
         setStatusMessage(`✓ STANDINGS REFRESHED: ${finalLb.length} Squads Synchronized (${onlineCount} Online)`);
       }
-    } else if (cachedLb.length > 0) {
-      // Offline fallback only when server unreachable
+    } else if (!serverResponded && cachedLb.length > 0) {
+      // Offline fallback only when the server is unreachable.
       setLeaderboard(cachedLb);
+    } else {
+      // Authoritative empty state: never show stale or fabricated squads.
+      setLeaderboard([]);
+      setConnStatus(getConnectionStatus(0));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("hawkins_persisted_leaderboard");
+        } catch {}
+      }
     }
 
     // Chapters
@@ -294,7 +307,7 @@ export default function AdminPage() {
     try {
       const [evRes, tdLogs] = await Promise.all([
         fetch("/api/admin/event/state?_t=" + Date.now()).then((r) => r.json()).catch(() => ({})),
-        getTiDBLogs(liveServerTeams.length || 8).catch(() => []),
+        getTiDBLogs(liveServerTeams.length).catch(() => []),
       ]);
       if (evRes.success && evRes.eventState) {
         setEventState(evRes.eventState);
@@ -569,12 +582,6 @@ export default function AdminPage() {
       console.warn("Backend auth call error:", e);
     }
 
-    // Direct master clearance check
-    if (!authed && (input === "1234567" || input === "HAWKINS_CHIEF_1983")) {
-      authed = true;
-      tokenVal = "hawkins-sec-chief-session";
-    }
-
     setIsAuthenticating(false);
 
     if (authed) {
@@ -593,19 +600,27 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     sfx("click");
     setToken(null);
     setPasskeyInput("");
     try {
+      getSocket()?.emit("team:logout");
+    } catch {}
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    try {
       localStorage.removeItem("hawkins_admin_token");
       localStorage.removeItem("admin_token");
       localStorage.removeItem("hawkins_admin_leader");
+      localStorage.removeItem("hawkins-protocol:session");
       sessionStorage.removeItem("hawkins_admin_token");
+      sessionStorage.clear();
       clearSession();
       if (typeof document !== "undefined") {
-        document.cookie = "hawkins_session_token=; path=/; max-age=0";
-        document.cookie = "hawkins_admin_token=; path=/; max-age=0";
+        document.cookie = "hawkins_session_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "hawkins_admin_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       }
     } catch {}
     if (typeof window !== "undefined") {
@@ -618,7 +633,13 @@ export default function AdminPage() {
     e.preventDefault();
     if (!newTeamName.trim() || !newLeaderName.trim()) return;
     setIsCreatingTeam(true);
-    const res = await registerTeamInTiDB(newTeamName.trim(), newLeaderName.trim(), Number(newTeamScore), token || undefined);
+    const res = await registerTeamInTiDB(
+      newTeamName.trim(),
+      newLeaderName.trim(),
+      Number(newTeamScore),
+      token || undefined,
+      newTeamRole
+    );
     setIsCreatingTeam(false);
 
     if (res.success) {
@@ -627,6 +648,7 @@ export default function AdminPage() {
       setNewTeamName("");
       setNewLeaderName("");
       setNewTeamScore(0);
+      setNewTeamRole("PLAYER");
       setStatusMessage(`Squad "${newTeamName}" registered in TiDB. They can now log in immediately!`);
       loadData();
     } else {
@@ -641,7 +663,10 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/event/state", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token || ""}`,
+        },
         body: JSON.stringify(updates),
       });
       const data = await res.json();
@@ -664,7 +689,7 @@ export default function AdminPage() {
     }
     setIsUpdatingEvent(true);
     try {
-      const activeToken = token || "HAWKINS_CHIEF_1983";
+      const activeToken = token || "";
       const res = await fetch("/api/admin/event/start", {
         method: "POST",
         headers: {
@@ -699,7 +724,7 @@ export default function AdminPage() {
     if (!content.trim()) return;
     setIsAnalyzing(true);
     try {
-      const activeTok = token || "HAWKINS_CHIEF_1983";
+      const activeTok = token || "";
       const res = await fetch("/api/admin/teams/import", {
         method: "POST",
         headers: {
@@ -727,7 +752,7 @@ export default function AdminPage() {
     setIsImporting(true);
     setImportMessage(null);
     try {
-      const activeTok = token || "HAWKINS_CHIEF_1983";
+      const activeTok = token || "";
       const res = await fetch("/api/admin/teams/import", {
         method: "POST",
         headers: {
@@ -797,7 +822,7 @@ export default function AdminPage() {
     setIsLoadingPerformance(true);
     setExpandedPerformanceStage(null);
     try {
-      const activeTok = token || "HAWKINS_CHIEF_1983";
+      const activeTok = token || "";
       const res = await fetch(`/api/admin/teams/${team.teamId}/performance`, {
         headers: { Authorization: `Bearer ${activeTok}` },
       });
@@ -885,7 +910,7 @@ export default function AdminPage() {
     });
 
     // 2. Direct backend disk store update (leaderboard-state.json)
-    const activeToken = token || "HAWKINS_CHIEF_1983";
+    const activeToken = token || "";
     try {
       await updateAdminTeamScore(detailTeam.teamId, newScore, activeToken);
     } catch (err) {
@@ -950,7 +975,7 @@ export default function AdminPage() {
     await updateTiDBChapter(editingChapter.id, payload);
 
     // 2. Update Backend
-    const activeToken = token || "HAWKINS_CHIEF_1983";
+    const activeToken = token || "";
     await updateAdminChapter(editingChapter.id, payload, activeToken);
 
     setIsSaving(false);
@@ -987,7 +1012,7 @@ export default function AdminPage() {
     if (!confirm(`Are you sure you want to purge Chapter ${id} from active tournament challenges?`)) return;
 
     await deleteTiDBChapter(id);
-    const activeToken = token || "HAWKINS_CHIEF_1983";
+    const activeToken = token || "";
     await deleteAdminChapter(id, activeToken);
 
     sfx("click");
@@ -1001,7 +1026,7 @@ export default function AdminPage() {
     if (!confirm("Reset all 7 chapters and question answers back to default canon Stranger Things questions?")) return;
 
     setLoading(true);
-    const activeToken = token || "HAWKINS_CHIEF_1983";
+    const activeToken = token || "";
     const res = await resetAdminChapters(activeToken);
     setLoading(false);
 
@@ -1028,164 +1053,56 @@ export default function AdminPage() {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 1. AUTHENTICATION GATE (If not logged in)
-  // ─────────────────────────────────────────────────────────────────────────────
+  // 1. AUTHENTICATED SESSION GUARD
+  // The shared entry page renders this dashboard only for a verified ADMIN
+  // session. There is no public /admin route or passkey gate anymore.
   if (!token) {
     return (
       <div
         style={{
-          height: "100dvh",
-          maxHeight: "100dvh",
-          width: "100%",
-          overflow: "hidden",
-          backgroundColor: "#07070a",
+          minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           padding: "24px",
-          boxSizing: "border-box",
-          color: "#e0e0e0",
+          backgroundColor: "#07070a",
+          color: "#d0d0d8",
           fontFamily: "var(--font-mono), monospace",
+          textAlign: "center",
         }}
       >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "460px",
-            backgroundColor: "#0d0d12",
-            border: "1px solid rgba(255, 45, 58, 0.4)",
-            borderRadius: "6px",
-            padding: "32px 28px",
-            boxShadow: "0 16px 40px rgba(0, 0, 0, 0.8)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff2d3a" }} />
-            <span
-              style={{
-                fontSize: 12,
-                letterSpacing: ".2em",
-                color: "#ff2d3a",
-                fontWeight: "bold",
-                textTransform: "uppercase",
-              }}
-            >
-              RESTRICTED COMMAND INTERFACE
-            </span>
+        <div style={{ maxWidth: 460 }}>
+          <div style={{ color: "#ff2d3a", letterSpacing: ".2em", fontSize: 12, marginBottom: 12 }}>
+            ADMIN SESSION REQUIRED
           </div>
-
-          <h1
-            style={{
-              fontSize: 22,
-              fontWeight: 700,
-              color: "#ffffff",
-              margin: "0 0 8px 0",
-              letterSpacing: ".04em",
-            }}
-          >
-            Hawkins Security Admin
-          </h1>
-
-          <p
-            style={{
-              fontSize: 13,
-              color: "#888899",
-              lineHeight: 1.5,
-              margin: "0 0 24px 0",
-            }}
-          >
-            Connected to TiDB Serverless & Hawkins Security Mainframe. Enter master passkey to access tournament controls.
+          <p style={{ fontSize: 13, lineHeight: 1.6, color: "#888899" }}>
+            Return to the shared entry page and sign in with an Admin identity and clearance password.
           </p>
-
-          <form onSubmit={handleLogin}>
-            <div style={{ marginBottom: 18 }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 11,
-                  letterSpacing: ".15em",
-                  color: "#aaaaaa",
-                  marginBottom: 8,
-                }}
-              >
-                SECURITY CLEARANCE PASSKEY
-              </label>
-              <input
-                type="password"
-                placeholder="Enter command passkey..."
-                value={passkeyInput}
-                onChange={(e) => setPasskeyInput(e.target.value)}
-                autoFocus
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  fontSize: 14,
-                  backgroundColor: "#050508",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  borderRadius: "4px",
-                  color: "#ffffff",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  fontFamily: "var(--font-mono), monospace",
-                }}
-              />
-            </div>
-
-            {authError && (
-              <div
-                style={{
-                  padding: "10px 12px",
-                  backgroundColor: "rgba(255, 45, 58, 0.12)",
-                  border: "1px solid #ff2d3a",
-                  borderRadius: "4px",
-                  color: "#ff2d3a",
-                  fontSize: 12,
-                  marginBottom: 18,
-                }}
-              >
-                ⚠ {authError}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isAuthenticating}
-              style={{
-                width: "100%",
-                padding: "12px",
-                fontSize: 13,
-                fontWeight: "bold",
-                letterSpacing: ".15em",
-                backgroundColor: "#ff2d3a",
-                border: "none",
-                borderRadius: "4px",
-                color: "#000000",
-                cursor: "pointer",
-                textTransform: "uppercase",
-              }}
-            >
-              {isAuthenticating ? "VERIFYING CLEARANCE..." : "AUTHENTICATE"}
-            </button>
-
-            <div
-              style={{
-                marginTop: 16,
-                padding: "8px 12px",
-                borderRadius: 4,
-                backgroundColor: "rgba(255, 255, 255, 0.02)",
-                border: "1px solid rgba(255, 255, 255, 0.06)",
-                textAlign: "center",
-                fontSize: 11,
-                color: "#666677",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <span>Security Policy: Enforced</span>
-              <span style={{ color: "#ff2d3a" }}>● Re-auth required on every reload</span>
-            </div>
-          </form>
+          <button
+            type="button"
+            onClick={async () => {
+              try { await fetch("/api/auth/logout", { method: "POST" }); } catch {}
+              clearSession();
+              if (typeof document !== "undefined") {
+                document.cookie = "hawkins_session_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                document.cookie = "hawkins_admin_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+              }
+              window.location.href = "/";
+            }}
+            style={{
+              marginTop: 16,
+              padding: "10px 20px",
+              backgroundColor: "#ff2d3a",
+              border: "none",
+              borderRadius: 4,
+              color: "#000000",
+              fontWeight: 700,
+              letterSpacing: ".12em",
+              cursor: "pointer",
+            }}
+          >
+            RETURN TO ENTRY
+          </button>
         </div>
       </div>
     );
@@ -1696,7 +1613,10 @@ export default function AdminPage() {
                   onClick={async () => {
                     if (!confirm("WARNING: Are you sure you want to reset all squads' scores, solved stages, and submissions to 0 PTS?")) return;
                     try {
-                      const res = await fetch("/api/admin/teams/reset-all-scores", { method: "POST" });
+                      const res = await fetch("/api/admin/teams/reset-all-scores", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token || ""}` },
+                      });
                       const d = await res.json();
                       if (d.success) {
                         sfx("ok");
@@ -1932,7 +1852,10 @@ export default function AdminPage() {
                   type="button"
                   onClick={async () => {
                     if (confirm("⚠️ FORCE RESET ALL ACTIVE SESSIONS?\n\nThis will invalidate all current participant login sessions and immediately unlock all squads across the event.\n\nAre you sure you want to proceed?")) {
-                      const res = await fetch("/api/admin/teams/reset-all-sessions", { method: "POST" });
+                      const res = await fetch("/api/admin/teams/reset-all-sessions", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token || ""}` },
+                      });
                       const d = await res.json();
                       if (d.success) {
                         alert("✅ All active squad sessions have been purged. All accounts are now available.");
@@ -2249,7 +2172,10 @@ export default function AdminPage() {
                                   // 2. Authoritative backend termination
                                   await fetch("/api/admin/teams/force-logout", {
                                     method: "POST",
-                                    headers: { "Content-Type": "application/json" },
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                      Authorization: `Bearer ${token || ""}`,
+                                    },
                                     body: JSON.stringify({ teamId: item.teamId }),
                                   });
                                   // 3. Immediately reflect in local state without delay
@@ -3624,6 +3550,30 @@ export default function AdminPage() {
                     fontFamily: "var(--font-mono), monospace",
                   }}
                 />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 6 }}>
+                  SQUAD ROLE
+                </label>
+                <select
+                  value={newTeamRole}
+                  onChange={(e) => setNewTeamRole(e.target.value === "VECNA" ? "VECNA" : "PLAYER")}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    fontSize: 14,
+                    backgroundColor: "#050508",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    borderRadius: 4,
+                    color: "#ffffff",
+                    boxSizing: "border-box",
+                    fontFamily: "var(--font-mono), monospace",
+                  }}
+                >
+                  <option value="PLAYER">HAWKINS PLAYER</option>
+                  <option value="VECNA">VECNA</option>
+                </select>
               </div>
 
               <div style={{ marginBottom: 24 }}>

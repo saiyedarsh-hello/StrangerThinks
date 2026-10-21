@@ -35,7 +35,7 @@ export default function LoginScreen() {
 
         if (authResult.session.role === "VECNA") {
           saveSession({ ...authResult.session, token: authResult.token });
-          router.push("/vecna");
+          router.push("/");
         } else {
           // Player credentials -> go to player game (cinematic intro, then map)
           loginPlayer({

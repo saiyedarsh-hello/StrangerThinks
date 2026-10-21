@@ -78,6 +78,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         authenticated: true,
+        role: session.role || "PLAYER",
+        session: {
+          role: session.role || "PLAYER",
+          teamId: session.teamId || team.id || "",
+          teamName: session.teamName || team.teamName || "",
+          leaderName: session.leaderName || team.leaderName || "",
+          ...(session.adminId ? { adminId: session.adminId } : {}),
+        },
         team: {
           id: team.id || session.teamId || "T01",
           username: team.teamName || session.teamName || "",

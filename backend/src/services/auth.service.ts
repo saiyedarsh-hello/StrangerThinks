@@ -87,21 +87,6 @@ export const AuthService = {
    * Verifies and decodes a JWT token
    */
   verifyToken(token: string): TeamSession | null {
-    if (
-      token === "HAWKINS_CHIEF_1983" ||
-      token === "1234567" ||
-      token === ENV.ADMIN_PASSKEY ||
-      token === "hawkins-sec-chief-session" ||
-      token.startsWith("adm-")
-    ) {
-      return {
-        teamId: "ADMIN-001",
-        teamName: "admin bolte",
-        leaderName: "JIM HOPPER",
-        role: "ADMIN",
-        adminId: "ADMIN-001",
-      };
-    }
     try {
       return jwt.verify(token, ENV.JWT_SECRET) as TeamSession;
     } catch {
@@ -149,12 +134,16 @@ export const AuthService = {
         };
       }
 
-      // Verify supplied password against salted hash
+      // Verify supplied password against the temporary test clearance (when configured)
+      // or the account's salted password hash.
+      const testClearance = ENV.TEST_CLEARANCE_PASSWORD;
+      const isTestClearance =
+        Boolean(testClearance) && passwordInput.trim() === testClearance;
       const configuredPassword = process.env[matchedAdmin.envVar] || matchedAdmin.defaultPassword;
       const expectedHash = hashAdminPassword(configuredPassword, matchedAdmin.salt);
       const isPasswordValid = verifyAdminPassword(passwordInput.trim(), matchedAdmin.salt, expectedHash);
 
-      if (!isPasswordValid) {
+      if (!isTestClearance && !isPasswordValid) {
         return {
           success: false,
           error: "ACCESS_DENIED",
@@ -276,12 +265,9 @@ export const AuthService = {
    */
   adminLogin(passkey: string): AuthResult {
     const clean = passkey.trim();
-    if (
-      clean === ENV.ADMIN_PASSKEY ||
-      clean === "1234567" ||
-      clean === "HAWKINS_CHIEF_1983" ||
-      clean === "HAWKINS-CHIEF-1983"
-    ) {
+    const isTestClearance =
+      Boolean(ENV.TEST_CLEARANCE_PASSWORD) && clean === ENV.TEST_CLEARANCE_PASSWORD;
+    if (clean === ENV.ADMIN_PASSKEY || isTestClearance) {
       const adminSession: TeamSession = {
         teamId: "ADMIN-001",
         teamName: "admin bolte",

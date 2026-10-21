@@ -156,7 +156,7 @@ export const AdminController = {
    * POST /api/admin/teams — Dynamically registers a new participant squad
    */
   createTeam(req: Request, res: Response) {
-    const { teamName, leaderName, teamId, initialScore } = req.body;
+    const { teamName, leaderName, teamId, initialScore, role } = req.body;
 
     if (!teamName || !leaderName) {
       return res.status(400).json({
@@ -166,7 +166,17 @@ export const AdminController = {
       });
     }
 
-    const team = db.createTeam(teamName, leaderName, teamId, Number(initialScore) || 0);
+    const existing = db.getTeamByCredentials(teamName, leaderName);
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        error: "TEAM_ALREADY_EXISTS",
+        message: `A squad with these credentials already exists (${existing.id}).`,
+      });
+    }
+
+    const safeRole = role === "VECNA" ? "VECNA" : "PLAYER";
+    const team = db.createTeam(teamName, leaderName, teamId, Number(initialScore) || 0, safeRole);
     socketService.broadcastLeaderboard();
 
     return res.json({
@@ -636,15 +646,15 @@ export const AdminController = {
 
       try {
         const [sRows]: any = await pool.query(
-          `SELECT chapter_id, attempted_value, is_correct, submitted_at
-           FROM submission_logs
+          `SELECT round_id, submitted_answer, is_correct, submitted_at
+           FROM question_submissions
            WHERE team_id = ?
            ORDER BY submitted_at ASC`,
           [teamId]
         );
         submissionRows = Array.isArray(sRows) ? sRows : [];
       } catch (e) {
-        console.warn("[ADMIN PERFORMANCE] Failed to query submission_logs:", e);
+        console.warn("[ADMIN PERFORMANCE] Failed to query question_submissions:", e);
       }
     }
 
@@ -681,7 +691,7 @@ export const AdminController = {
         : "Locked";
 
       const stageLedger = ledgerRows.filter((r) => Number(r.round_id) === stageNum);
-      const stageSubs = submissionRows.filter((r) => Number(r.chapter_id) === stageNum);
+      const stageSubs = submissionRows.filter((r) => Number(r.round_id) === stageNum);
 
       let pointsEarned = 0;
       let pointsLost = 0;
@@ -749,7 +759,7 @@ export const AdminController = {
           stageEvents.push({
             timestamp: s.submitted_at ? new Date(s.submitted_at).toISOString() : "Unavailable",
             type: "Incorrect Submission",
-            detail: `Attempt: ${String(s.attempted_value || "").slice(0, 30)}`,
+            detail: `Attempt: ${String(s.submitted_answer || "").slice(0, 30)}`,
             pointDelta: 0,
           });
         }

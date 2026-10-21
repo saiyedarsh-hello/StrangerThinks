@@ -66,7 +66,7 @@ export default function TitleScreen() {
           </button>
           <div style={{ display: "flex", gap: 14 }}>
             <Link href="/leaderboard"><button className="btn sm ghost" id="leaderboard-btn">Leaderboard</button></Link>
-            <Link href="/vecna"><button className="btn sm ghost red" id="organizer-btn">Organizer</button></Link>
+            <Link href="/"><button className="btn sm ghost red" id="organizer-btn">Organizer</button></Link>
           </div>
         </motion.div>
       </div>

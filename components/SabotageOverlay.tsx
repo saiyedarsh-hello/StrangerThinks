@@ -141,10 +141,9 @@ export default function SabotageOverlay() {
   const q = sabotage ? QS[sabotage.id % QS.length] : null;
   const overlay = sabotage && !hide && sabotage.kind !== "WATCH";
 
-  const isHawkinsOnly =
-    typeof window !== "undefined" &&
-    !window.location.pathname.startsWith("/vecna") &&
-    !window.location.pathname.startsWith("/admin");
+  // This overlay is only mounted for authenticated PLAYER sessions at the
+  // shared entry URL, so it never renders over the Admin or Vecna dashboards.
+  const isHawkinsOnly = true;
 
   // Dedicated Top-Left Vecna Telepathic Message Popup (Requirement 7)
   if (sabotage && sabotage.kind === "MESSAGE" && !hide && isHawkinsOnly) {

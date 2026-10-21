@@ -57,6 +57,9 @@ export const AuthController = {
     if (teamId) {
       await AuthService.logout(teamId);
     }
+    if (req.user?.role === "VECNA" || (teamId && teamId.startsWith("VECNA"))) {
+      await SessionService.deleteVecnaSession(1);
+    }
     return res.json({ success: true, message: "Logged out successfully." });
   },
 

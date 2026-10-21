@@ -45,7 +45,7 @@ async function runTests() {
     const adminLoginRes = await fetch(`${API_BASE}/admin/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ passkey: "HAWKINS_CHIEF_1983" }),
+      body: JSON.stringify({ passkey: process.env.ADMIN_PASSKEY || "1234567" }),
     });
     let adminToken = "";
     if (adminLoginRes.ok) {
@@ -57,7 +57,7 @@ async function runTests() {
     }
     assert(Boolean(adminToken), "Admin authentication returns valid JWT token");
 
-    // Clear any stale session for T01 via admin reset before login test
+    // Clear any stale sessions via admin reset before login test
     if (adminToken) {
       await fetch(`${API_BASE}/admin/teams/reset-all-sessions`, {
         method: "POST",
@@ -65,11 +65,21 @@ async function runTests() {
       });
     }
 
-    // Player login (Null Pointers)
+    // Re-authenticate Vecna after session reset
+    const vecnaRelogin = await fetch(`${API_BASE}/vecna/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "vecna", password: "CREEL_HOUSE_001" }),
+    });
+    if (vecnaRelogin.ok) {
+      vecnaToken = (await vecnaRelogin.json()).token;
+    }
+
+    // Player login (test team 1)
     const playerLoginRes = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName: "Null Pointers", leaderName: "Aarav Sharma" }),
+      body: JSON.stringify({ teamName: "test team 1", leaderName: "apple" }),
     });
     let playerToken = "";
     const playerData = await playerLoginRes.json();

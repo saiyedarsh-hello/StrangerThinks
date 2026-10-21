@@ -11,21 +11,31 @@ import Hud, { Toast } from "@/components/Hud";
 import SabotageOverlay from "@/components/SabotageOverlay";
 import dynamic from "next/dynamic";
 
-const AdminPage = dynamic(() => import("@/app/admin/page"), { ssr: false });
-const VecnaPage = dynamic(() => import("@/app/vecna/page"), { ssr: false });
+const AdminPage = dynamic(() => import("@/components/admin/AdminDashboard"), { ssr: false });
+const VecnaPage = dynamic(() => import("@/components/vecna/VecnaDashboard"), { ssr: false });
 
 export default function Home() {
   const router = useRouter();
-  const { s, hydrated, cutscene, introSeen, setIntroSeen, session } = useGame();
+  const { s, hydrated, sessionVerified, cutscene, introSeen, setIntroSeen, session, logout } = useGame();
 
-  if (!hydrated) {
-    return <LandingPage />;
-  }
-
-  // Allow direct viewing of landing page via query param (e.g. ?landing=1)
+  // Allow direct viewing of landing page via query param (e.g. ?landing=1 or ?logout=1)
   const forceLanding =
     typeof window !== "undefined" &&
-    (window.location.search.includes("landing=1") || window.location.search.includes("force=1"));
+    (window.location.search.includes("landing=1") ||
+      window.location.search.includes("force=1") ||
+      window.location.search.includes("logout=1"));
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("logout=1")) {
+      logout();
+    }
+  }, [logout]);
+
+  // Wait for the server to confirm the session role before rendering any
+  // privileged dashboard. A locally edited session cannot promote a role.
+  if (!hydrated || !sessionVerified) {
+    return <LandingPage />;
+  }
 
   if (forceLanding) {
     return <LandingPage />;

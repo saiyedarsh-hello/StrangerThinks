@@ -31,11 +31,11 @@ async function runTests() {
     const res = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName: "Null Pointers", leaderName: "Aarav Sharma" }),
+      body: JSON.stringify({ teamName: "test team 1", leaderName: "apple" }),
     });
     const data = await res.json();
     assert(data.success === true && data.session?.role === "PLAYER", "Hawkins login assigns PLAYER role", JSON.stringify(data));
-    assert(data.session?.teamName === "Null Pointers", "Hawkins session bound to exact team");
+    assert(data.session?.teamName === "test team 1", "Hawkins session bound to exact team");
   } catch (e) {
     assert(false, "Hawkins login assigns PLAYER role", e.message);
   }
@@ -58,7 +58,7 @@ async function runTests() {
     const res = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName: "Null Pointers", leaderName: "Aarav Sharma", role: "ADMIN" }),
+      body: JSON.stringify({ teamName: "test team 1", leaderName: "apple", role: "ADMIN" }),
     });
     const data = await res.json();
     assert(data.session?.role === "PLAYER", "Server rejects client-supplied role tampering");
@@ -148,9 +148,9 @@ async function runTests() {
 
   try {
     const fs = await import("fs");
-    const adminPageContent = fs.readFileSync("app/admin/page.tsx", "utf8");
+    const adminPageContent = fs.readFileSync("components/admin/AdminDashboard.tsx", "utf8");
     const obsoleteFound = adminPageContent.includes("Global event directives broadcast live across all competitor terminals via TiDB");
-    assert(!obsoleteFound, "Obsolete string removed from app/admin/page.tsx");
+    assert(!obsoleteFound, "Obsolete string removed from components/admin/AdminDashboard.tsx");
   } catch (e) {
     assert(false, "Obsolete string check", e.message);
   }
@@ -251,7 +251,7 @@ MissingLeader,,0,PLAYER
     assert(perfData.success === true && perfData.performance !== undefined, "Performance endpoint returns 200 with data", JSON.stringify(perfData));
 
     const overview = perfData.performance?.teamOverview;
-    assert(overview?.teamId === "T01" && overview?.teamName === "Null Pointers", "Team overview contains correct team identification");
+    assert(overview?.teamId === "T01" && overview?.teamName === "test team 1", "Team overview contains correct team identification");
     assert(typeof overview?.overallRank === "number", "Team overview includes overall rank");
     assert(typeof overview?.currentTotalPoints === "number", "Team overview includes total points");
     assert(typeof overview?.currentStage === "string", "Team overview includes current stage name");

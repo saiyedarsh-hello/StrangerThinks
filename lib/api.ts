@@ -410,9 +410,12 @@ export async function resetAdminChapters(token: string): Promise<{ success: bool
   }
 }
 
-export async function fetchAdminLeaderboard(_token?: string): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
+export async function fetchAdminLeaderboard(token?: string): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
   try {
-    const res = await fetch(`/api/admin/teams?_t=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(`/api/admin/teams?_t=${Date.now()}`, {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     const data = await res.json();
     if (data.success && Array.isArray(data.teams)) {
       const items: AdminLeaderboardItem[] = data.teams.map((t: any, idx: number) => ({
@@ -499,7 +502,8 @@ export async function createAdminTeam(
   teamName: string,
   leaderName: string,
   initialScore = 0,
-  token?: string
+  token?: string,
+  role: "PLAYER" | "VECNA" = "PLAYER"
 ): Promise<{ success: boolean; team?: any; error?: string; message?: string }> {
   try {
     const headers: Record<string, string> = {
@@ -512,7 +516,7 @@ export async function createAdminTeam(
     const res = await fetch(`${API_BASE}/admin/teams`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ teamName, leaderName, initialScore }),
+      body: JSON.stringify({ teamName, leaderName, initialScore, role }),
     });
     return await res.json();
   } catch (err) {
@@ -523,14 +527,14 @@ export async function createAdminTeam(
 export async function updateAdminTeamScore(
   teamId: string,
   score: number,
-  token: string = "HAWKINS_CHIEF_1983"
+  token: string = ""
 ): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
   try {
     const res = await fetch(`${API_BASE}/admin/leaderboard/score`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ teamId, score: Number(score) }),
     });
