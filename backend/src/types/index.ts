@@ -54,6 +54,7 @@ export interface TeamRecord {
   lastScoreAchievedAt?: string | null;
   location: string;
   stage: string;
+  currentStage?: number;
   storyProgress: number; // 0-100
   completedTasks: string[];
   solvedChapters: number[];

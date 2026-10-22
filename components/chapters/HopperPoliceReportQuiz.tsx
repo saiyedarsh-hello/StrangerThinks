@@ -65,10 +65,19 @@ export default function HopperPoliceReportQuiz({
   const { s, unlockHint, isHintUnlocked, score, isPaused, say } = useGame();
   const teamId = s?.team?.id || "anon";
 
+  const currentTeamId = s?.team?.id && s.team.id !== "anon" ? s.team.id : null;
+  const currentEventId = (s?.team as any)?.eventId || 1;
+
+  const getStorageKey = (kind: "answers" | "states") => {
+    if (!currentTeamId) return null;
+    return `hawkins_quiz_${kind}_ev${currentEventId}_team_${currentTeamId}_ch${chapterNumber}`;
+  };
+
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && currentTeamId) {
       try {
-        const stored = localStorage.getItem(`hawkins_quiz_answers_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+        const key = `hawkins_quiz_answers_ev${currentEventId}_team_${currentTeamId}_ch${chapterNumber}`;
+        const stored = localStorage.getItem(key);
         if (stored) return JSON.parse(stored);
       } catch {}
     }
@@ -82,30 +91,54 @@ export default function HopperPoliceReportQuiz({
   const [questionStates, setQuestionStates] = useState<
     Record<number, { attempts: number; status: "unanswered" | "wrong_first_try" | "solved" | "failed"; earnedPoints: number }>
   >(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && currentTeamId) {
       try {
-        const stored = localStorage.getItem(`hawkins_quiz_states_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+        const key = `hawkins_quiz_states_ev${currentEventId}_team_${currentTeamId}_ch${chapterNumber}`;
+        const stored = localStorage.getItem(key);
         if (stored) return JSON.parse(stored);
       } catch {}
     }
     return {};
   });
 
+  // Re-synchronize or clean state whenever team, event, or chapter changes (prevents answer leakage across teams)
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && currentTeamId) {
       try {
-        localStorage.setItem(`hawkins_quiz_answers_ch${chapterNumber}_${s?.team?.id || "anon"}`, JSON.stringify(selectedAnswers));
-      } catch {}
+        const ansKey = `hawkins_quiz_answers_ev${currentEventId}_team_${currentTeamId}_ch${chapterNumber}`;
+        const storedAns = localStorage.getItem(ansKey);
+        setSelectedAnswers(storedAns ? JSON.parse(storedAns) : (legacySelectedId ? { 0: legacySelectedId } : {}));
+
+        const statesKey = `hawkins_quiz_states_ev${currentEventId}_team_${currentTeamId}_ch${chapterNumber}`;
+        const storedStates = localStorage.getItem(statesKey);
+        setQuestionStates(storedStates ? JSON.parse(storedStates) : {});
+      } catch {
+        setSelectedAnswers({});
+        setQuestionStates({});
+      }
+    } else {
+      setSelectedAnswers({});
+      setQuestionStates({});
     }
-  }, [selectedAnswers, chapterNumber, s?.team?.id]);
+  }, [currentTeamId, currentEventId, chapterNumber, legacySelectedId]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && currentTeamId) {
       try {
-        localStorage.setItem(`hawkins_quiz_states_ch${chapterNumber}_${s?.team?.id || "anon"}`, JSON.stringify(questionStates));
+        const key = `hawkins_quiz_answers_ev${currentEventId}_team_${currentTeamId}_ch${chapterNumber}`;
+        localStorage.setItem(key, JSON.stringify(selectedAnswers));
       } catch {}
     }
-  }, [questionStates, chapterNumber, s?.team?.id]);
+  }, [selectedAnswers, chapterNumber, currentTeamId, currentEventId]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && currentTeamId) {
+      try {
+        const key = `hawkins_quiz_states_ev${currentEventId}_team_${currentTeamId}_ch${chapterNumber}`;
+        localStorage.setItem(key, JSON.stringify(questionStates));
+      } catch {}
+    }
+  }, [questionStates, chapterNumber, currentTeamId, currentEventId]);
   const [unlockingHintKey, setUnlockingHintKey] = useState<string | null>(null);
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -937,7 +970,7 @@ export default function HopperPoliceReportQuiz({
                         : "#544638",
                   }}
                 >
-                  {currentQState.status === "solved" && "✔ EVIDENCE VERIFIED ACCURATE · [+5 PTS AWARDED]"}
+                  {currentQState.status === "solved" && `✔ EVIDENCE VERIFIED ACCURATE · [+${currentQState.earnedPoints || 10} PTS AWARDED]`}
                   {currentQState.status === "failed" && "✕ TESTIMONY REJECTED · QUESTION LOCKED · [0 PTS]"}
                   {currentQState.status === "unanswered" && "ITEM PENDING CONFIRMATION"}
                 </div>
@@ -945,7 +978,7 @@ export default function HopperPoliceReportQuiz({
                   {!isCurrentDone
                     ? `Item pending: Question locked once verified`
                     : currentQState.status === "solved"
-                    ? "Question completed: +5 PTS awarded. Next question unlocked."
+                    ? `Question completed: +${currentQState.earnedPoints || 10} PTS awarded. Next question unlocked.`
                     : "Question completed: 0 PTS awarded. Next question unlocked."}
                 </div>
               </div>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { sfx } from "@/lib/audio";
 import { MAP_LOCATIONS } from "./VecnaTacticalMap";
 
@@ -50,15 +50,6 @@ export interface TargetSquadItem {
   status?: string;
 }
 
-const DEFAULT_FALLBACK_TEAMS: TargetSquadItem[] = [
-  { id: "T01", name: "Null Pointers" },
-  { id: "T02", name: "Stack Smashers" },
-  { id: "T03", name: "Rift Runners" },
-  { id: "T04", name: "Byte Byters" },
-  { id: "T05", name: "Signal Seekers" },
-  { id: "T06", name: "Hellfire Club" },
-];
-
 interface VecnaTriggerPanelProps {
   selectedLocation: string;
   onSelectLocation: (locId: string) => void;
@@ -76,12 +67,34 @@ export default function VecnaTriggerPanel({
   currentVecnaScore = 50,
   availableSquads,
 }: VecnaTriggerPanelProps) {
-  const squads =
-    availableSquads && availableSquads.length > 0 ? availableSquads : DEFAULT_FALLBACK_TEAMS;
+  // Filter strictly for online Hawkins squads, presented in randomized order to prevent ranking leaks
+  const squads = useMemo(() => {
+    const list = (availableSquads || []).filter(
+      (s) => s && s.name && s.status !== "Offline"
+    );
+    const shuffled = [...list];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [availableSquads]);
 
-  const [selectedTeams, setSelectedTeams] = useState<string[]>(() => [squads[0]?.name || "Null Pointers"]);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [selectedPower, setSelectedPower] = useState<TriggerActionKind>("LOCK");
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // Sync selected teams when available squads change
+  useEffect(() => {
+    if (squads.length > 0) {
+      setSelectedTeams((prev) => {
+        const stillValid = prev.filter((name) => squads.some((s) => s.name === name));
+        return stillValid.length > 0 ? stillValid : [squads[0].name];
+      });
+    } else {
+      setSelectedTeams([]);
+    }
+  }, [squads]);
 
   const toggleTeam = (tmName: string) => {
     sfx("click");
@@ -202,52 +215,59 @@ export default function VecnaTriggerPanel({
           </label>
           <button
             type="button"
+            disabled={squads.length === 0}
             onClick={selectAllTeams}
             style={{
-              background: selectedTeams.length === squads.length ? "rgba(255, 45, 58, 0.3)" : "rgba(0, 0, 0, 0.6)",
+              background: squads.length > 0 && selectedTeams.length === squads.length ? "rgba(255, 45, 58, 0.3)" : "rgba(0, 0, 0, 0.6)",
               border: "1px solid #ff2d3a",
-              color: "#ffffff",
+              color: squads.length === 0 ? "rgba(255,255,255,0.3)" : "#ffffff",
               padding: "2px 8px",
               borderRadius: "2px",
               fontFamily: "var(--font-mono)",
               fontSize: "10px",
-              cursor: "pointer",
+              cursor: squads.length === 0 ? "not-allowed" : "pointer",
               letterSpacing: "0.08em",
             }}
           >
-            {selectedTeams.length === squads.length ? "DESELECT ALL" : "SELECT ALL TEAMS"}
+            {squads.length > 0 && selectedTeams.length === squads.length ? "DESELECT ALL" : "SELECT ALL TEAMS"}
           </button>
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", maxHeight: "110px", overflowY: "auto" }}>
-          {squads.map((sq) => {
-            const isChecked = selectedTeams.includes(sq.name);
-            return (
-              <button
-                key={sq.id}
-                type="button"
-                onClick={() => toggleTeam(sq.name)}
-                style={{
-                  padding: "5px 10px",
-                  background: isChecked ? "rgba(255, 45, 58, 0.3)" : "rgba(0, 0, 0, 0.6)",
-                  border: isChecked ? "1.5px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.2)",
-                  color: isChecked ? "#ffffff" : "rgba(255, 255, 255, 0.6)",
-                  borderRadius: "3px",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "11px",
-                  fontWeight: isChecked ? "bold" : "normal",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <span>{isChecked ? "☑" : "☐"}</span>
-                <span>{sq.name}</span>
-                {sq.leader && <span style={{ fontSize: "9px", opacity: 0.6 }}>({sq.leader})</span>}
-              </button>
-            );
-          })}
+          {squads.length === 0 ? (
+            <div style={{ color: "rgba(255, 180, 180, 0.6)", fontSize: "11px", fontStyle: "italic", padding: "8px 0" }}>
+              [NO HAWKINS SQUADS CURRENTLY ONLINE — TARGETING RESTRICTED]
+            </div>
+          ) : (
+            squads.map((sq) => {
+              const isChecked = selectedTeams.includes(sq.name);
+              return (
+                <button
+                  key={sq.id || sq.name}
+                  type="button"
+                  onClick={() => toggleTeam(sq.name)}
+                  style={{
+                    padding: "5px 10px",
+                    background: isChecked ? "rgba(255, 45, 58, 0.3)" : "rgba(0, 0, 0, 0.6)",
+                    border: isChecked ? "1.5px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.2)",
+                    color: isChecked ? "#ffffff" : "rgba(255, 255, 255, 0.6)",
+                    borderRadius: "3px",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "11px",
+                    fontWeight: isChecked ? "bold" : "normal",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>{isChecked ? "☑" : "☐"}</span>
+                  <span>{sq.name}</span>
+                  {sq.leader && <span style={{ fontSize: "9px", opacity: 0.6 }}>({sq.leader})</span>}
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
 

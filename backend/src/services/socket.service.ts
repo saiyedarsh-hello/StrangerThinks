@@ -13,6 +13,10 @@ class SocketService {
   private io: SocketIOServer | null = null;
   private onlineTeams = new Set<string>();
   private teamSockets = new Map<string, Set<string>>();
+  // Grace window: keep team online for 45 s after the last heartbeat even if
+  // the socket momentarily drops during tab switching / transport upgrade.
+  private teamLastSeen = new Map<string, number>();
+  private readonly GRACE_PERIOD_MS = 45_000;
 
   private isCanonicalMatch(a: string, b: string): boolean {
     const cleanA = (a || "").trim().toUpperCase();
@@ -56,6 +60,16 @@ class SocketService {
     for (const id of this.onlineTeams) {
       if (this.isCanonicalMatch(id, teamId)) return true;
     }
+
+    // Grace window: if a heartbeat was received within GRACE_PERIOD_MS, consider
+    // the team still online even if the socket briefly disconnected (tab switch,
+    // transport upgrade, incognito throttling, etc.)
+    const lastSeen = this.teamLastSeen.get(teamId);
+    if (lastSeen && Date.now() - lastSeen < this.GRACE_PERIOD_MS) return true;
+    for (const [id, ts] of this.teamLastSeen.entries()) {
+      if (this.isCanonicalMatch(id, teamId) && Date.now() - ts < this.GRACE_PERIOD_MS) return true;
+    }
+
     return false;
   }
 
@@ -66,10 +80,13 @@ class SocketService {
   public setTeamOffline(teamId: string) {
     this.onlineTeams.delete(teamId);
     this.teamSockets.delete(teamId);
+    // Clear grace window so admin force-logout immediately shows OFFLINE
+    this.teamLastSeen.delete(teamId);
     for (const key of Array.from(this.teamSockets.keys())) {
       if (this.isCanonicalMatch(key, teamId)) {
         this.teamSockets.delete(key);
         this.onlineTeams.delete(key);
+        this.teamLastSeen.delete(key);
       }
     }
     if (this.io) {
@@ -108,6 +125,7 @@ class SocketService {
   public clearAllOnlineTeams() {
     this.onlineTeams.clear();
     this.teamSockets.clear();
+    this.teamLastSeen.clear(); // Also wipe grace window on full reset
     if (this.io) {
       const revocationPayload = {
         teamId: "all",
@@ -157,6 +175,8 @@ class SocketService {
 
       const wasOnline = this.onlineTeams.has(sess.teamId);
       this.onlineTeams.add(sess.teamId);
+      // Record last-seen so grace window covers brief reconnects
+      this.teamLastSeen.set(sess.teamId, Date.now());
 
       if (sess.role === "VECNA") {
         socket.join("role:vecna");
@@ -171,6 +191,26 @@ class SocketService {
         }
       } else if (sess.role === "PLAYER") {
         socket.join(`team:${sess.teamId}`);
+        const now = Date.now();
+        const activeSabs = db.getActiveSabotages().filter(
+          (s) =>
+            (s.target === sess.teamId ||
+              (s as any).targetTeamId === sess.teamId ||
+              s.target === "all") &&
+            s.expiresAt > now
+        );
+        for (const s of activeSabs) {
+          const remainingSec = Math.max(1, Math.ceil((s.expiresAt - now) / 1000));
+          socket.emit("sabotage", {
+            type: "sabotage",
+            ...s,
+            duration: remainingSec,
+            durationSec: remainingSec,
+            until: s.expiresAt,
+            targetTeamId: sess.teamId,
+            ts: Date.now(),
+          });
+        }
       }
 
       if (sess.role !== "ADMIN") {
@@ -249,16 +289,23 @@ class SocketService {
 
       const wasOnline = this.onlineTeams.has(targetTeamId);
       this.onlineTeams.add(targetTeamId);
+      // Record heartbeat timestamp for the grace-window presence check
+      this.teamLastSeen.set(targetTeamId, Date.now());
       if (!wasOnline) {
         this.io?.to("admins").emit("presence:update", { teamId: targetTeamId, isOnline: true });
         this.io?.to("public:broadcast").emit("presence:update", { teamId: targetTeamId, isOnline: true });
       }
 
       // Update state in db
-      if (payload.teamId) {
-        db.updateTeam(payload.teamId, {
-          location: payload.location || "town",
+      if (targetTeamId) {
+        const stageNum = typeof (payload as any).stageId === "number"
+          ? (payload as any).stageId
+          : (typeof payload.stage === "number" ? payload.stage : undefined);
+        const loc = payload.location || "town";
+        db.updateTeam(targetTeamId, {
+          location: loc,
           stage: payload.stage || "hawkins",
+          currentStage: stageNum,
           storyProgress: payload.storyProgress || 5,
         });
       }
@@ -266,6 +313,12 @@ class SocketService {
       // Broadcast to Vecna operators
       this.io?.to("role:vecna").emit("presence", {
         ...payload,
+        ts: Date.now(),
+      });
+      this.io?.to("role:vecna").emit("vecna:tactical_update", {
+        teamId: targetTeamId,
+        location: payload.location,
+        stageId: (payload as any).stageId,
         ts: Date.now(),
       });
     });
@@ -472,6 +525,10 @@ class SocketService {
   public broadcastToAdmins(event: string, data: any) {
     this.io?.to("admins").emit(event, data);
     this.io?.to("role:admin").emit(event, data);
+  }
+
+  public broadcastToVecna(event: string, data: any) {
+    this.io?.to("role:vecna").emit(event, data);
   }
 
   /**

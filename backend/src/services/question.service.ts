@@ -313,13 +313,46 @@ export class QuestionService {
         );
         const currentScore = Number(scoreRows?.[0]?.total || 0);
 
+        // Re-query the round question/submission counts after the transaction so
+        // we can determine whether the round is fully completed outside the tx scope.
+        let qTotal = 10; // safe default
+        let subTotal = 0;
+        try {
+          const [qCnt] = await pool.query<any[]>(
+            "SELECT COUNT(*) AS total FROM questions WHERE round_id = ? AND is_active = 1",
+            [roundId]
+          );
+          const [sCnt] = await pool.query<any[]>(
+            "SELECT COUNT(*) AS total FROM question_submissions WHERE team_id = ? AND round_id = ?",
+            [teamId, roundId]
+          );
+          qTotal = Number(qCnt?.[0]?.total || 10);
+          subTotal = Number(sCnt?.[0]?.total || 0);
+        } catch { /* keep defaults */ }
+
         // Synchronize in-memory db.teams so db.getLeaderboard() matches TiDB
         const memTeam = db.getTeamById(teamId);
         if (memTeam) {
           const completedTasks = Array.from(new Set([...(memTeam.completedTasks || []), questionCode]));
+
+          // IMPORTANT: Only mark a chapter/stage as "solved" in memory once ALL
+          // questions for that round have been submitted.  Prematurely adding
+          // roundId here was causing admin "View Performance" to show Stage N as
+          // Completed and Stage N+1 as "In Progress" after answering just 1 question.
+          let solvedChapters = [...(memTeam.solvedChapters || [])];
+          const roundFullyCompleted = qTotal > 0 && subTotal >= qTotal;
+          if (roundFullyCompleted) {
+            solvedChapters = Array.from(new Set([...solvedChapters, roundId]));
+          }
+
           db.updateTeam(teamId, {
             totalScore: currentScore,
             completedTasks,
+            solvedChapters,
+            // Advance currentStage pointer only when the round is fully done
+            currentStage: roundFullyCompleted
+              ? Math.min(6, roundId + 1)
+              : (memTeam as any).currentStage || roundId,
             lastSolvedAt: new Date().toISOString(),
           });
         }
@@ -340,6 +373,12 @@ export class QuestionService {
         socketService.emitToTeam(teamId, "score:update", scorePayload);
         socketService.broadcastToAdmins("score:update", scorePayload);
         socketService.broadcast("score:update", scorePayload);
+        socketService.broadcastToVecna("score:update", scorePayload);
+        socketService.broadcastToVecna("vecna:tactical_update", {
+          teamId,
+          stageId: Math.min(6, roundId + 1),
+          ts: Date.now(),
+        });
 
         // Also emit team:score_updated and admin:submission_created for backwards compatibility
         socketService.emitToTeam(teamId, "team:score_updated", {

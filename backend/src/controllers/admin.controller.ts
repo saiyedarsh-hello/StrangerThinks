@@ -658,32 +658,204 @@ export const AdminController = {
       }
     }
 
-    const STAGES_CONFIG = [
-      { id: 1, key: "town", name: "HAWKINS TOWN" },
-      { id: 2, key: "police", name: "POLICE STATION" },
-      { id: 3, key: "byers", name: "BYERS HOUSE" },
-      { id: 4, key: "lab", name: "HAWKINS LAB" },
-      { id: 5, key: "radioTower", name: "RADIO TOWER" },
-      { id: 6, key: "gate", name: "THE GATE RIFT" },
-    ];
+    const isVecna = team.role === "VECNA";
+    const STAGES_CONFIG = isVecna
+      ? [
+          { id: 1, key: "trial-1", name: "TRIAL 1: THE CREEL HOUSE" },
+          { id: 2, key: "trial-2", name: "TRIAL 2: THE LABORATORY" },
+          { id: 3, key: "trial-3", name: "TRIAL 3: THE VOID" },
+          { id: 4, key: "trial-4", name: "TRIAL 4: THE UPSIDE DOWN" },
+          { id: 5, key: "trial-5", name: "TRIAL 5: MIND LAIR" },
+          { id: 6, key: "trial-6", name: "TRIAL 6: THE FINAL GATEWAY" },
+        ]
+      : [
+          { id: 1, key: "town", name: "HAWKINS TOWN" },
+          { id: 2, key: "police", name: "POLICE STATION" },
+          { id: 3, key: "byers", name: "BYERS HOUSE" },
+          { id: 4, key: "lab", name: "HAWKINS LAB" },
+          { id: 5, key: "radioTower", name: "RADIO TOWER" },
+          { id: 6, key: "gate", name: "THE GATE RIFT" },
+        ];
 
     const solvedStages = new Set<number>();
-    (team.solvedChapters || []).forEach((c) => {
-      const num = Number(c);
-      if (!isNaN(num) && num >= 1 && num <= 6) solvedStages.add(num);
-    });
+    if (isVecna) {
+      for (let tId = 1; tId <= 6; tId++) {
+        const prog = db.getVecnaProgress(teamId, tId);
+        const solvedCount = Object.values(prog).filter((v) => v.status === "solved").length;
+        if (solvedCount >= 10 || Object.keys(prog).length >= 10) {
+          solvedStages.add(tId);
+        }
+      }
+    } else {
+      // For Hawkins: derive stage completion from ACTUAL TiDB submission counts (10 questions per stage).
+      // DO NOT trust solvedChapters in memory — it was prematurely set to N even after 1 submission,
+      // causing admin "View Performance" to falsely show Stage N as Completed and Stage N+1 as In Progress.
+      const subsByRound = new Map<number, number>();
+      submissionRows.forEach((r) => {
+        const rId = Number(r.round_id);
+        if (rId >= 1 && rId <= 6) {
+          subsByRound.set(rId, (subsByRound.get(rId) || 0) + 1);
+        }
+      });
+
+      // A stage is "solved/completed" only when it has 10 (or more) submissions.
+      // This is authoritative from TiDB, ignoring the in-memory solvedChapters field.
+      for (let i = 1; i <= 6; i++) {
+        if ((subsByRound.get(i) || 0) >= 10) {
+          solvedStages.add(i);
+        }
+      }
+    }
+
+    // Build per-stage submission counts for Hawkins to determine "In Progress" accurately
+    const hawkinsSubsByRound = new Map<number, number>();
+    if (!isVecna) {
+      submissionRows.forEach((r) => {
+        const rId = Number(r.round_id);
+        if (rId >= 1 && rId <= 6) {
+          hawkinsSubsByRound.set(rId, (hawkinsSubsByRound.get(rId) || 0) + 1);
+        }
+      });
+    }
 
     let currentStageNum = 1;
     for (let i = 1; i <= 6; i++) {
       if (solvedStages.has(i)) {
         currentStageNum = Math.min(6, i + 1);
+      } else if (isVecna) {
+        const prog = db.getVecnaProgress(teamId, i);
+        if (Object.keys(prog).length > 0) {
+          currentStageNum = i;
+          break;
+        }
       }
     }
 
     const stagesResult = STAGES_CONFIG.map((cfg) => {
       const stageNum = cfg.id;
+
+      if (isVecna) {
+        const vecnaProg = db.getVecnaProgress(teamId, stageNum);
+        const stageLedger = ledgerRows.filter(
+          (r) => Number(r.round_id) === stageNum || (stageNum === 1 && r.source_type?.includes("VECNA_POWER"))
+        );
+
+        const totalVecnaAttempts = Object.keys(vecnaProg).length;
+        const isCompleted = solvedStages.has(stageNum) || totalVecnaAttempts >= 10;
+        const isInProgress = !isCompleted && (totalVecnaAttempts > 0 || stageNum === currentStageNum);
+        const status: "Completed" | "In Progress" | "Locked" = isCompleted
+          ? "Completed"
+          : isInProgress
+          ? "In Progress"
+          : "Locked";
+
+        let pointsEarned = 0;
+        let pointsLost = 0;
+        const stageEvents: any[] = [];
+        const allTimestamps: number[] = [];
+
+        // 1. Process in-memory vecnaProgress attempts
+        Object.entries(vecnaProg).forEach(([qIdxStr, att]) => {
+          const qIdx = Number(qIdxStr);
+          const pts = Number(att.earnedPoints) || 0;
+          if (pts > 0) pointsEarned += pts;
+
+          if (att.submittedAt) {
+            const t = new Date(att.submittedAt).getTime();
+            if (!isNaN(t)) allTimestamps.push(t);
+          }
+
+          stageEvents.push({
+            timestamp: att.submittedAt || "Unavailable",
+            type: att.status === "solved" ? "Question Solved" : "Incorrect Submission",
+            detail: `Trial ${stageNum} Question ${qIdx + 1} (Answer: ${att.chosenAnswer})`,
+            pointDelta: pts,
+          });
+        });
+
+        // 2. Process stageLedger
+        stageLedger.forEach((r) => {
+          const delta = Number(r.points_delta) || 0;
+          if (r.created_at) {
+            const t = new Date(r.created_at).getTime();
+            if (!isNaN(t)) allTimestamps.push(t);
+          }
+
+          if (r.source_type?.includes("VECNA_POWER") || delta < 0) {
+            pointsLost += delta;
+            stageEvents.push({
+              timestamp: r.created_at ? new Date(r.created_at).toISOString() : "Unavailable",
+              type: "Vecna Power Unleashed",
+              detail: r.source_id || "Vecna Sabotage Power",
+              pointDelta: delta,
+            });
+          } else if (r.source_type === "VECNA_TRIAL_SUBMISSION") {
+            const exists = stageEvents.some((ev) => ev.detail.includes(`Question ${r.question_id}`));
+            if (!exists) {
+              pointsEarned += delta;
+              stageEvents.push({
+                timestamp: r.created_at ? new Date(r.created_at).toISOString() : "Unavailable",
+                type: "Question Solved",
+                detail: `Trial ${stageNum} Question ${r.question_id}`,
+                pointDelta: delta,
+              });
+            }
+          }
+        });
+
+        let startedAt: string = "Unavailable";
+        let completedAt: string = "Unavailable";
+        let duration: string = "Unavailable";
+
+        if (allTimestamps.length > 0) {
+          allTimestamps.sort((a, b) => a - b);
+          startedAt = new Date(allTimestamps[0]).toISOString();
+          if (isCompleted) {
+            completedAt = new Date(allTimestamps[allTimestamps.length - 1]).toISOString();
+            const diffMs = allTimestamps[allTimestamps.length - 1] - allTimestamps[0];
+            const totalSec = Math.max(1, Math.round(diffMs / 1000));
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            duration = `${mins}m ${secs}s`;
+          } else if (status === "In Progress") {
+            const diffMs = allTimestamps[allTimestamps.length - 1] - allTimestamps[0];
+            const totalSec = Math.max(1, Math.round(diffMs / 1000));
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            duration = diffMs > 0 ? `${mins}m ${secs}s (In Progress)` : "< 1m";
+          }
+        }
+
+        stageEvents.sort((a, b) => {
+          if (a.timestamp === "Unavailable") return 1;
+          if (b.timestamp === "Unavailable") return -1;
+          return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        });
+
+        return {
+          stageId: stageNum,
+          stageKey: cfg.key,
+          stageName: cfg.name,
+          status,
+          startedAt,
+          completedAt,
+          duration,
+          pointsEarned,
+          pointsLost,
+          netStageScore: pointsEarned + pointsLost,
+          events: stageEvents,
+        };
+      }
+
+      // Default Hawkins Squad Logic
+      // isCompleted: 10 actual TiDB submissions exist for this round
       const isCompleted = solvedStages.has(stageNum);
-      const isInProgress = !isCompleted && stageNum === currentStageNum;
+      // isInProgress: this stage has at least 1 real submission but is not yet completed,
+      // OR it is the next stage after the last completed stage (so it is genuinely unlocked and active).
+      // Map browsing / location clicks NEVER affect this – only real TiDB submissions count.
+      const stageSubCount = hawkinsSubsByRound.get(stageNum) || 0;
+      const prevStageCompleted = stageNum === 1 || solvedStages.has(stageNum - 1);
+      const isInProgress = !isCompleted && stageSubCount > 0 && prevStageCompleted;
       const status: "Completed" | "In Progress" | "Locked" = isCompleted
         ? "Completed"
         : isInProgress
@@ -813,7 +985,7 @@ export const AdminController = {
           teamId: team.id,
           teamName: team.teamName,
           leaderName: team.leaderName,
-          currentStage: STAGES_CONFIG[currentStageNum - 1]?.name || "HAWKINS TOWN",
+          currentStage: STAGES_CONFIG[currentStageNum - 1]?.name || (isVecna ? "TRIAL 1: THE CREEL HOUSE" : "HAWKINS TOWN"),
           currentTotalPoints: team.totalScore || 0,
           overallRank,
           role: team.role || "PLAYER",

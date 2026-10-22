@@ -1,33 +1,55 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { sfx } from "@/lib/audio";
 import { API_BASE } from "@/lib/api";
 import { getStoredSession } from "@/lib/config";
 import { subscribe, getSocket } from "@/lib/realtime";
 
+import { TargetSquadItem } from "./VecnaTriggerPanel";
+
 interface VecnaMessagePanelProps {
   onSendMessage: (target: "all" | string, message: string) => Promise<boolean> | void;
   selectedTeamName?: string;
   initialQuota?: number;
+  availableSquads?: TargetSquadItem[];
 }
-
-const AVAILABLE_TEAMS = [
-  "Null Pointers",
-  "Stack Smashers",
-  "Rift Runners",
-  "Byte Byters",
-  "Signal Seekers",
-  "Hellfire Club",
-];
 
 export default function VecnaMessagePanel({
   onSendMessage,
   selectedTeamName,
   initialQuota = 5,
+  availableSquads,
 }: VecnaMessagePanelProps) {
+  // Deduplicate and filter strictly for online squads, then randomize order to prevent ranking leaks
+  const onlineSquads = useMemo(() => {
+    const list = (availableSquads || []).filter(
+      (s) => s && s.name && s.status !== "Offline"
+    );
+    // Fisher-Yates shuffle for randomized presentation
+    const shuffled = [...list];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [availableSquads]);
+
   const [targetType, setTargetType] = useState<"all" | "specific">("all");
-  const [chosenTeam, setChosenTeam] = useState<string>(selectedTeamName || AVAILABLE_TEAMS[0]);
+  const [chosenTeam, setChosenTeam] = useState<string>(selectedTeamName || "");
   const [message, setMessage] = useState("I KNOW WHERE YOU ARE.");
+
+  // Keep chosenTeam synchronized with available online squads
+  useEffect(() => {
+    if (onlineSquads.length > 0) {
+      if (selectedTeamName && onlineSquads.some((s) => s.name === selectedTeamName)) {
+        setChosenTeam(selectedTeamName);
+      } else if (!chosenTeam || !onlineSquads.some((s) => s.name === chosenTeam)) {
+        setChosenTeam(onlineSquads[0].name);
+      }
+    } else {
+      setChosenTeam("");
+    }
+  }, [onlineSquads, selectedTeamName, chosenTeam]);
 
   // Event-wide dispatch quota: 5 messages maximum shared across all Vecna teams
   const [remainingQuota, setRemainingQuota] = useState<number>(initialQuota);
@@ -88,7 +110,11 @@ export default function VecnaMessagePanel({
   }, [selectedTeamName]);
 
   const isQuotaExhausted = remainingQuota <= 0;
-  const isSendDisabled = isSending || !message.trim() || isQuotaExhausted;
+  const isSendDisabled =
+    isSending ||
+    !message.trim() ||
+    isQuotaExhausted ||
+    (targetType === "specific" && !chosenTeam);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,6 +277,7 @@ export default function VecnaMessagePanel({
           </label>
           <select
             value={chosenTeam}
+            disabled={onlineSquads.length === 0}
             onChange={(e) => {
               sfx("click");
               setChosenTeam(e.target.value);
@@ -266,14 +293,21 @@ export default function VecnaMessagePanel({
               fontWeight: "bold",
               letterSpacing: "0.08em",
               outline: "none",
-              cursor: "pointer",
+              cursor: onlineSquads.length === 0 ? "not-allowed" : "pointer",
+              opacity: onlineSquads.length === 0 ? 0.6 : 1,
             }}
           >
-            {AVAILABLE_TEAMS.map((tm) => (
-              <option key={tm} value={tm} style={{ background: "#140407", color: "#ffffff" }}>
-                {tm}
+            {onlineSquads.length === 0 ? (
+              <option value="" disabled style={{ background: "#140407", color: "rgba(255,180,180,0.6)" }}>
+                [NO HAWKINS SQUADS ONLINE]
               </option>
-            ))}
+            ) : (
+              onlineSquads.map((sq) => (
+                <option key={sq.id || sq.name} value={sq.name} style={{ background: "#140407", color: "#ffffff" }}>
+                  {sq.name} {sq.leader ? `(${sq.leader})` : ""}
+                </option>
+              ))
+            )}
           </select>
         </div>
       )}

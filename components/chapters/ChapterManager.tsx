@@ -919,13 +919,18 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
   );
 
   const handleBackToBoard = useCallback(() => {
+    if (isLocationLocked) {
+      sfx("err");
+      say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
+      return;
+    }
     sfx("click");
     if (onBackToBoard) {
       onBackToBoard();
     } else {
       setViewMode("board");
     }
-  }, [onBackToBoard, setViewMode]);
+  }, [isLocationLocked, onBackToBoard, say, setViewMode]);
 
   // Solved states for all 6 chapters
   const ch1Solved = !!s.completedTasks?.includes("ch1-quiz") || !!s.solved?.["ch1-quiz"];

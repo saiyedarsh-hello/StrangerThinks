@@ -40,19 +40,35 @@ export default function SabotageOverlay() {
   const [left, setLeft] = useState(0);
 
   // 4-question state for System Corrupted (80s technical challenge)
-  const [corruptAnswers, setCorruptAnswers] = useState<Record<number, string>>({
-    1: "",
-    2: "",
-    3: "",
-    4: "",
+  const [corruptAnswers, setCorruptAnswers] = useState<Record<number, string>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("hawkins_corrupt_answers");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return { 1: "", 2: "", 3: "", 4: "" };
   });
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && sabotage?.kind === "CORRUPT") {
+      try {
+        localStorage.setItem("hawkins_corrupt_answers", JSON.stringify(corruptAnswers));
+      } catch {}
+    }
+  }, [corruptAnswers, sabotage?.kind]);
   const [corruptFeedback, setCorruptFeedback] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
     setVal("");
     setHide(false);
-    setCorruptAnswers({ 1: "", 2: "", 3: "", 4: "" });
+    if (!sabotage || sabotage.kind !== "CORRUPT") {
+      setCorruptAnswers({ 1: "", 2: "", 3: "", 4: "" });
+      if (typeof window !== "undefined") {
+        try { localStorage.removeItem("hawkins_corrupt_answers"); } catch {}
+      }
+    }
     setCorruptFeedback(null);
 
     if (!sabotage) return;
@@ -110,6 +126,9 @@ export default function SabotageOverlay() {
       const data = await res.json().catch(() => ({}));
       if (data && data.allCorrect) {
         sfx("boom");
+        if (typeof window !== "undefined") {
+          try { localStorage.removeItem("hawkins_corrupt_answers"); } catch {}
+        }
         clearSabotage();
       } else {
         sfx("err");

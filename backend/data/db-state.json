@@ -8,18 +8,18 @@
       "status": "ACTIVE",
       "totalScore": 0,
       "breakdown": {
-        "clue": 0,
+        "tech": 0,
         "puzzle": 0,
         "speed": 0,
+        "clue": 0,
         "story": 0,
-        "teamwork": 0,
-        "tech": 0
+        "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-21T13:54:06.457Z",
+      "startedAt": "2026-10-21T19:24:06.457Z",
       "finishedAt": null,
       "lastSolvedAt": null,
-      "location": "town",
+      "location": "gate",
       "stage": "hawkins",
       "storyProgress": 5,
       "completedTasks": [],
@@ -36,11 +36,11 @@
         "upsidedown": false
       },
       "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
       ],
       "radiometerSolved": [
         false,
@@ -51,8 +51,9 @@
       ],
       "radiometerCodeSolved": false,
       "unlockedHints": {},
-      "createdAt": "2026-10-21T08:24:05.095Z",
-      "updatedAt": "2026-10-21T13:54:06.466Z"
+      "createdAt": "2026-10-21T13:54:05.095Z",
+      "updatedAt": "2026-10-22T11:19:41.643Z",
+      "taskScores": {}
     },
     "T02": {
       "id": "T02",
@@ -62,15 +63,15 @@
       "status": "ACTIVE",
       "totalScore": 0,
       "breakdown": {
-        "clue": 0,
+        "tech": 0,
         "puzzle": 0,
         "speed": 0,
+        "clue": 0,
         "story": 0,
-        "teamwork": 0,
-        "tech": 0
+        "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-21T13:54:34.623Z",
+      "startedAt": "2026-10-21T19:24:34.623Z",
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
@@ -90,11 +91,11 @@
         "upsidedown": false
       },
       "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
       ],
       "radiometerSolved": [
         false,
@@ -105,8 +106,9 @@
       ],
       "radiometerCodeSolved": false,
       "unlockedHints": {},
-      "createdAt": "2026-10-21T08:24:33.235Z",
-      "updatedAt": "2026-10-21T13:54:34.630Z"
+      "createdAt": "2026-10-21T13:54:33.235Z",
+      "updatedAt": "2026-10-21T19:24:34.630Z",
+      "taskScores": {}
     },
     "T03": {
       "id": "T03",
@@ -114,17 +116,73 @@
       "leaderName": "peach",
       "role": "VECNA",
       "status": "ACTIVE",
-      "totalScore": 0,
+      "totalScore": 170,
       "breakdown": {
-        "clue": 0,
+        "tech": 190,
         "puzzle": 0,
         "speed": 0,
+        "clue": 0,
         "story": 0,
-        "teamwork": 0,
-        "tech": 0
+        "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-21T13:54:52.093Z",
+      "startedAt": "2026-10-21T19:24:52.093Z",
+      "finishedAt": null,
+      "lastSolvedAt": "2026-10-22T11:58:28.586Z",
+      "location": "town",
+      "stage": "final",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T13:54:50.679Z",
+      "updatedAt": "2026-10-22T11:58:28.586Z",
+      "taskScores": {},
+      "lastScoreAchievedAt": "2026-10-22T11:58:28.586Z"
+    },
+    "T04": {
+      "id": "T04",
+      "teamName": "Test Squad 1792591287943",
+      "leaderName": "Test Captain",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T19:31:27.957Z",
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
@@ -144,11 +202,11 @@
         "upsidedown": false
       },
       "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
       ],
       "radiometerSolved": [
         false,
@@ -159,62 +217,9 @@
       ],
       "radiometerCodeSolved": false,
       "unlockedHints": {},
-      "createdAt": "2026-10-21T08:24:50.679Z",
-      "updatedAt": "2026-10-21T13:54:52.098Z"
-    },
-    "T04": {
-      "id": "T04",
-      "teamName": "Test Squad 1792591287943",
-      "leaderName": "Test Captain",
-      "role": "PLAYER",
-      "status": "ACTIVE",
-      "totalScore": 20,
-      "breakdown": {
-        "tech": 0,
-        "puzzle": 0,
-        "speed": 0,
-        "clue": 0,
-        "story": 0,
-        "teamwork": 20
-      },
-      "penalty": 0,
-      "startedAt": "2026-10-21T14:01:27.957Z",
-      "finishedAt": null,
-      "lastSolvedAt": null,
-      "location": "town",
-      "stage": "hawkins",
-      "storyProgress": 5,
-      "completedTasks": [],
-      "solvedChapters": [],
-      "unlockedLocations": {
-        "town": true,
-        "policeStation": true,
-        "byersHouse": true,
-        "radioTower": true,
-        "lab": false,
-        "forest": false,
-        "gate": false,
-        "upsidedown": false,
-        "mind": false
-      },
-      "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "radiometerSolved": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "radiometerCodeSolved": false,
-      "unlockedHints": {},
-      "createdAt": "2026-10-21T14:01:27.957Z",
-      "updatedAt": "2026-10-21T14:01:27.957Z"
+      "createdAt": "2026-10-21T14:01:26.542Z",
+      "updatedAt": "2026-10-21T14:35:57.676Z",
+      "taskScores": {}
     },
     "T05": {
       "id": "T05",
@@ -232,31 +237,31 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-21T14:01:29.561Z",
+      "startedAt": "2026-10-21T19:31:29.561Z",
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
       "stage": "hawkins",
-      "storyProgress": 5,
+      "storyProgress": 11,
       "completedTasks": [],
       "solvedChapters": [],
       "unlockedLocations": {
-        "town": true,
-        "policeStation": true,
         "byersHouse": true,
-        "radioTower": true,
-        "lab": false,
         "forest": false,
         "gate": false,
-        "upsidedown": false,
-        "mind": false
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
       },
       "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
       ],
       "radiometerSolved": [
         false,
@@ -267,8 +272,9 @@
       ],
       "radiometerCodeSolved": false,
       "unlockedHints": {},
-      "createdAt": "2026-10-21T14:01:29.561Z",
-      "updatedAt": "2026-10-21T14:01:29.561Z"
+      "createdAt": "2026-10-21T14:01:28.148Z",
+      "updatedAt": "2026-10-22T05:29:57.556Z",
+      "taskScores": {}
     },
     "T06": {
       "id": "T06",
@@ -286,7 +292,7 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-21T14:01:30.286Z",
+      "startedAt": "2026-10-21T19:31:30.286Z",
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
@@ -295,22 +301,22 @@
       "completedTasks": [],
       "solvedChapters": [],
       "unlockedLocations": {
-        "town": true,
-        "policeStation": true,
         "byersHouse": true,
-        "radioTower": true,
-        "lab": false,
         "forest": false,
         "gate": false,
-        "upsidedown": false,
-        "mind": false
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
       },
       "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
       ],
       "radiometerSolved": [
         false,
@@ -321,8 +327,9 @@
       ],
       "radiometerCodeSolved": false,
       "unlockedHints": {},
-      "createdAt": "2026-10-21T14:01:30.286Z",
-      "updatedAt": "2026-10-21T14:01:30.286Z"
+      "createdAt": "2026-10-21T14:01:28.874Z",
+      "updatedAt": "2026-10-21T19:31:30.293Z",
+      "taskScores": {}
     },
     "VECNA-1": {
       "id": "VECNA-1",
@@ -330,72 +337,17 @@
       "leaderName": "Henry Creel",
       "role": "VECNA",
       "status": "ACTIVE",
-      "totalScore": 90,
+      "totalScore": 0,
       "breakdown": {
         "tech": 0,
         "puzzle": 0,
         "speed": 0,
         "clue": 0,
         "story": 0,
-        "teamwork": 100
+        "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-21T14:02:19.246Z",
-      "finishedAt": null,
-      "lastSolvedAt": "2026-10-21T14:03:18.194Z",
-      "location": "town",
-      "stage": "hawkins",
-      "storyProgress": 5,
-      "completedTasks": [],
-      "solvedChapters": [],
-      "unlockedLocations": {
-        "town": true,
-        "policeStation": true,
-        "byersHouse": true,
-        "radioTower": true,
-        "lab": false,
-        "forest": false,
-        "gate": false,
-        "upsidedown": false,
-        "mind": false
-      },
-      "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "radiometerSolved": [
-        false,
-        false,
-        false,
-        false,
-        false
-      ],
-      "radiometerCodeSolved": false,
-      "unlockedHints": {},
-      "createdAt": "2026-10-21T14:02:19.246Z",
-      "updatedAt": "2026-10-21T14:03:18.194Z",
-      "lastScoreAchievedAt": "2026-10-21T14:03:18.194Z"
-    },
-    "T08": {
-      "id": "T08",
-      "teamName": "Test Squad 1792591484083",
-      "leaderName": "Test Captain",
-      "role": "PLAYER",
-      "status": "ACTIVE",
-      "totalScore": 20,
-      "breakdown": {
-        "tech": 0,
-        "puzzle": 0,
-        "speed": 0,
-        "clue": 0,
-        "story": 0,
-        "teamwork": 20
-      },
-      "penalty": 0,
-      "startedAt": "2026-10-21T14:04:44.089Z",
+      "startedAt": "2026-10-21T19:32:19.246Z",
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
@@ -404,22 +356,22 @@
       "completedTasks": [],
       "solvedChapters": [],
       "unlockedLocations": {
-        "town": true,
-        "policeStation": true,
         "byersHouse": true,
-        "radioTower": true,
-        "lab": false,
         "forest": false,
         "gate": false,
-        "upsidedown": false,
-        "mind": false
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
       },
       "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
       ],
       "radiometerSolved": [
         false,
@@ -430,8 +382,64 @@
       ],
       "radiometerCodeSolved": false,
       "unlockedHints": {},
-      "createdAt": "2026-10-21T14:04:44.089Z",
-      "updatedAt": "2026-10-21T14:04:44.089Z"
+      "createdAt": "2026-10-21T14:02:17.850Z",
+      "updatedAt": "2026-10-22T10:35:14.377Z",
+      "taskScores": {}
+    },
+    "T08": {
+      "id": "T08",
+      "teamName": "Test Squad 1792591484083",
+      "leaderName": "Test Captain",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T19:34:44.089Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T14:04:42.686Z",
+      "updatedAt": "2026-10-21T14:35:57.676Z",
+      "taskScores": {}
     },
     "T09": {
       "id": "T09",
@@ -449,7 +457,7 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-21T14:04:46.617Z",
+      "startedAt": "2026-10-21T19:34:46.617Z",
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
@@ -458,22 +466,22 @@
       "completedTasks": [],
       "solvedChapters": [],
       "unlockedLocations": {
-        "town": true,
-        "policeStation": true,
         "byersHouse": true,
-        "radioTower": true,
-        "lab": false,
         "forest": false,
         "gate": false,
-        "upsidedown": false,
-        "mind": false
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
       },
       "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
       ],
       "radiometerSolved": [
         false,
@@ -484,8 +492,9 @@
       ],
       "radiometerCodeSolved": false,
       "unlockedHints": {},
-      "createdAt": "2026-10-21T14:04:46.617Z",
-      "updatedAt": "2026-10-21T14:04:46.617Z"
+      "createdAt": "2026-10-21T14:04:45.205Z",
+      "updatedAt": "2026-10-21T19:34:46.624Z",
+      "taskScores": {}
     },
     "T10": {
       "id": "T10",
@@ -503,7 +512,7 @@
         "teamwork": 0
       },
       "penalty": 0,
-      "startedAt": "2026-10-21T14:04:46.974Z",
+      "startedAt": "2026-10-21T19:34:46.974Z",
       "finishedAt": null,
       "lastSolvedAt": null,
       "location": "town",
@@ -512,22 +521,22 @@
       "completedTasks": [],
       "solvedChapters": [],
       "unlockedLocations": {
-        "town": true,
-        "policeStation": true,
         "byersHouse": true,
-        "radioTower": true,
-        "lab": false,
         "forest": false,
         "gate": false,
-        "upsidedown": false,
-        "mind": false
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
       },
       "radiometerPins": [
-        null,
-        null,
-        null,
-        null,
-        null
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
       ],
       "radiometerSolved": [
         false,
@@ -538,8 +547,1671 @@
       ],
       "radiometerCodeSolved": false,
       "unlockedHints": {},
-      "createdAt": "2026-10-21T14:04:46.974Z",
-      "updatedAt": "2026-10-21T14:04:46.974Z"
+      "createdAt": "2026-10-21T14:04:45.562Z",
+      "updatedAt": "2026-10-21T19:34:46.983Z",
+      "taskScores": {}
+    },
+    "T11": {
+      "id": "T11",
+      "teamName": "Test Squad 1792594370195",
+      "leaderName": "Test Captain",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T20:22:50.197Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T14:52:48.772Z",
+      "updatedAt": "2026-10-21T16:31:47.283Z",
+      "taskScores": {}
+    },
+    "T12": {
+      "id": "T12",
+      "teamName": "Alpha Squad 1792594370982",
+      "leaderName": "Alice Cooper",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T20:22:51.331Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T14:52:49.909Z",
+      "updatedAt": "2026-10-21T20:22:51.336Z",
+      "taskScores": {}
+    },
+    "T13": {
+      "id": "T13",
+      "teamName": "Beta Squad 1792594370982",
+      "leaderName": "Bob Dylan",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T20:22:51.443Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T14:52:50.025Z",
+      "updatedAt": "2026-10-22T11:44:35.154Z",
+      "taskScores": {},
+      "currentStage": 6
+    },
+    "SYNTH-1792598294432-A": {
+      "id": "SYNTH-1792598294432-A",
+      "teamName": "Synth Alpha 1792598294432",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:28:14.449Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T15:58:13.019Z",
+      "updatedAt": "2026-10-21T21:28:14.453Z",
+      "taskScores": {}
+    },
+    "SYNTH-1792598449664-A": {
+      "id": "SYNTH-1792598449664-A",
+      "teamName": "Synth Alpha 1792598449664",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:30:49.668Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:00:48.247Z",
+      "updatedAt": "2026-10-21T21:30:49.673Z",
+      "taskScores": {}
+    },
+    "SYNTH-1792598494571-A": {
+      "id": "SYNTH-1792598494571-A",
+      "teamName": "Synth Alpha 1792598494571",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:31:34.582Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:01:33.164Z",
+      "updatedAt": "2026-10-21T21:31:34.588Z",
+      "taskScores": {}
+    },
+    "SYNTH-1792598703925-A": {
+      "id": "SYNTH-1792598703925-A",
+      "teamName": "Synth Alpha 1792598703925",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:35:03.930Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:05:02.509Z",
+      "updatedAt": "2026-10-21T21:35:03.937Z",
+      "taskScores": {}
+    },
+    "TEST-1792598738653": {
+      "id": "TEST-1792598738653",
+      "teamName": "LockTest 1792598738653",
+      "leaderName": "Lock Leader",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:35:38.657Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:05:37.230Z",
+      "updatedAt": "2026-10-22T11:33:40.660Z",
+      "currentStage": 6,
+      "taskScores": {}
+    },
+    "SYNTH-1792598833266-A": {
+      "id": "SYNTH-1792598833266-A",
+      "teamName": "Synth Alpha 1792598833266",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:37:13.281Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:07:11.874Z",
+      "updatedAt": "2026-10-21T21:37:13.292Z",
+      "taskScores": {}
+    },
+    "SYNTH-1792598844229-A": {
+      "id": "SYNTH-1792598844229-A",
+      "teamName": "Synth Alpha 1792598844229",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:37:24.242Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:07:22.830Z",
+      "updatedAt": "2026-10-21T21:37:24.248Z",
+      "taskScores": {}
+    },
+    "SYNTH-1792598881622-A": {
+      "id": "SYNTH-1792598881622-A",
+      "teamName": "Synth Alpha 1792598881622",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:38:01.631Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:08:00.210Z",
+      "updatedAt": "2026-10-21T21:38:01.635Z",
+      "taskScores": {}
+    },
+    "SYNTH-1792598907271-A": {
+      "id": "SYNTH-1792598907271-A",
+      "teamName": "Synth Alpha 1792598907271",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:38:27.285Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:08:25.870Z",
+      "updatedAt": "2026-10-21T21:38:27.291Z",
+      "taskScores": {}
+    },
+    "P4-A-1792599123688": {
+      "id": "P4-A-1792599123688",
+      "teamName": "P4 Alpha 1792599123688",
+      "leaderName": "Alpha Leader",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:42:03.707Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:12:02.285Z",
+      "updatedAt": "2026-10-21T21:42:03.711Z",
+      "taskScores": {}
+    },
+    "P4-B-1792599128810": {
+      "id": "P4-B-1792599128810",
+      "teamName": "P4 Beta 1792599128810",
+      "leaderName": "Beta Leader",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:42:08.824Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:12:07.409Z",
+      "updatedAt": "2026-10-21T21:42:08.828Z",
+      "taskScores": {}
+    },
+    "P4-A-1792599202046": {
+      "id": "P4-A-1792599202046",
+      "teamName": "P4 Alpha 1792599202046",
+      "leaderName": "Alpha Leader",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:43:22.053Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:13:20.627Z",
+      "updatedAt": "2026-10-21T21:43:22.063Z",
+      "taskScores": {}
+    },
+    "P4-B-1792599208624": {
+      "id": "P4-B-1792599208624",
+      "teamName": "P4 Beta 1792599208624",
+      "leaderName": "Beta Leader",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:43:28.636Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:13:27.213Z",
+      "updatedAt": "2026-10-21T21:43:28.642Z",
+      "taskScores": {}
+    },
+    "T27": {
+      "id": "T27",
+      "teamName": "Test Squad 1792599385312",
+      "leaderName": "Test Captain",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:46:25.324Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:16:23.908Z",
+      "updatedAt": "2026-10-21T16:31:47.283Z",
+      "taskScores": {}
+    },
+    "T28": {
+      "id": "T28",
+      "teamName": "Alpha Squad 1792599389293",
+      "leaderName": "Alice Cooper",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 50,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:46:29.618Z",
+      "finishedAt": null,
+      "lastSolvedAt": "2026-10-22T11:56:10.207Z",
+      "location": "lab",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [
+        "ch4-q1",
+        "ch4-q2",
+        "ch4-q3",
+        "ch4-q4",
+        "ch4-q5"
+      ],
+      "solvedChapters": [
+        4
+      ],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:16:28.192Z",
+      "updatedAt": "2026-10-22T12:00:28.956Z",
+      "taskScores": {},
+      "currentStage": 4,
+      "lastScoreAchievedAt": "2026-10-22T11:56:10.207Z"
+    },
+    "T29": {
+      "id": "T29",
+      "teamName": "Beta Squad 1792599389293",
+      "leaderName": "Bob Dylan",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:46:29.730Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:16:28.302Z",
+      "updatedAt": "2026-10-22T06:36:59.419Z",
+      "taskScores": {}
+    },
+    "SYNTH-1792599982944-A": {
+      "id": "SYNTH-1792599982944-A",
+      "teamName": "Synth Alpha 1792599982944",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T21:56:22.943Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T16:26:21.516Z",
+      "updatedAt": "2026-10-21T21:56:22.949Z",
+      "taskScores": {}
+    },
+    "T31": {
+      "id": "T31",
+      "teamName": "TestSquad_1792646406013",
+      "leaderName": "Leader_1792646406013",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T10:50:06.083Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T05:20:04.041Z",
+      "updatedAt": "2026-10-22T10:50:06.088Z",
+      "taskScores": {}
+    },
+    "T32": {
+      "id": "T32",
+      "teamName": "TestSquad_1792646454861",
+      "leaderName": "Leader_1792646454861",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T10:50:54.932Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T05:20:52.890Z",
+      "updatedAt": "2026-10-22T10:50:54.938Z",
+      "taskScores": {}
+    },
+    "T33": {
+      "id": "T33",
+      "teamName": "TestSquad_1792646495179",
+      "leaderName": "Leader_1792646495179",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T10:51:35.258Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T05:21:33.212Z",
+      "updatedAt": "2026-10-22T10:51:35.263Z",
+      "taskScores": {}
+    },
+    "T34": {
+      "id": "T34",
+      "teamName": "Test Squad 1792646596277",
+      "leaderName": "Test Captain",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T10:53:16.290Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T05:23:14.246Z",
+      "updatedAt": "2026-10-22T05:29:57.556Z",
+      "taskScores": {}
+    },
+    "T35": {
+      "id": "T35",
+      "teamName": "Alpha Squad 1792646597537",
+      "leaderName": "Alice Cooper",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T10:53:17.866Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T05:23:15.815Z",
+      "updatedAt": "2026-10-22T10:53:17.872Z",
+      "taskScores": {}
+    },
+    "T36": {
+      "id": "T36",
+      "teamName": "Beta Squad 1792646597537",
+      "leaderName": "Bob Dylan",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T10:53:18.535Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T05:23:16.486Z",
+      "updatedAt": "2026-10-22T10:53:18.543Z",
+      "taskScores": {}
+    },
+    "SYNTH-1792648894277-A": {
+      "id": "SYNTH-1792648894277-A",
+      "teamName": "Synth Alpha 1792648894277",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T11:31:34.279Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T06:01:32.220Z",
+      "updatedAt": "2026-10-22T11:31:34.282Z",
+      "taskScores": {}
+    },
+    "P4-A-1792648903276": {
+      "id": "P4-A-1792648903276",
+      "teamName": "P4 Alpha 1792648903276",
+      "leaderName": "Alpha Leader",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T11:31:43.291Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T06:01:41.235Z",
+      "updatedAt": "2026-10-22T11:31:43.296Z",
+      "taskScores": {}
+    },
+    "P4-B-1792648903896": {
+      "id": "P4-B-1792648903896",
+      "teamName": "P4 Beta 1792648903896",
+      "leaderName": "Beta Leader",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T11:31:43.908Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T06:01:41.850Z",
+      "updatedAt": "2026-10-22T11:31:43.912Z",
+      "taskScores": {}
+    },
+    "SYNTH-1792664767436-A": {
+      "id": "SYNTH-1792664767436-A",
+      "teamName": "Synth Alpha 1792664767436",
+      "leaderName": "Leader Alpha",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-22T10:26:07.440Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-22T10:26:05.355Z",
+      "updatedAt": "2026-10-22T10:26:07.450Z",
+      "taskScores": {}
     }
   },
   "chapters": [
@@ -648,7 +2320,7 @@
               "text": "1,000 lb"
             }
           ],
-          "correctAnswerId": "B",
+          "correctAnswerId": "A",
           "hint": "Dustin called Mr. Clarke late at night while he was watching 'The Thing from Another World'.",
           "docketTag": "PHYSICS CALC"
         },
@@ -1774,313 +3446,6 @@
     {
       "id": 5,
       "label": "CHAPTER 5",
-      "tag": "CARVED RUNES",
-      "archiveSector": "ROANE COUNTY WOODS",
-      "archiveTitle": "FOREST",
-      "archiveSubtitle": "DEEP WOODS · TRAIL 7 COORDINATE RUNES",
-      "archiveLines": [
-        "Deep woods near Trail 7. Autumn fog hangs thick among towering pines.",
-        "Flashlight beams reveal strange geometric runes carved into ancient tree trunks.",
-        "Extract the three glowing pine digits left-to-right to lock the vector coordinates."
-      ],
-      "completionLoreTitle": "FOREST COORDINATES LOCKED · VECTOR 4-1-7",
-      "completionLoreText": "Trail coordinates 4 · 1 · 7 verified! The harmonic vector points directly to the high-altitude East Hill Radio Tower. Pip is waiting on frequency 14.3 MHz.",
-      "completionLines": [
-        "FOREST RUNES DECODED: VECTOR 4 · 1 · 7.",
-        "Coordinates align with East Hill Radio Tower sublevel.",
-        "Ascend to the Radio Tower to calibrate the scrambled 5-pin radiometer."
-      ],
-      "bgSrc": "/creel-bg.jpg",
-      "taskId": "ch5-forest",
-      "points": 50,
-      "docketNumber": "FORM HPD-05-83 // CLASSIFIED FOREST RECON DOCKET",
-      "sectionHeader": "SECTION 05 — FORMAL INQUIRY // DEEP WOODS RUNIC VECTORS",
-      "questions": [
-        {
-          "id": "ch5-q1",
-          "chapterId": 5,
-          "itemNumber": 1,
-          "subHeader": "DEMO Q1 · ITEM 01: TREE PORTAL ANOMALY",
-          "question": "What tree landmark in Mirkwood concealed an organic portal into the Upside Down discovered by Nancy Wheeler?",
-          "options": [
-            {
-              "id": "A",
-              "text": "Hollowed Rotting Sycamore Trunk with Dripping Slime"
-            },
-            {
-              "id": "B",
-              "text": "Lightning-Struck Charred Pine Tree"
-            },
-            {
-              "id": "C",
-              "text": "Ancient Oak with Carved Coordinates"
-            },
-            {
-              "id": "D",
-              "text": "Overgrown Weeping Willow near Sattler Quarry"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "Nancy crawled through the pulsating fleshy opening inside the sycamore base.",
-          "docketTag": "PORTAL COORD"
-        },
-        {
-          "id": "ch5-q2",
-          "chapterId": 5,
-          "itemNumber": 2,
-          "subHeader": "DEMO Q2 · ITEM 02: PREDATOR SCENT VECTOR",
-          "question": "What behavioral vulnerability was observed when tracking Demogorgon scent signatures through the forest?",
-          "options": [
-            {
-              "id": "A",
-              "text": "Highly Attracted to the Scent of Fresh Blood"
-            },
-            {
-              "id": "B",
-              "text": "Triggered Exclusively by Ultrasonic Whistles"
-            },
-            {
-              "id": "C",
-              "text": "Drawn Exclusively to Bright Ultraviolet Light"
-            },
-            {
-              "id": "D",
-              "text": "Paralyzed by High-Frequency Radio Waves"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "A single drop of blood cuts through the dimensional barrier like a beacon.",
-          "docketTag": "BEHAVIORAL BIO"
-        },
-        {
-          "id": "ch5-q3",
-          "chapterId": 5,
-          "itemNumber": 3,
-          "subHeader": "DEMO Q3 · ITEM 03: RUNIC VECTOR TRIANGULATION",
-          "question": "What runic vector pattern was marked on the three perimeter surveillance trees along Trail 7?",
-          "options": [
-            {
-              "id": "A",
-              "text": "Vector 4 - 1 - 7 (North-East Triangulation)"
-            },
-            {
-              "id": "B",
-              "text": "Vector 9 - 2 - 5 (South-West Convergence)"
-            },
-            {
-              "id": "C",
-              "text": "Vector 1 - 1 - 0 (Azimuth Dead Reckoning)"
-            },
-            {
-              "id": "D",
-              "text": "Vector 8 - 3 - 4 (Radial Offset Quadrant)"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "Extract the glowing red pine runes left-to-right to find vector 4-1-7.",
-          "docketTag": "RUNIC VECTOR"
-        },
-        {
-          "id": "ch5-q4",
-          "chapterId": 5,
-          "itemNumber": 4,
-          "subHeader": "DEMO Q4 · ITEM 04: TRAP COUNTERMEASURES",
-          "question": "What makeshift countermeasures did Nancy Wheeler and Jonathan Byers prepare at the Byers house to trap the predator?",
-          "options": [
-            {
-              "id": "A",
-              "text": "Bear Trap, Gasoline Fire, and Nail-Studded Bat"
-            },
-            {
-              "id": "B",
-              "text": "High-Voltage Electrical Cattle Prod & Net"
-            },
-            {
-              "id": "C",
-              "text": "Liquid Nitrogen Aerosers"
-            },
-            {
-              "id": "D",
-              "text": "Magnesium Flares and Fireworks Battery"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "Steve Harrington joined with the nail-spiked Louisville Slugger bat.",
-          "docketTag": "TACTICAL DEFENSE"
-        },
-        {
-          "id": "ch5-q5",
-          "chapterId": 5,
-          "itemNumber": 5,
-          "subHeader": "DEMO Q5 · ITEM 05: D&D ANALOG BEAST",
-          "question": "In Mike Wheeler's Dungeons & Dragons campaign, which two-headed monster piece was knocked over by Will's failed fireball roll?",
-          "options": [
-            {
-              "id": "A",
-              "text": "The Demogorgon (Prince of Demons)"
-            },
-            {
-              "id": "B",
-              "text": "The Thessalhydra with Eight Maw Heads"
-            },
-            {
-              "id": "C",
-              "text": "The Beholder with Eye Rays"
-            },
-            {
-              "id": "D",
-              "text": "The Mind Flayer Illithid"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "Will rolled a 7 on his twenty-sided die, failing to cast fireball.",
-          "docketTag": "LORE ANALOG"
-        },
-        {
-          "id": "ch5-q6",
-          "chapterId": 5,
-          "itemNumber": 6,
-          "subHeader": "DEMO Q6 · ITEM 06: MIRKWOOD INTERSECTION ROAD SIGN",
-          "question": "What two rural roads cross at the infamous Mirkwood intersection near the lab fence line?",
-          "options": [
-            {
-              "id": "A",
-              "text": "Cornwallis Road & Kerley Lane"
-            },
-            {
-              "id": "B",
-              "text": "Maple Street & Elm Avenue"
-            },
-            {
-              "id": "C",
-              "text": "Cherry Lane & Sattler Way"
-            },
-            {
-              "id": "D",
-              "text": "Lover's Lake Road & Highway 27"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "The boys nicknamed the desolate dark corner 'Mirkwood' from Tolkien's books.",
-          "docketTag": "GEOGRAPHY"
-        },
-        {
-          "id": "ch5-q7",
-          "chapterId": 5,
-          "itemNumber": 7,
-          "subHeader": "DEMO Q7 · ITEM 07: FLASHLIGHT AMBER SPORE EFFECT",
-          "question": "What floating phenomenon was visible in flashlight beams near the forest portal site?",
-          "options": [
-            {
-              "id": "A",
-              "text": "Bioluminescent Amber Spores Drifting Slowly in Mid-Air"
-            },
-            {
-              "id": "B",
-              "text": "Black Ash Flakes Emitting Electrostatic Shocks"
-            },
-            {
-              "id": "C",
-              "text": "Green Iridescent Insects Swarming in Circles"
-            },
-            {
-              "id": "D",
-              "text": "Tiny Freezing Ice Needles Suspended Against Gravity"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "Particles suspended like underwater snow drifted outward through the portal opening.",
-          "docketTag": "AIR MONITORING"
-        },
-        {
-          "id": "ch5-q8",
-          "chapterId": 5,
-          "itemNumber": 8,
-          "subHeader": "DEMO Q8 · ITEM 08: STEVE'S MODIFIED WEAPON",
-          "question": "What weapon modification did Jonathan construct on the Louisville Slugger baseball bat?",
-          "options": [
-            {
-              "id": "A",
-              "text": "Hammered Rows of 2-Inch Steel Carpenter Nails"
-            },
-            {
-              "id": "B",
-              "text": "Wrapped Barbed Razor Wire Around the Barrel"
-            },
-            {
-              "id": "C",
-              "text": "Bolted Serrated Lawnmower Blades Along the Tip"
-            },
-            {
-              "id": "D",
-              "text": "Soaked Heavy Burlap in Gasoline for a Torch Bat"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "Steve swung the nail-studded bat in the living room to drive back the creature.",
-          "docketTag": "IMPROVISED WEAPON"
-        },
-        {
-          "id": "ch5-q9",
-          "chapterId": 5,
-          "itemNumber": 9,
-          "subHeader": "DEMO Q9 · ITEM 09: TRAIL 7 COMPASS ROTATION",
-          "question": "How did the boys recognize they were approaching the laboratory's perimeter fence on Trail 7?",
-          "options": [
-            {
-              "id": "A",
-              "text": "All Compass Needles Began Slowly Rotating Counter-Clockwise"
-            },
-            {
-              "id": "B",
-              "text": "Their Walkie-Talkies Emitted Static Morbid Whispers"
-            },
-            {
-              "id": "C",
-              "text": "The Pine Trees Lost All Needles and Turned Black"
-            },
-            {
-              "id": "D",
-              "text": "Ground Temperatures Dropped Below Zero Degrees"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "Dustin realized they were following a magnetic deviation towards the lab.",
-          "docketTag": "ANOMALOUS FLUX"
-        },
-        {
-          "id": "ch5-q10",
-          "chapterId": 5,
-          "itemNumber": 10,
-          "subHeader": "DEMO Q10 · ITEM 10: WOUNDED DEER TRACKING",
-          "question": "What prey animal was dragged into the Sycamore tree portal right before Nancy climbed in?",
-          "options": [
-            {
-              "id": "A",
-              "text": "A Wounded Forest Deer Shot by Local Hunters"
-            },
-            {
-              "id": "B",
-              "text": "A Stray Red Fox with a Injured Leg"
-            },
-            {
-              "id": "C",
-              "text": "A Raccoon from Benny's Dumpster"
-            },
-            {
-              "id": "D",
-              "text": "A Golden Retriever Hunting Dog"
-            }
-          ],
-          "correctAnswerId": "A",
-          "hint": "Nancy and Jonathan tracked blood droplets from a deer until it vanished inside the tree.",
-          "docketTag": "PREDATOR TRACKS"
-        }
-      ]
-    },
-    {
-      "id": 6,
-      "label": "CHAPTER 6",
       "tag": "5-PIN RADIOMETER",
       "archiveSector": "EAST HILL",
       "archiveTitle": "RADIO TOWER",
@@ -2098,14 +3463,14 @@
         "The threshold into the Upside Down is open. Prepare for Vecna."
       ],
       "bgSrc": "/hawkins-gate-bg.jpg",
-      "taskId": "ch6-radio-tower",
+      "taskId": "ch5-radio-tower",
       "points": 50,
-      "docketNumber": "FORM HPD-06-83 // CLASSIFIED RADIO TOWER DOCKET",
-      "sectionHeader": "SECTION 06 — FORMAL INQUIRY // RADIO FREQUENCY CALIBRATION",
+      "docketNumber": "FORM HPD-05-83 // CLASSIFIED RADIO TOWER DOCKET",
+      "sectionHeader": "SECTION 05 — FORMAL INQUIRY // RADIO FREQUENCY CALIBRATION",
       "questions": [
         {
-          "id": "ch6-q1",
-          "chapterId": 6,
+          "id": "ch5-q1",
+          "chapterId": 5,
           "itemNumber": 1,
           "subHeader": "SIGNAL 01 · CAESAR CIPHER BROADCAST",
           "question": "A high-frequency radio signal pulses encrypted sequence 'UXQ'. Intelligence reports confirm a Caesar cipher with key +3. Decode the carrier message.",
@@ -2132,8 +3497,8 @@
           "docketTag": "RADIO INTERCEPT"
         },
         {
-          "id": "ch6-q2",
-          "chapterId": 6,
+          "id": "ch5-q2",
+          "chapterId": 5,
           "itemNumber": 2,
           "subHeader": "SIGNAL 02 · 8-BIT BINARY TELEMETRY",
           "question": "Eleven taps a rhythmic electrical transmission into the Supercom microphone: binary code 01010010. Which ASCII character does this encode?",
@@ -2160,8 +3525,8 @@
           "docketTag": "BINARY STREAM"
         },
         {
-          "id": "ch6-q3",
-          "chapterId": 6,
+          "id": "ch5-q3",
+          "chapterId": 5,
           "itemNumber": 3,
           "subHeader": "SIGNAL 03 · RUSSIAN ENCRYPTED BROADCAST",
           "question": "Dustin intercepts a looping Russian radio transmission beneath Starcourt Mall. What is the verified English translation of the cipher?",
@@ -2188,8 +3553,8 @@
           "docketTag": "RUSSIAN CIPHER"
         },
         {
-          "id": "ch6-q4",
-          "chapterId": 6,
+          "id": "ch5-q4",
+          "chapterId": 5,
           "itemNumber": 4,
           "subHeader": "SIGNAL 04 · MORSE CODE DISTRESS BEACON",
           "question": "A high-frequency buzzer emits rhythmic Morse code pulses: `... --- ...`. What universal distress priority does this broadcast?",
@@ -2216,8 +3581,8 @@
           "docketTag": "MORSE LOG"
         },
         {
-          "id": "ch6-q5",
-          "chapterId": 6,
+          "id": "ch5-q5",
+          "chapterId": 5,
           "itemNumber": 5,
           "subHeader": "SIGNAL 05 · REVERSE AUDIO PHONOGRAM",
           "question": "Joyce Byers tunes the radio receiver to an analog static channel, capturing a reversed audio whisper. What message is Will communicating?",
@@ -2244,8 +3609,8 @@
           "docketTag": "AUDIO PHONOGRAM"
         },
         {
-          "id": "ch6-q6",
-          "chapterId": 6,
+          "id": "ch5-q6",
+          "chapterId": 5,
           "itemNumber": 6,
           "subHeader": "SIGNAL 06 · HEATHKIT HAM RADIO TRANSCEIVER",
           "question": "Which amateur radio frequency did the boys tune their Heathkit transceiver to when communicating with Mr. Clarke?",
@@ -2272,8 +3637,8 @@
           "docketTag": "HAM RADIO"
         },
         {
-          "id": "ch6-q7",
-          "chapterId": 6,
+          "id": "ch5-q7",
+          "chapterId": 5,
           "itemNumber": 6,
           "subHeader": "SIGNAL 07 · CEREBRO REPEATER TELEMETRY",
           "question": "What radio communication device did Dustin Henderson assemble on Weathertop to reach his girlfriend Suzie in Utah?",
@@ -2300,8 +3665,8 @@
           "docketTag": "CEREBRO LOG"
         },
         {
-          "id": "ch6-q8",
-          "chapterId": 6,
+          "id": "ch5-q8",
+          "chapterId": 5,
           "itemNumber": 8,
           "subHeader": "SIGNAL 08 · STARCOURT VAULT ACCESS CIPHER",
           "question": "Suzie transmits the mathematical constant needed as the cryptographic password for the Russian laser vault. What value does she broadcast?",
@@ -2328,8 +3693,8 @@
           "docketTag": "VAULT CIPHER"
         },
         {
-          "id": "ch6-q9",
-          "chapterId": 6,
+          "id": "ch5-q9",
+          "chapterId": 5,
           "itemNumber": 9,
           "subHeader": "SIGNAL 09 · ELECTROMAGNETIC VECTOR ANOMALY",
           "question": "A compass placed near the radio tower deflects erratically. What physical force causes magnetic needles to stray from true North?",
@@ -2356,8 +3721,8 @@
           "docketTag": "FLUX TELEMETRY"
         },
         {
-          "id": "ch6-q10",
-          "chapterId": 6,
+          "id": "ch5-q10",
+          "chapterId": 5,
           "itemNumber": 10,
           "subHeader": "SIGNAL 10 · SUB-BASIN GATE CONVERGENCE",
           "question": "At the end of Season 4, sub-audible seismic pulses broadcast across municipal radio channels. What catastrophic event do they announce?",
@@ -2386,8 +3751,8 @@
       ]
     },
     {
-      "id": 7,
-      "label": "CHAPTER 7",
+      "id": 6,
+      "label": "CHAPTER 6",
       "tag": "THE GATE RIFT",
       "archiveSector": "PARALLEL ABYSS",
       "archiveTitle": "UPSIDE DOWN",
@@ -2405,14 +3770,14 @@
         "CONGRATULATIONS, RECON TEAM · TOURNAMENT VICTORY!"
       ],
       "bgSrc": "/upsidedown-bg.jpg",
-      "taskId": "ch7-upsidedown",
+      "taskId": "ch6-upsidedown",
       "points": 50,
-      "docketNumber": "FORM HPD-07-83 // CLASSIFIED GATE RIFT DOCKET",
-      "sectionHeader": "SECTION 07 — FORMAL INQUIRY // THE GATEWAY RIFT & VECNA CIPHER",
+      "docketNumber": "FORM HPD-06-83 // CLASSIFIED GATE RIFT DOCKET",
+      "sectionHeader": "SECTION 06 — FORMAL INQUIRY // THE GATEWAY RIFT & VECNA CIPHER",
       "questions": [
         {
-          "id": "ch7-q1",
-          "chapterId": 7,
+          "id": "ch6-q1",
+          "chapterId": 6,
           "itemNumber": 1,
           "subHeader": "LAB TASK 01 · LOGICAL SEQUENCE (EXPERIMENT IDS)",
           "question": "Hawkins Lab experiment subject IDs run in sequence: 2, 6, 12, 20, 30, ... What is the next experiment ID in this progression?",
@@ -2439,8 +3804,8 @@
           "docketTag": "LAB SEQUENCE"
         },
         {
-          "id": "ch7-q2",
-          "chapterId": 7,
+          "id": "ch6-q2",
+          "chapterId": 6,
           "itemNumber": 2,
           "subHeader": "LAB TASK 02 · BOOLEAN LOGIC CIRCUIT EVALUATION",
           "question": "The Sublevel 04 security gate opens if `(Power = ON AND Key = INSERTED) OR Override = ON`. Power is ON, Key is NOT inserted, Override is ON. Does the gate open?",
@@ -2467,8 +3832,8 @@
           "docketTag": "GATE LOGIC"
         },
         {
-          "id": "ch7-q3",
-          "chapterId": 7,
+          "id": "ch6-q3",
+          "chapterId": 6,
           "itemNumber": 3,
           "subHeader": "LAB TASK 03 · SYSTEM OPERATIONS (KILL ROGUE PID)",
           "question": "A rogue daemon process with PID 1983 is locking the Hawkins Lab security server. Which UNIX terminal command force-terminates it immediately?",
@@ -2495,8 +3860,8 @@
           "docketTag": "UNIX TERMINAL"
         },
         {
-          "id": "ch7-q4",
-          "chapterId": 7,
+          "id": "ch6-q4",
+          "chapterId": 6,
           "itemNumber": 4,
           "subHeader": "LAB TASK 04 · SYSTEM OPERATIONS (POWER RESTORATION ORDER)",
           "question": "Place the Hawkins Lab power recovery protocol steps in correct operational sequence: (a) turn on lab lights, (b) start backup generator, (c) reset control panel, (d) close main breaker.",
@@ -2523,8 +3888,8 @@
           "docketTag": "POWER SEQUENCE"
         },
         {
-          "id": "ch7-q5",
-          "chapterId": 7,
+          "id": "ch6-q5",
+          "chapterId": 6,
           "itemNumber": 5,
           "subHeader": "LAB TASK 05 · FUNCTION RESTORATION (BUGGY SIGHTING COUNTER)",
           "question": "This telemetry script gives an incorrect count for Demogorgon sightings. Diagnose the bug and select the proper repair.",
@@ -2551,8 +3916,8 @@
           "docketTag": "PYTHON DEBUG"
         },
         {
-          "id": "ch7-q6",
-          "chapterId": 7,
+          "id": "ch6-q6",
+          "chapterId": 6,
           "itemNumber": 6,
           "subHeader": "LAB TASK 06 · FUNCTION RESTORATION (INFINITE RECURSION)",
           "question": "Why does this recursive function crash the Hawkins Lab simulation console with a RecursionError?",
@@ -2579,8 +3944,8 @@
           "docketTag": "RECURSION BUG"
         },
         {
-          "id": "ch7-q7",
-          "chapterId": 7,
+          "id": "ch6-q7",
+          "chapterId": 6,
           "itemNumber": 7,
           "subHeader": "LAB TASK 07 · DATA ANALYSIS (LIGHT FLICKER METRICS)",
           "question": "Substation bulb flickers recorded Monday to Friday: 3, 5, 4, 12, 6. Compute the Mean, Median, and identify the statistical Outlier.",
@@ -2607,8 +3972,8 @@
           "docketTag": "STATISTICS"
         },
         {
-          "id": "ch7-q8",
-          "chapterId": 7,
+          "id": "ch6-q8",
+          "chapterId": 6,
           "itemNumber": 8,
           "subHeader": "LAB TASK 08 · DATA ANALYSIS (ZONE PERCENTAGE CONCENTRATION)",
           "question": "Out of 50 total confirmed entity sightings: Forest 20, Lab 15, Mall 10, School 5. Which location has the highest concentration and what percentage?",
@@ -2635,8 +4000,8 @@
           "docketTag": "ZONE ANALYSIS"
         },
         {
-          "id": "ch7-q9",
-          "chapterId": 7,
+          "id": "ch6-q9",
+          "chapterId": 6,
           "itemNumber": 9,
           "subHeader": "LAB TASK 09 · SIMULATED EXPERIMENT (TEMPERATURE CORRELATION)",
           "question": "Experimental data records ambient temperature vs. flickers per hour: (20°C: 0), (15°C: 2), (10°C: 5), (5°C: 9). Identify the independent variable, dependent variable, and scientific conclusion.",
@@ -2663,8 +4028,8 @@
           "docketTag": "EXPERIMENT LOG"
         },
         {
-          "id": "ch7-q10",
-          "chapterId": 7,
+          "id": "ch6-q10",
+          "chapterId": 6,
           "itemNumber": 10,
           "subHeader": "LAB TASK 10 · SIMULATED EXPERIMENT (GATE EXPONENTIAL DOUBLING)",
           "question": "Gate energy starts at 2 units at 1:00 AM and doubles every hour (2, 4, 8, 16, 32, ...). At what time does it first exceed 100 energy units?",
@@ -2693,17 +4058,149 @@
       ]
     }
   ],
-  "activeSabotages": {
-    "1792591399475": {
-      "id": 1792591399475,
-      "kind": "LOCK",
-      "target": "T01",
-      "operatorName": "HENRY CREEL",
-      "message": "VECNA INTERFERENCE — LOCATION LOCKED",
-      "expiresAt": 1792591518467
+  "activeSabotages": {},
+  "vecnaProgress": {
+    "VECNA-001": {
+      "1-0": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:48:23.875Z"
+      },
+      "1-1": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:49:00.004Z"
+      },
+      "1-2": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "B",
+        "submittedAt": "2026-10-22T11:51:42.815Z"
+      },
+      "1-3": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:52:02.325Z"
+      },
+      "1-4": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:52:07.666Z"
+      },
+      "1-5": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:52:12.411Z"
+      },
+      "1-6": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "B",
+        "submittedAt": "2026-10-22T11:52:16.709Z"
+      },
+      "1-7": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:52:20.691Z"
+      },
+      "1-8": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "C",
+        "submittedAt": "2026-10-22T11:52:26.440Z"
+      },
+      "1-9": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "B",
+        "submittedAt": "2026-10-22T11:52:44.368Z"
+      },
+      "5-0": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:56:24.365Z"
+      },
+      "5-1": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:56:28.240Z"
+      },
+      "5-2": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:56:32.190Z"
+      },
+      "5-3": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:56:37.500Z"
+      },
+      "5-4": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:56:41.015Z"
+      },
+      "5-5": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:56:44.796Z"
+      },
+      "5-6": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:56:48.470Z"
+      },
+      "5-7": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:56:52.782Z"
+      },
+      "5-8": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:56:57.187Z"
+      },
+      "5-9": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:57:01.545Z"
+      },
+      "6-0": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:57:23.456Z"
+      },
+      "6-1": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:57:34.150Z"
+      },
+      "6-2": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "submittedAt": "2026-10-22T11:57:48.345Z"
+      }
     }
   },
-  "vecnaProgress": {},
   "eventHistory": [
     {
       "eventId": 1,
@@ -10128,6 +11625,2150 @@
           "teamName": "test team 3",
           "leaderName": "peach",
           "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        }
+      ]
+    },
+    {
+      "eventId": 1,
+      "eventCode": "HAWKINS_1983",
+      "archivedAt": "2026-10-21T16:31:52.573Z",
+      "results": [
+        {
+          "teamId": "T01",
+          "teamName": "test team 1",
+          "leaderName": "apple",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T02",
+          "teamName": "test team 2",
+          "leaderName": "mango",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T03",
+          "teamName": "test team 3",
+          "leaderName": "peach",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T04",
+          "teamName": "Test Squad 1792591287943",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T05",
+          "teamName": "Alpha Squad 1792591289197",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T06",
+          "teamName": "Beta Squad 1792591289197",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-1",
+          "teamName": "Henry Creel (Vecna)",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T08",
+          "teamName": "Test Squad 1792591484083",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T09",
+          "teamName": "Alpha Squad 1792591485815",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T10",
+          "teamName": "Beta Squad 1792591485815",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T11",
+          "teamName": "Test Squad 1792594370195",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T12",
+          "teamName": "Alpha Squad 1792594370982",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T13",
+          "teamName": "Beta Squad 1792594370982",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598294432-A",
+          "teamName": "Synth Alpha 1792598294432",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598449664-A",
+          "teamName": "Synth Alpha 1792598449664",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598494571-A",
+          "teamName": "Synth Alpha 1792598494571",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598703925-A",
+          "teamName": "Synth Alpha 1792598703925",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "TEST-1792598738653",
+          "teamName": "LockTest 1792598738653",
+          "leaderName": "Lock Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598833266-A",
+          "teamName": "Synth Alpha 1792598833266",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598844229-A",
+          "teamName": "Synth Alpha 1792598844229",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598881622-A",
+          "teamName": "Synth Alpha 1792598881622",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598907271-A",
+          "teamName": "Synth Alpha 1792598907271",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599123688",
+          "teamName": "P4 Alpha 1792599123688",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599128810",
+          "teamName": "P4 Beta 1792599128810",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599202046",
+          "teamName": "P4 Alpha 1792599202046",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599208624",
+          "teamName": "P4 Beta 1792599208624",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T27",
+          "teamName": "Test Squad 1792599385312",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T28",
+          "teamName": "Alpha Squad 1792599389293",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T29",
+          "teamName": "Beta Squad 1792599389293",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792599982944-A",
+          "teamName": "Synth Alpha 1792599982944",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        }
+      ]
+    },
+    {
+      "eventId": 1,
+      "eventCode": "HAWKINS_1983",
+      "archivedAt": "2026-10-22T06:37:16.384Z",
+      "results": [
+        {
+          "teamId": "T01",
+          "teamName": "test team 1",
+          "leaderName": "apple",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T02",
+          "teamName": "test team 2",
+          "leaderName": "mango",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T03",
+          "teamName": "test team 3",
+          "leaderName": "peach",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T04",
+          "teamName": "Test Squad 1792591287943",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T05",
+          "teamName": "Alpha Squad 1792591289197",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T06",
+          "teamName": "Beta Squad 1792591289197",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-1",
+          "teamName": "Henry Creel (Vecna)",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T08",
+          "teamName": "Test Squad 1792591484083",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T09",
+          "teamName": "Alpha Squad 1792591485815",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T10",
+          "teamName": "Beta Squad 1792591485815",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T11",
+          "teamName": "Test Squad 1792594370195",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T12",
+          "teamName": "Alpha Squad 1792594370982",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T13",
+          "teamName": "Beta Squad 1792594370982",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598294432-A",
+          "teamName": "Synth Alpha 1792598294432",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598449664-A",
+          "teamName": "Synth Alpha 1792598449664",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598494571-A",
+          "teamName": "Synth Alpha 1792598494571",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598703925-A",
+          "teamName": "Synth Alpha 1792598703925",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "TEST-1792598738653",
+          "teamName": "LockTest 1792598738653",
+          "leaderName": "Lock Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598833266-A",
+          "teamName": "Synth Alpha 1792598833266",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598844229-A",
+          "teamName": "Synth Alpha 1792598844229",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598881622-A",
+          "teamName": "Synth Alpha 1792598881622",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598907271-A",
+          "teamName": "Synth Alpha 1792598907271",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599123688",
+          "teamName": "P4 Alpha 1792599123688",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599128810",
+          "teamName": "P4 Beta 1792599128810",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599202046",
+          "teamName": "P4 Alpha 1792599202046",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599208624",
+          "teamName": "P4 Beta 1792599208624",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T27",
+          "teamName": "Test Squad 1792599385312",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T28",
+          "teamName": "Alpha Squad 1792599389293",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T29",
+          "teamName": "Beta Squad 1792599389293",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792599982944-A",
+          "teamName": "Synth Alpha 1792599982944",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T31",
+          "teamName": "TestSquad_1792646406013",
+          "leaderName": "Leader_1792646406013",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T32",
+          "teamName": "TestSquad_1792646454861",
+          "leaderName": "Leader_1792646454861",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T33",
+          "teamName": "TestSquad_1792646495179",
+          "leaderName": "Leader_1792646495179",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T34",
+          "teamName": "Test Squad 1792646596277",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T35",
+          "teamName": "Alpha Squad 1792646597537",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T36",
+          "teamName": "Beta Squad 1792646597537",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792648894277-A",
+          "teamName": "Synth Alpha 1792648894277",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792648903276",
+          "teamName": "P4 Alpha 1792648903276",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792648903896",
+          "teamName": "P4 Beta 1792648903896",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        }
+      ]
+    },
+    {
+      "eventId": 1,
+      "eventCode": "HAWKINS_1983",
+      "archivedAt": "2026-10-22T10:35:47.923Z",
+      "results": [
+        {
+          "teamId": "T01",
+          "teamName": "test team 1",
+          "leaderName": "apple",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T02",
+          "teamName": "test team 2",
+          "leaderName": "mango",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T03",
+          "teamName": "test team 3",
+          "leaderName": "peach",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T04",
+          "teamName": "Test Squad 1792591287943",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T05",
+          "teamName": "Alpha Squad 1792591289197",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T06",
+          "teamName": "Beta Squad 1792591289197",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-1",
+          "teamName": "Henry Creel (Vecna)",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T08",
+          "teamName": "Test Squad 1792591484083",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T09",
+          "teamName": "Alpha Squad 1792591485815",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T10",
+          "teamName": "Beta Squad 1792591485815",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T11",
+          "teamName": "Test Squad 1792594370195",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T12",
+          "teamName": "Alpha Squad 1792594370982",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T13",
+          "teamName": "Beta Squad 1792594370982",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598294432-A",
+          "teamName": "Synth Alpha 1792598294432",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598449664-A",
+          "teamName": "Synth Alpha 1792598449664",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598494571-A",
+          "teamName": "Synth Alpha 1792598494571",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598703925-A",
+          "teamName": "Synth Alpha 1792598703925",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "TEST-1792598738653",
+          "teamName": "LockTest 1792598738653",
+          "leaderName": "Lock Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598833266-A",
+          "teamName": "Synth Alpha 1792598833266",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598844229-A",
+          "teamName": "Synth Alpha 1792598844229",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598881622-A",
+          "teamName": "Synth Alpha 1792598881622",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598907271-A",
+          "teamName": "Synth Alpha 1792598907271",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599123688",
+          "teamName": "P4 Alpha 1792599123688",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599128810",
+          "teamName": "P4 Beta 1792599128810",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599202046",
+          "teamName": "P4 Alpha 1792599202046",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599208624",
+          "teamName": "P4 Beta 1792599208624",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T27",
+          "teamName": "Test Squad 1792599385312",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T28",
+          "teamName": "Alpha Squad 1792599389293",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T29",
+          "teamName": "Beta Squad 1792599389293",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792599982944-A",
+          "teamName": "Synth Alpha 1792599982944",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T31",
+          "teamName": "TestSquad_1792646406013",
+          "leaderName": "Leader_1792646406013",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T32",
+          "teamName": "TestSquad_1792646454861",
+          "leaderName": "Leader_1792646454861",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T33",
+          "teamName": "TestSquad_1792646495179",
+          "leaderName": "Leader_1792646495179",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T34",
+          "teamName": "Test Squad 1792646596277",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T35",
+          "teamName": "Alpha Squad 1792646597537",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T36",
+          "teamName": "Beta Squad 1792646597537",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792648894277-A",
+          "teamName": "Synth Alpha 1792648894277",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792648903276",
+          "teamName": "P4 Alpha 1792648903276",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792648903896",
+          "teamName": "P4 Beta 1792648903896",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792664767436-A",
+          "teamName": "Synth Alpha 1792664767436",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        }
+      ]
+    },
+    {
+      "eventId": 1,
+      "eventCode": "HAWKINS_1983",
+      "archivedAt": "2026-10-22T11:34:13.862Z",
+      "results": [
+        {
+          "teamId": "T01",
+          "teamName": "test team 1",
+          "leaderName": "apple",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [
+            "ch1-q1",
+            "ch1-q2",
+            "ch1-q3",
+            "ch1-q4",
+            "ch1-q5",
+            "ch1-q6"
+          ],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T02",
+          "teamName": "test team 2",
+          "leaderName": "mango",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T03",
+          "teamName": "test team 3",
+          "leaderName": "peach",
+          "role": "VECNA",
+          "score": 60,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": "2026-10-22T10:38:05.385Z"
+        },
+        {
+          "teamId": "T04",
+          "teamName": "Test Squad 1792591287943",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T05",
+          "teamName": "Alpha Squad 1792591289197",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [
+            1
+          ],
+          "completedTasks": [
+            "ch1-q1",
+            "ch1-q2",
+            "ch1-q3",
+            "ch1-q4",
+            "ch1-q5",
+            "ch1-q6",
+            "ch1-q7",
+            "ch1-q8",
+            "ch1-q9",
+            "ch1-q10",
+            "ch1-quiz"
+          ],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T06",
+          "teamName": "Beta Squad 1792591289197",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-1",
+          "teamName": "Henry Creel (Vecna)",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T08",
+          "teamName": "Test Squad 1792591484083",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T09",
+          "teamName": "Alpha Squad 1792591485815",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T10",
+          "teamName": "Beta Squad 1792591485815",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T11",
+          "teamName": "Test Squad 1792594370195",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T12",
+          "teamName": "Alpha Squad 1792594370982",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T13",
+          "teamName": "Beta Squad 1792594370982",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598294432-A",
+          "teamName": "Synth Alpha 1792598294432",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598449664-A",
+          "teamName": "Synth Alpha 1792598449664",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598494571-A",
+          "teamName": "Synth Alpha 1792598494571",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598703925-A",
+          "teamName": "Synth Alpha 1792598703925",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "TEST-1792598738653",
+          "teamName": "LockTest 1792598738653",
+          "leaderName": "Lock Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598833266-A",
+          "teamName": "Synth Alpha 1792598833266",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598844229-A",
+          "teamName": "Synth Alpha 1792598844229",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598881622-A",
+          "teamName": "Synth Alpha 1792598881622",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598907271-A",
+          "teamName": "Synth Alpha 1792598907271",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599123688",
+          "teamName": "P4 Alpha 1792599123688",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599128810",
+          "teamName": "P4 Beta 1792599128810",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599202046",
+          "teamName": "P4 Alpha 1792599202046",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599208624",
+          "teamName": "P4 Beta 1792599208624",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T27",
+          "teamName": "Test Squad 1792599385312",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T28",
+          "teamName": "Alpha Squad 1792599389293",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T29",
+          "teamName": "Beta Squad 1792599389293",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [
+            "ch1-q1",
+            "ch1-q2",
+            "ch1-q3",
+            "ch1-q4",
+            "ch1-q5",
+            "ch1-q6",
+            "ch1-q7",
+            "ch1-q8"
+          ],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792599982944-A",
+          "teamName": "Synth Alpha 1792599982944",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T31",
+          "teamName": "TestSquad_1792646406013",
+          "leaderName": "Leader_1792646406013",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T32",
+          "teamName": "TestSquad_1792646454861",
+          "leaderName": "Leader_1792646454861",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T33",
+          "teamName": "TestSquad_1792646495179",
+          "leaderName": "Leader_1792646495179",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T34",
+          "teamName": "Test Squad 1792646596277",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T35",
+          "teamName": "Alpha Squad 1792646597537",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T36",
+          "teamName": "Beta Squad 1792646597537",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792648894277-A",
+          "teamName": "Synth Alpha 1792648894277",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792648903276",
+          "teamName": "P4 Alpha 1792648903276",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792648903896",
+          "teamName": "P4 Beta 1792648903896",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792664767436-A",
+          "teamName": "Synth Alpha 1792664767436",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        }
+      ]
+    },
+    {
+      "eventId": 1,
+      "eventCode": "HAWKINS_1983",
+      "archivedAt": "2026-10-22T11:46:12.954Z",
+      "results": [
+        {
+          "teamId": "T01",
+          "teamName": "test team 1",
+          "leaderName": "apple",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T02",
+          "teamName": "test team 2",
+          "leaderName": "mango",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T03",
+          "teamName": "test team 3",
+          "leaderName": "peach",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T04",
+          "teamName": "Test Squad 1792591287943",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T05",
+          "teamName": "Alpha Squad 1792591289197",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T06",
+          "teamName": "Beta Squad 1792591289197",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "VECNA-1",
+          "teamName": "Henry Creel (Vecna)",
+          "leaderName": "Henry Creel",
+          "role": "VECNA",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T08",
+          "teamName": "Test Squad 1792591484083",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T09",
+          "teamName": "Alpha Squad 1792591485815",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T10",
+          "teamName": "Beta Squad 1792591485815",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T11",
+          "teamName": "Test Squad 1792594370195",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T12",
+          "teamName": "Alpha Squad 1792594370982",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T13",
+          "teamName": "Beta Squad 1792594370982",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598294432-A",
+          "teamName": "Synth Alpha 1792598294432",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598449664-A",
+          "teamName": "Synth Alpha 1792598449664",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598494571-A",
+          "teamName": "Synth Alpha 1792598494571",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598703925-A",
+          "teamName": "Synth Alpha 1792598703925",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "TEST-1792598738653",
+          "teamName": "LockTest 1792598738653",
+          "leaderName": "Lock Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598833266-A",
+          "teamName": "Synth Alpha 1792598833266",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598844229-A",
+          "teamName": "Synth Alpha 1792598844229",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598881622-A",
+          "teamName": "Synth Alpha 1792598881622",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792598907271-A",
+          "teamName": "Synth Alpha 1792598907271",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599123688",
+          "teamName": "P4 Alpha 1792599123688",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599128810",
+          "teamName": "P4 Beta 1792599128810",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792599202046",
+          "teamName": "P4 Alpha 1792599202046",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792599208624",
+          "teamName": "P4 Beta 1792599208624",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T27",
+          "teamName": "Test Squad 1792599385312",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T28",
+          "teamName": "Alpha Squad 1792599389293",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T29",
+          "teamName": "Beta Squad 1792599389293",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792599982944-A",
+          "teamName": "Synth Alpha 1792599982944",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T31",
+          "teamName": "TestSquad_1792646406013",
+          "leaderName": "Leader_1792646406013",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T32",
+          "teamName": "TestSquad_1792646454861",
+          "leaderName": "Leader_1792646454861",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T33",
+          "teamName": "TestSquad_1792646495179",
+          "leaderName": "Leader_1792646495179",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T34",
+          "teamName": "Test Squad 1792646596277",
+          "leaderName": "Test Captain",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T35",
+          "teamName": "Alpha Squad 1792646597537",
+          "leaderName": "Alice Cooper",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "T36",
+          "teamName": "Beta Squad 1792646597537",
+          "leaderName": "Bob Dylan",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792648894277-A",
+          "teamName": "Synth Alpha 1792648894277",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-A-1792648903276",
+          "teamName": "P4 Alpha 1792648903276",
+          "leaderName": "Alpha Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "P4-B-1792648903896",
+          "teamName": "P4 Beta 1792648903896",
+          "leaderName": "Beta Leader",
+          "role": "PLAYER",
+          "score": 0,
+          "penalty": 0,
+          "solvedChapters": [],
+          "completedTasks": [],
+          "lastSolvedAt": null
+        },
+        {
+          "teamId": "SYNTH-1792664767436-A",
+          "teamName": "Synth Alpha 1792664767436",
+          "leaderName": "Leader Alpha",
+          "role": "PLAYER",
           "score": 0,
           "penalty": 0,
           "solvedChapters": [],

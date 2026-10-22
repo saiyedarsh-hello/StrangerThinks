@@ -4024,7 +4024,9 @@ export default function AdminDashboard() {
                   </div>
 
                   <div style={{ padding: "14px", backgroundColor: "rgba(255, 255, 255, 0.03)", borderRadius: 4, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                    <div style={{ fontSize: 11, color: "#888899", letterSpacing: ".1em" }}>STAGES CLEARED</div>
+                    <div style={{ fontSize: 11, color: "#888899", letterSpacing: ".1em" }}>
+                      {performanceData.teamOverview.role === "VECNA" ? "TRIALS CONQUERED" : "STAGES CLEARED"}
+                    </div>
                     <div style={{ fontSize: 24, fontWeight: 800, color: "#ffffff", marginTop: 4 }}>
                       {performanceData.stages.filter((s: any) => s.status === "Completed").length} / 6
                     </div>
@@ -4034,13 +4036,17 @@ export default function AdminDashboard() {
                 {/* 2. Stage-by-Stage History Table (6 Stages) */}
                 <div style={{ marginBottom: 24 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#d0d0d8", letterSpacing: ".08em", marginBottom: 10 }}>
-                    STAGE-BY-STAGE PROGRESSION &amp; SCORING (6 CANONICAL STAGES)
+                    {performanceData.teamOverview.role === "VECNA"
+                      ? "TRIAL-BY-TRIAL PROGRESSION & SCORING (6 CANONICAL TRIALS)"
+                      : "STAGE-BY-STAGE PROGRESSION & SCORING (6 CANONICAL STAGES)"}
                   </div>
                   <div style={{ border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: 4, overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
                       <thead>
                         <tr style={{ backgroundColor: "#12121c", color: "#888899", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                          <th style={{ padding: "10px 12px" }}>STAGE</th>
+                          <th style={{ padding: "10px 12px" }}>
+                            {performanceData.teamOverview.role === "VECNA" ? "TRIAL" : "STAGE"}
+                          </th>
                           <th style={{ padding: "10px 12px" }}>STATUS</th>
                           <th style={{ padding: "10px 12px" }}>STARTED AT</th>
                           <th style={{ padding: "10px 12px" }}>COMPLETED AT</th>
@@ -4079,7 +4085,7 @@ export default function AdminDashboard() {
                             <React.Fragment key={stg.stageId}>
                               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", backgroundColor: isExpanded ? "rgba(255, 45, 58, 0.05)" : "transparent" }}>
                                 <td style={{ padding: "12px", fontWeight: 600, color: "#ffffff" }}>
-                                  STAGE {stg.stageId}: {stg.stageName}
+                                  {stg.stageName.startsWith("TRIAL") ? stg.stageName : `STAGE ${stg.stageId}: ${stg.stageName}`}
                                 </td>
                                 <td style={{ padding: "12px" }}>
                                   <span style={{ padding: "3px 8px", borderRadius: 3, fontSize: 11, fontWeight: "bold", backgroundColor: badgeBg, color: badgeColor, border: `1px solid ${badgeColor}40` }}>
@@ -4129,7 +4135,7 @@ export default function AdminDashboard() {
                                 <tr style={{ backgroundColor: "#08080f" }}>
                                   <td colSpan={9} style={{ padding: "12px 16px" }}>
                                     <div style={{ fontSize: 11, color: "#888899", marginBottom: 6, fontWeight: 600 }}>
-                                      ITEMIZED EVENTS FOR STAGE {stg.stageId} ({stg.stageName}):
+                                      ITEMIZED EVENTS FOR {stg.stageName.startsWith("TRIAL") ? stg.stageName : `STAGE ${stg.stageId} (${stg.stageName})`}:
                                     </div>
                                     {(!stg.events || stg.events.length === 0) ? (
                                       <div style={{ fontSize: 11, color: "#555566", fontStyle: "italic" }}>

@@ -43,7 +43,7 @@ const LOCATION_NAMES: Record<LocationId, string> = {
 };
 
 export default function Hud() {
-  const { s, score, jump, reset, logout, radiometerPinCount, viewMode, setViewMode, activeChapterId, setChapterModalOpen } = useGame();
+  const { s, score, jump, reset, logout, radiometerPinCount, viewMode, setViewMode, activeChapterId, setChapterModalOpen, isLocationLocked, say } = useGame();
   const [dev, setDev] = useState(false);
   const [showClueLog, setShowClueLog] = useState(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
@@ -147,10 +147,15 @@ export default function Hud() {
         <button
           type="button"
           onClick={() => {
+            if (isLocationLocked) {
+              sfx("err");
+              say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
+              return;
+            }
             sfx("click");
             setViewMode("board");
           }}
-          title="Return to Hawkins Investigation Board"
+          title={isLocationLocked ? "Stage movement restricted by Vecna" : "Return to Hawkins Investigation Board"}
           style={{
             background: "transparent",
             border: "none",

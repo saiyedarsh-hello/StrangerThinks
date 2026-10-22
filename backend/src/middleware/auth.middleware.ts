@@ -58,12 +58,17 @@ export function requireAuth(allowedRoles?: Role[]) {
       }
     }
 
-    if (session.role === "VECNA" && !SessionService.hasActiveVecnaSessionSync(1)) {
-      return res.status(401).json({
-        success: false,
-        error: "SESSION_REVOKED",
-        message: "Vecna session has ended or been logged out.",
-      });
+    if (session.role === "VECNA") {
+      const active =
+        SessionService.hasActiveVecnaSessionSync(1) ||
+        (session.teamId ? SessionService.hasActiveSessionSync(session.teamId) : false);
+      if (!active) {
+        return res.status(401).json({
+          success: false,
+          error: "SESSION_REVOKED",
+          message: "Vecna session has ended or been logged out.",
+        });
+      }
     }
 
     req.user = session;

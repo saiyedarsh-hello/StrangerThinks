@@ -32,6 +32,7 @@ export interface PresencePayload {
   team: string;
   teamId?: string;
   location?: LocationId | string;
+  stageId?: number;
   viewMode?: string;
   storyProgress?: number;
   stage: StageId;
@@ -248,8 +249,10 @@ export function getSocket(): Socket | null {
       socketInstance = io(backendUrl, {
         auth: { token: initialToken },
         transports: ["websocket", "polling"],
-        reconnectionAttempts: 10,
+        reconnectionAttempts: Infinity,   // Never give up – critical for 7-hour events
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,       // Cap backoff at 5 s so reconnect stays snappy
+        timeout: 20000,
       });
 
       socketInstance.on("connect", () => {
@@ -277,6 +280,14 @@ export function getSocket(): Socket | null {
         if (currentToken) {
           if (socketInstance) socketInstance.auth = { token: currentToken };
           socketInstance?.emit("authenticate", { token: currentToken });
+        }
+      });
+
+      // Re-attach latest auth token before every reconnect attempt
+      socketInstance.on("reconnect_attempt", () => {
+        const currentToken = resolveStoredToken();
+        if (currentToken && socketInstance) {
+          (socketInstance as any).auth = { token: currentToken };
         }
       });
 
@@ -419,7 +430,14 @@ export function authenticateSocket(token: string): void {
   if (!token || typeof window === "undefined") return;
   const sock = getSocket();
   if (sock) {
-    sock.auth = { token };
+    (sock as any).auth = { token };
+    // If the socket is not connected (e.g. gave up after reconnect exhaustion or
+    // the tab was backgrounded), explicitly re-initiate the connection so the team
+    // shows as ONLINE on the admin dashboard.
+    if (!sock.connected) {
+      sock.connect();
+    }
+    // Always (re-)authenticate so the server room membership is current
     sock.emit("authenticate", { token });
   }
 }
@@ -472,23 +490,32 @@ export function publish(msg: RealtimeMessage): void {
 
   // Dispatch via Socket.IO to Express Backend (Port 5000)
   const sock = getSocket();
-  if (sock && sock.connected) {
-    try {
-      if (msg.type === "presence") {
-        sock.emit("presence", msg);
-      } else if (msg.type === "sabotage") {
-        sock.emit("sabotage", msg);
-      } else if (msg.type === "story_event") {
-        sock.emit("story_event", msg);
-      } else if (msg.type === "challenge_lock") {
-        sock.emit("challenge_lock", msg);
-      } else if (msg.type === "award") {
-        sock.emit("award", msg);
-      } else if (msg.type === "force_logout") {
-        sock.emit("force_logout", msg);
+  if (sock) {
+    // If the socket dropped (tab backgrounded, brief network glitch) reconnect
+    // before trying to emit so the presence heartbeat keeps the team ONLINE.
+    if (!sock.connected) {
+      const currentToken = resolveStoredToken();
+      if (currentToken) (sock as any).auth = { token: currentToken };
+      sock.connect();
+    }
+    if (sock.connected) {
+      try {
+        if (msg.type === "presence") {
+          sock.emit("presence", msg);
+        } else if (msg.type === "sabotage") {
+          sock.emit("sabotage", msg);
+        } else if (msg.type === "story_event") {
+          sock.emit("story_event", msg);
+        } else if (msg.type === "challenge_lock") {
+          sock.emit("challenge_lock", msg);
+        } else if (msg.type === "award") {
+          sock.emit("award", msg);
+        } else if (msg.type === "force_logout") {
+          sock.emit("force_logout", msg);
+        }
+      } catch (e) {
+        console.warn("[SOCKET.IO] Emit error:", e);
       }
-    } catch (e) {
-      console.warn("[SOCKET.IO] Emit error:", e);
     }
   }
 

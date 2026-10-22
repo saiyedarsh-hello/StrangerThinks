@@ -657,19 +657,20 @@ class DatabaseService {
     const pool = tidb.pool;
     if (pool) {
       pool.query(
-        `INSERT INTO active_sabotages (sabotage_id, source_team, target_team, kind, pin_index, message, duration_ms, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO active_sabotages (source_team, target_team, kind, pin_index, message, duration_ms, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
-          sabotage.id,
           sabotage.operatorName || "VECNA",
           sabotage.target,
           sabotage.kind,
           sabotage.pinIndex || null,
           sabotage.message || null,
-          45000,
+          (sabotage as any).durationMs || 45000,
           sabotage.expiresAt,
         ]
-      ).catch(() => {});
+      ).catch((err: any) => {
+        console.warn("[DB] active_sabotages insert error:", err.message);
+      });
     }
   }
 
@@ -713,6 +714,11 @@ class DatabaseService {
       }
     }
     return trialProgress;
+  }
+
+  public clearVecnaProgressForTeam(teamId: string): void {
+    this.vecnaQuestionProgress.delete(teamId);
+    this.saveSnapshot();
   }
 
   public recordVecnaAttempt(

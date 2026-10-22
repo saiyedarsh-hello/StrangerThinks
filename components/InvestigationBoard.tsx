@@ -103,7 +103,7 @@ export default function InvestigationBoard({
   onSelectChapter,
   activeChapterId = 1,
 }: InvestigationBoardProps) {
-  const { s, score } = useGame();
+  const { s, score, isLocationLocked, say } = useGame();
   const [selectedCardId, setSelectedCardId] = useState<number>(activeChapterId);
 
   // Refs for measuring card positions for the red string overlay
@@ -180,6 +180,11 @@ export default function InvestigationBoard({
   );
 
   const handleCardClick = (card: CaseCardData) => {
+    if (isLocationLocked && card.id !== activeChapterId) {
+      sfx("err");
+      say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
+      return;
+    }
     sfx("click");
     setSelectedCardId(card.id);
     if (onSelectChapter) {

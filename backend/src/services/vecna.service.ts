@@ -424,7 +424,7 @@ export class VecnaService {
         };
 
         // Deliver message immediately to Hawkins teams
-        const deliveryPayload = {
+        const baseDelivery = {
           type: "sabotage",
           kind: "MESSAGE",
           message: resolvedBody,
@@ -434,10 +434,29 @@ export class VecnaService {
           ts: Date.now(),
         };
         if (input.recipientScope === "all_teams") {
-          socketService.broadcastEvent("sabotage", deliveryPayload);
+          socketService.broadcastEvent("sabotage", {
+            ...baseDelivery,
+            id: messageId,
+            target: "all",
+          });
         } else if (input.selectedTeamIds) {
-          for (const tId of input.selectedTeamIds) {
-            socketService.emitToTeam(tId, "sabotage", deliveryPayload);
+          for (const rawId of input.selectedTeamIds) {
+            const foundTeam =
+              db.getTeamById(rawId) ||
+              db.getAllTeams().find(
+                (t) =>
+                  t.teamName.toLowerCase() === rawId.toLowerCase() ||
+                  t.id.toLowerCase() === rawId.toLowerCase()
+              );
+            const targetId = foundTeam ? foundTeam.id : rawId;
+            const targetName = foundTeam ? foundTeam.teamName : rawId;
+            socketService.emitToTeam(targetId, "sabotage", {
+              ...baseDelivery,
+              id: messageId,
+              target: targetId,
+              targetTeamId: targetId,
+              targetTeamName: targetName,
+            });
           }
         }
 
@@ -492,7 +511,7 @@ export class VecnaService {
     };
     this.messages.push(msgRecord);
 
-    const deliveryPayload = {
+    const baseDelivery = {
       type: "sabotage",
       kind: "MESSAGE",
       message: resolvedBody,
@@ -502,10 +521,29 @@ export class VecnaService {
       ts: Date.now(),
     };
     if (input.recipientScope === "all_teams") {
-      socketService.broadcastEvent("sabotage", deliveryPayload);
+      socketService.broadcastEvent("sabotage", {
+        ...baseDelivery,
+        id: messageId,
+        target: "all",
+      });
     } else if (input.selectedTeamIds) {
-      for (const tId of input.selectedTeamIds) {
-        socketService.emitToTeam(tId, "sabotage", deliveryPayload);
+      for (const rawId of input.selectedTeamIds) {
+        const foundTeam =
+          db.getTeamById(rawId) ||
+          db.getAllTeams().find(
+            (t) =>
+              t.teamName.toLowerCase() === rawId.toLowerCase() ||
+              t.id.toLowerCase() === rawId.toLowerCase()
+          );
+        const targetId = foundTeam ? foundTeam.id : rawId;
+        const targetName = foundTeam ? foundTeam.teamName : rawId;
+        socketService.emitToTeam(targetId, "sabotage", {
+          ...baseDelivery,
+          id: messageId,
+          target: targetId,
+          targetTeamId: targetId,
+          targetTeamName: targetName,
+        });
       }
     }
 
@@ -1043,7 +1081,16 @@ export class VecnaService {
     // Broadcast authoritative updated score to activating squad and live standings
     socketService.emitToTeam(vecnaTeam.id, "score:update", {
       teamId: vecnaTeam.id,
+      score: newScore,
       totalScore: newScore,
+      newScore,
+      delta: -totalCost,
+    });
+    socketService.broadcastToVecna("score:update", {
+      teamId: vecnaTeam.id,
+      score: newScore,
+      totalScore: newScore,
+      newScore,
       delta: -totalCost,
     });
     socketService.broadcastLeaderboard();
@@ -1227,8 +1274,8 @@ export class VecnaService {
     const stages = this.TACTICAL_STAGES.map((stg) => {
       const stageTeams = allTeams.filter((t) => {
         let teamStage = 1;
-        if (t.solvedChapters && t.solvedChapters.length > 0) {
-          teamStage = Math.min(6, Math.max(1, Math.max(...t.solvedChapters.map(Number)) + 1));
+        if (typeof (t as any).currentStage === "number" && (t as any).currentStage >= 1 && (t as any).currentStage <= 6) {
+          teamStage = (t as any).currentStage;
         } else if (t.location) {
           const loc = t.location.toLowerCase();
           if (loc.includes("police")) teamStage = 2;
@@ -1236,7 +1283,13 @@ export class VecnaService {
           else if (loc.includes("lab")) teamStage = 4;
           else if (loc.includes("radio")) teamStage = 5;
           else if (loc.includes("gate") || loc.includes("upside") || loc.includes("final")) teamStage = 6;
-          else teamStage = 1;
+          else if (t.solvedChapters && t.solvedChapters.length > 0) {
+            teamStage = Math.min(6, Math.max(1, Math.max(...t.solvedChapters.map(Number)) + 1));
+          } else {
+            teamStage = 1;
+          }
+        } else if (t.solvedChapters && t.solvedChapters.length > 0) {
+          teamStage = Math.min(6, Math.max(1, Math.max(...t.solvedChapters.map(Number)) + 1));
         }
         return teamStage === stg.id;
       });

@@ -16,6 +16,7 @@ router.get("/templates", VecnaController.getTemplates);
 
 // Dispatch Quota (5 max event-wide)
 router.get("/dispatch/quota", VecnaController.getDispatchQuota);
+router.post("/dispatch/reset", requireAuth(["ADMIN"]), VecnaController.resetDispatchQuota);
 
 // Message Submission & Sender Queue (Requires VECNA or ADMIN role)
 router.post("/messages", requireAuth(["VECNA", "ADMIN"]), VecnaController.submitMessage);

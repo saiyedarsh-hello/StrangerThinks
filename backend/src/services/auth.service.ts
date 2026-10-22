@@ -237,6 +237,11 @@ export const AuthService = {
         leaderName: team.leaderName,
         role: team.role || "PLAYER",
       };
+
+      if (teamSession.role === "VECNA") {
+        await SessionService.createVecnaSession(1);
+      }
+
       const token = this.generateToken(teamSession);
 
       return {

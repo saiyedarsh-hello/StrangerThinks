@@ -116,6 +116,7 @@ export async function GET(req: NextRequest) {
           submissionsOpen: eventData.event?.submissionsOpen ?? true,
           isPaused: eventData.event?.isPaused ?? (eventData.event?.status === "paused"),
         },
+        activeSabotages: meData.activeSabotages || [],
       },
       {
         headers: {

@@ -95,11 +95,40 @@ export const AuthController = {
       });
     }
 
-    const team = db.getTeamById(req.user.teamId);
+    const currentTeamId = req.user?.teamId;
+    let team = currentTeamId ? db.getTeamById(currentTeamId) : null;
+    if (!team && req.user?.role === "VECNA") {
+      team = db.getTeamById("VECNA-001") || db.getAllTeams().find((t) => t.role === "VECNA") || null;
+    }
+    const now = Date.now();
+    const activeSabotages = currentTeamId
+      ? db
+          .getActiveSabotages()
+          .filter(
+            (s) =>
+              (s.target === currentTeamId ||
+                (s as any).targetTeamId === currentTeamId ||
+                s.target === "all") &&
+              s.expiresAt > now
+          )
+          .map((s) => ({
+            id: s.id,
+            kind: s.kind,
+            pinIndex: s.pinIndex,
+            message: s.message,
+            operatorName: s.operatorName,
+            duration: Math.max(1, Math.ceil((s.expiresAt - now) / 1000)),
+            durationSec: Math.max(1, Math.ceil((s.expiresAt - now) / 1000)),
+            until: s.expiresAt,
+            target: s.target,
+          }))
+      : [];
+
     return res.json({
       success: true,
       session: req.user,
       team: team ? { ...team, score: team.totalScore } : null,
+      activeSabotages,
     });
   },
 };
