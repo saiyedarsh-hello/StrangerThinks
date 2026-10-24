@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Category, ITEMS, STAGES, STAGE_ORDER, StageId, TOTAL_TIME } from "./stages";
 import { FINAL_CODE, RADIOMETER_PINS } from "./radiometer";
@@ -157,17 +157,26 @@ export const stageIndex = (s: StageId) => STAGE_ORDER.indexOf(s);
 export const totalScore = (b: Breakdown, penalty = 0) =>
   Math.round(b.tech + b.puzzle + b.clue + b.speed + b.story + b.teamwork - penalty);
 
+export interface InGameModalConfig {
+  title?: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  type?: "info" | "warning" | "danger" | "confirm";
+  onConfirm?: () => void;
+  onCancel?: () => void;
+}
+
 interface Ctx {
   s: GameState;
   hydrated: boolean;
-  sessionVerified: boolean;
   session: AuthSession | null;
   score: number;
   sabotage: Sabotage | null;
+  isPaused: boolean;
   cutscene: StageId | null;
   endCutscene: () => void;
   start: () => void;
-  loginSession: (sessionData: AuthSession) => void;
   loginPlayer: (team: {
     id: string;
     teamName: string;
@@ -183,7 +192,6 @@ interface Ctx {
     unlockedLocations?: Record<string, boolean>;
     storyProgress?: number;
   }) => void;
-  isPaused: boolean;
   register: (name: string, members: string[]) => void;
   logout: () => void;
   submit: (challengeId: string, text: string) => boolean;
@@ -223,8 +231,17 @@ interface Ctx {
   unlockHint: (hintKey: string, cost?: number) => boolean;
   isHintUnlocked: (hintKey: string) => boolean;
   spendPoints: (points: number, reason?: string) => void;
-  isLocationLocked: boolean;
-  isSystemCorrupted: boolean;
+  modal: InGameModalConfig | null;
+  showAlert: (
+    message: string,
+    options?: { title?: string; confirmLabel?: string; type?: "info" | "warning" | "danger" }
+  ) => void;
+  showConfirm: (
+    message: string,
+    onConfirm: () => void,
+    options?: { title?: string; confirmLabel?: string; cancelLabel?: string; type?: "warning" | "danger" | "confirm" }
+  ) => void;
+  closeModal: () => void;
 }
 
 const GameCtx = createContext<Ctx | null>(null);
@@ -239,7 +256,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const isGame = path === "/";
   const [s, setS] = useState<GameState>(INITIAL);
   const [hydrated, setHydrated] = useState(false);
-  const [sessionVerified, setSessionVerified] = useState(false);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [sabotage, setSabotage] = useState<Sabotage | null>(null);
   const [cutscene, setCutscene] = useState<StageId | null>(null);
@@ -259,8 +275,50 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return 1;
   });
   const [chapterModalOpen, setChapterModalOpen] = useState(false);
-  const activeChapterIdRef = useRef<number>(activeChapterId);
-  activeChapterIdRef.current = activeChapterId;
+  const [modal, setModal] = useState<InGameModalConfig | null>(null);
+
+  const closeModal = useCallback(() => {
+    setModal(null);
+  }, []);
+
+  const showAlert = useCallback(
+    (message: string, options?: { title?: string; confirmLabel?: string; type?: "info" | "warning" | "danger" }) => {
+      sfx(options?.type === "warning" || options?.type === "danger" ? "err" : "click");
+      setModal({
+        message,
+        title: options?.title || "HAWKINS TELEMETRY // NOTICE",
+        type: options?.type || "info",
+        confirmLabel: options?.confirmLabel || "ACKNOWLEDGE",
+        onConfirm: () => setModal(null),
+      });
+    },
+    []
+  );
+
+  const showConfirm = useCallback(
+    (
+      message: string,
+      onConfirm: () => void,
+      options?: { title?: string; confirmLabel?: string; cancelLabel?: string; type?: "warning" | "danger" | "confirm" }
+    ) => {
+      sfx("type");
+      setModal({
+        message,
+        title: options?.title || "SECURITY PROTOCOL CONFIRMATION",
+        type: options?.type || "confirm",
+        confirmLabel: options?.confirmLabel || "CONFIRM",
+        cancelLabel: options?.cancelLabel || "CANCEL",
+        onConfirm: () => {
+          setModal(null);
+          onConfirm();
+        },
+        onCancel: () => {
+          setModal(null);
+        },
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -281,19 +339,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     const currentSession = getStoredSession();
     setSession(currentSession);
-    setSessionVerified(false);
-
-    try {
-      const savedSab = localStorage.getItem("hawkins_active_sabotage");
-      if (savedSab) {
-        const parsedSab = JSON.parse(savedSab);
-        if (parsedSab && parsedSab.until && parsedSab.until > Date.now()) {
-          setSabotage(parsedSab);
-        } else {
-          localStorage.removeItem("hawkins_active_sabotage");
-        }
-      }
-    } catch {}
 
     try {
       const raw = localStorage.getItem(KEY);
@@ -370,27 +415,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.authenticated) {
-          const serverRole: AuthSession["role"] =
-            data.role === "ADMIN" || data.role === "VECNA" ? data.role : "PLAYER";
+        if (data.authenticated && data.team) {
           const sData: AuthSession = {
-            role: serverRole,
-            teamName: data.session?.teamName || data.team?.teamName || "",
-            leaderName: data.session?.leaderName || data.team?.squadLeader || "",
-            teamId: data.session?.teamId || data.team?.id || "",
-            ...(data.session?.adminId ? { adminId: data.session.adminId } : {}),
+            role: "PLAYER",
+            teamName: data.team.teamName,
+            leaderName: data.team.squadLeader,
+            teamId: data.team.id,
             ...(sessionToken ? { token: sessionToken } : {}),
           };
           saveSession(sData);
           setSession(sData);
-          setSessionVerified(true);
 
-          if (serverRole !== "PLAYER") {
-            if (sessionToken) authenticateSocket(sessionToken);
-            return;
-          }
-
-          const teamScore = data.team?.totalScore ?? data.team?.score ?? 0;
+          const teamScore = data.team.totalScore ?? data.team.score ?? 0;
           const sBreakdown: Breakdown = data.team.breakdown || {
             tech: teamScore,
             puzzle: 0,
@@ -432,51 +468,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             },
           }));
 
-          if (Array.isArray((data as any).activeSabotages) && (data as any).activeSabotages.length > 0) {
-            const activeSabs = (data as any).activeSabotages;
-            const corrupt = activeSabs.find((sabItem: any) => sabItem.kind === "CORRUPT");
-            const lock = activeSabs.find((sabItem: any) => sabItem.kind === "LOCK");
-            const top = corrupt || lock || activeSabs[0];
-            if (top && top.until && top.until > Date.now()) {
-              applySabotage(
-                top.kind,
-                top.pinIndex,
-                top.message,
-                top.operatorName,
-                top.duration || top.durationSec,
-                top.until
-              );
-            }
-          } else if (Array.isArray((data as any).activeSabotages) && (data as any).activeSabotages.length === 0) {
-            setSabotage((prev) => {
-              if (prev && (prev.kind === "CORRUPT" || prev.kind === "LOCK")) {
-                if (typeof window !== "undefined") {
-                  try {
-                    localStorage.removeItem("hawkins_active_sabotage");
-                  } catch {}
-                }
-                return null;
-              }
-              return prev;
-            });
-          }
-
           if (sessionToken) {
             authenticateSocket(sessionToken);
           }
-        } else {
-          clearSession();
-          setSession(null);
-          setSessionVerified(true);
         }
       })
-      .catch(() => {
-        // Without an authoritative server response we cannot trust a locally
-        // stored role. Require a fresh login instead.
-        clearSession();
-        setSession(null);
-        setSessionVerified(true);
-      });
+      .catch(() => {});
   }, [isGame]);
 
   // Persist to localStorage
@@ -490,14 +487,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Theme on <html>
   useEffect(() => {
     const isMind = s.location === "upsidedown" || s.stage === "mind" || s.stage === "final";
-    const theme = session?.role === "VECNA"
+    const theme = path?.startsWith("/vecna")
       ? "upside"
       : isGame && s.phase === "play"
       ? (s.stage === "mind" || s.location === "upsidedown" ? "upside" : STAGES[s.stage]?.theme || "normal")
       : "normal";
     document.documentElement.dataset.theme = theme;
     setDroneTheme(isMind ? "mind" : theme);
-  }, [s.stage, s.phase, s.location, path, isGame, session?.role]);
+  }, [s.stage, s.phase, s.location, path, isGame]);
 
   // Clock
   useEffect(() => {
@@ -554,18 +551,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (m.kind === "MESSAGE") {
           sfx("vecnaCurse");
         }
-        applySabotage(
-          m.kind as SabKind,
-          m.pinIndex,
-          m.message,
-          m.operatorName,
-          m.duration || m.durationSec,
-          m.until
-        );
-      }
-
-      if (m.type === "sabotage:clear") {
-        clearSabotage();
+        applySabotage(m.kind as SabKind, m.pinIndex, m.message, m.operatorName);
       }
 
       if (m.type === "story_event") {
@@ -666,15 +652,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      if (m.type === "session_superseded") {
-        const myTeamId = sRef.current.team?.id;
-        if (!m.teamId || !myTeamId || String(m.teamId).toLowerCase() === myTeamId.toLowerCase()) {
-          say("TERMINAL SUPERSEDED: Another device logged into this squad account. Controlling session migrated.");
-          sfx("err");
-          logout();
-        }
-      }
-
       if (m.type === "force_logout") {
         const myTeamId = sRef.current.team?.id;
         const myTeamName = sRef.current.team?.name;
@@ -706,23 +683,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      const CHAPTER_LOC_MAP: Record<number, LocationId> = {
-        1: "town",
-        2: "policeStation",
-        3: "byersHouse",
-        4: "lab",
-        5: "radioTower",
-        6: "gate",
-        7: "upsidedown",
-      };
-      const curStageId = activeChapterIdRef.current || 1;
-      const curLocation = cur.location || CHAPTER_LOC_MAP[curStageId] || "town";
-
       presence({
         team: cur.team.name,
         teamId: cur.team.id,
-        location: curLocation,
-        stageId: curStageId,
+        location: cur.location,
         viewMode: cur.viewMode,
         storyProgress: cur.storyProgress,
         stage: cur.stage,
@@ -805,18 +769,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const applySabotage = (
-    kind: SabKind,
-    pinIndex?: number,
-    message?: string,
-    operatorName?: string,
-    duration?: number,
-    until?: number
-  ) => {
+  const applySabotage = (kind: SabKind, pinIndex?: number, message?: string, operatorName?: string) => {
     const dur: Record<SabKind, number> = {
-      CORRUPT: 80,
+      CORRUPT: 30,
       TIME_FREEZE: 5,
-      LOCK: 120,
+      LOCK: 20,
       DISTORT: 40,
       SIGNAL_JAM: 30,
       WATCH: 8,
@@ -837,23 +794,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setS((p) => ({ ...p, timeLeft: Math.max(0, p.timeLeft - 120) }));
     }
 
-    const durationSec = duration || dur[kind] || 20;
-    const expiresAt = until && until > Date.now() ? until : Date.now() + durationSec * 1000;
-
-    const newSab: Sabotage = {
+    setSabotage({
       id: Date.now(),
       kind,
       pinIndex,
       message,
       operatorName,
-      until: expiresAt,
-    };
-    setSabotage(newSab);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("hawkins_active_sabotage", JSON.stringify(newSab));
-      } catch {}
-    }
+      until: Date.now() + (dur[kind] || 20) * 1000,
+    });
   };
 
   const stageComplete = useCallback(
@@ -869,30 +817,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const start = useCallback(() => {
     setS((p) => ({ ...p, phase: "login" }));
-  }, []);
-
-  const loginSession = useCallback((sessionData: AuthSession) => {
-    saveSession(sessionData);
-    setSession(sessionData);
-    setSessionVerified(true);
-
-    if (typeof document !== "undefined" && sessionData.token) {
-      document.cookie = `hawkins_session_token=${sessionData.token}; path=/; max-age=86400; SameSite=Lax`;
-      if (sessionData.role === "ADMIN") {
-        document.cookie = `hawkins_admin_token=${sessionData.token}; path=/; max-age=86400; SameSite=Lax`;
-      }
-    }
-    if (typeof window !== "undefined" && sessionData.token && sessionData.role === "ADMIN") {
-      localStorage.setItem("admin_token", sessionData.token);
-      localStorage.setItem("hawkins_admin_token", sessionData.token);
-      if (sessionData.leaderName) {
-        localStorage.setItem("hawkins_admin_leader", sessionData.leaderName);
-      }
-    }
-
-    if (sessionData.token) {
-      authenticateSocket(sessionData.token);
-    }
   }, []);
 
   const loginPlayer = useCallback(
@@ -920,7 +844,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       };
       saveSession(sessionData);
       setSession(sessionData);
-      setSessionVerified(true);
 
       if (typeof document !== "undefined" && team.token) {
         document.cookie = `hawkins_session_token=${team.token}; path=/; max-age=86400; SameSite=Lax`;
@@ -970,27 +893,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         unlocked: teamUnlocked,
       };
 
-      setS((p) => {
-        const isSameTeam = p.team?.id === team.id;
-        const base = isSameTeam ? p : INITIAL;
-        return {
-          ...base,
-          team: teamObj,
-          phase: "play",
-          location: "town",
-          viewMode: "board",
-          breakdown: teamBreakdown,
-          penalty: team.penalty || 0,
-          taskScores: teamTaskScores,
-          completedTasks: teamCompleted,
-          unlocked: teamUnlocked,
-          storyProgress: teamProgress,
-          introSeen: false,
-          solved: isSameTeam ? p.solved : (teamCompleted.reduce((acc, t) => ({ ...acc, [t]: true }), {})),
-          revealed: isSameTeam ? p.revealed : {},
-          unlockedHints: isSameTeam ? p.unlockedHints : {},
-        };
-      });
+      setS((p) => ({
+        ...p,
+        team: teamObj,
+        phase: "play",
+        location: "town",
+        viewMode: "board",
+        breakdown: teamBreakdown,
+        penalty: team.penalty || 0,
+        taskScores: teamTaskScores,
+        completedTasks: teamCompleted,
+        unlocked: teamUnlocked,
+        storyProgress: teamProgress,
+        introSeen: false, // ensures cinematic typewriter intro runs on fresh login
+      }));
       setCutscene("hawkins");
       sfx("boom");
     },
@@ -1034,7 +950,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const grantItem = useCallback((id: string) => {
     setS((p) => (p.inventory.includes(id) ? p : { ...p, inventory: [...p.inventory, id] }));
     sfx("clue");
-    if (ITEMS[id]) say(`ITEM ACQUIRED — ${ITEMS[id].name.toUpperCase()}`);
+    if (ITEMS[id]) say(`ITEM ACQUIRED ÔÇö ${ITEMS[id].name.toUpperCase()}`);
   }, [say]);
 
   // Fast Travel between locations on Hawkins Map
@@ -1073,17 +989,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     sfx("ok");
     setS((p) => {
-      // Idempotency: if already completed, do not award points again!
-      if (p.completedTasks.includes(taskId)) {
+      const prevPoints = p.taskScores?.[taskId] ?? 0;
+      // Idempotency: if already completed and recorded with equal or higher score, skip
+      if (p.completedTasks.includes(taskId) && prevPoints >= points && points > 0) {
         return p;
       }
 
-      const prevPoints = p.taskScores?.[taskId] ?? 0;
       const pointDelta = points - prevPoints;
 
       const taskDef = STORY_TASKS[taskId];
       const category = taskDef?.category || "puzzle";
-      const nextCompleted = [...p.completedTasks, taskId];
+      const nextCompleted = p.completedTasks.includes(taskId) ? p.completedTasks : [...p.completedTasks, taskId];
       const nextClues = { ...p.clues };
 
       if (taskDef?.storyClue) {
@@ -1131,16 +1047,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
       const taskScoresSum = Object.values(nextTaskScores).reduce((a, b) => a + (b || 0), 0);
       const computedTotalScore = alreadyAwarded
-        ? (p.team?.score ?? totalScore(nextBreakdown, p.penalty))
+        ? Math.max(p.team?.score ?? 0, p.team?.totalScore ?? 0, taskScoresSum, totalScore(nextBreakdown, p.penalty))
         : Math.max(
             totalScore(nextBreakdown, p.penalty),
-            taskScoresSum
+            taskScoresSum,
+            (p.team?.score || 0) + Math.max(0, pointDelta)
           );
 
       const nextTeam = p.team
         ? {
             ...p.team,
             score: computedTotalScore,
+            totalScore: computedTotalScore,
             completedTasks: nextCompleted,
           }
         : p.team;
@@ -1244,7 +1162,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (!powerUnlocked(p)) return null;
       if (sabotage && sabotage.kind === "SIGNAL_JAM") {
         sfx("err");
-        say("SIGNAL JAMMED — POWERS OFFLINE");
+        say("SIGNAL JAMMED ÔÇö POWERS OFFLINE");
         return null;
       }
       if (cur.revealed[cid]?.[p]) return "ALREADY";
@@ -1351,11 +1269,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const clearSabotage = useCallback(() => {
     setSabotage(null);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.removeItem("hawkins_active_sabotage");
-      } catch {}
-    }
     sfx("ok");
   }, []);
 
@@ -1436,31 +1349,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setCutscene(null);
     try {
       localStorage.removeItem(KEY);
-      if (typeof window !== "undefined") {
-        Object.keys(localStorage).forEach((k) => {
-          if (k.startsWith("hawkins_quiz_")) {
-            localStorage.removeItem(k);
-          }
-        });
-      }
     } catch {}
   }, []);
 
   const logout = useCallback(async () => {
     try {
       const stored = getStoredSession();
-      const token = (session as any)?.token || (stored && (stored as any).token ? (stored as any).token : "");
-      const teamId = (session as any)?.teamId || (stored as any)?.teamId || s.team?.id;
+      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const teamId = (stored as any)?.teamId || s.team?.id;
       if (token || teamId) {
         await fetch(`${API_BASE}/auth/logout`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ teamId }),
-        }).catch(() => {});
-        await fetch(`${API_BASE}/vecna/auth/logout`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1477,30 +1375,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     disconnectSocket();
     if (typeof document !== "undefined") {
-      document.cookie = "hawkins_session_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      document.cookie = "hawkins_admin_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    }
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("admin_token");
-      localStorage.removeItem("hawkins_admin_token");
-      localStorage.removeItem("hawkins_admin_leader");
-      localStorage.removeItem(KEY);
-      localStorage.removeItem("hawkins-protocol:session");
-      // Clean up all local draft answers and quiz states
-      Object.keys(localStorage).forEach((k) => {
-        if (k.startsWith("hawkins_quiz_")) {
-          localStorage.removeItem(k);
-        }
-      });
-      sessionStorage.clear();
+      document.cookie = "hawkins_session_token=; path=/; max-age=0";
     }
     clearSession();
     setSession(null);
-    setSessionVerified(true);
     reset();
     setS({ ...INITIAL, phase: "login", introSeen: false });
     sfx("click");
-  }, [reset, s.team?.id, session]);
+  }, [reset, s.team?.id]);
 
   // Periodic session heartbeat & presence refresh
   useEffect(() => {
@@ -1529,69 +1411,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [session, logout, say]);
 
   const endCutscene = useCallback(() => setCutscene(null), []);
-  const isLocationLocked = Boolean(
-    sabotage &&
-    sabotage.kind === "LOCK" &&
-    sabotage.until &&
-    sabotage.until > Date.now()
-  );
-  const isSystemCorrupted = Boolean(
-    sabotage &&
-    sabotage.kind === "CORRUPT" &&
-    sabotage.until &&
-    sabotage.until > Date.now()
-  );
-
   const setSoundOn = useCallback((b: boolean) => setSoundOnState(b), []);
   const setViewMode = useCallback((m: "map" | "location" | "board") => {
-    if (isLocationLocked && m === "board") {
-      sfx("err");
-      say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
-      return;
-    }
     sfx("click");
     setS((p) => ({ ...p, viewMode: m }));
-  }, [isLocationLocked, say]);
-
-  const setActiveChapterIdSafe = useCallback((id: 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
-    if (isLocationLocked && id !== activeChapterId) {
-      sfx("err");
-      say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
-      return;
-    }
-    setActiveChapterId(id);
-    activeChapterIdRef.current = id;
-    const locMap: Record<number, LocationId> = {
-      1: "town",
-      2: "policeStation",
-      3: "byersHouse",
-      4: "lab",
-      5: "radioTower",
-      6: "gate",
-      7: "upsidedown",
-    };
-    const nextLoc = locMap[id] || "town";
-    setS((p) => ({ ...p, location: nextLoc }));
-    try {
-      localStorage.setItem("hawkins_active_chapter", String(id));
-      if (sRef.current.team?.id) {
-        presence({
-          team: sRef.current.team.name,
-          teamId: sRef.current.team.id,
-          location: nextLoc,
-          stageId: id,
-          viewMode: sRef.current.viewMode,
-          storyProgress: sRef.current.storyProgress,
-          stage: sRef.current.stage,
-          score: totalScore(sRef.current.breakdown, sRef.current.penalty),
-          timeLeft: sRef.current.timeLeft,
-          solved: (sRef.current.completedTasks || []).length,
-          ts: Date.now(),
-        });
-      }
-    } catch {}
-  }, [isLocationLocked, activeChapterId, say]);
-
+  }, []);
   const setIntroSeen = useCallback((seen: boolean) => setS((p) => ({ ...p, introSeen: seen })), []);
   const triggerVecnaArrival = useCallback(() => {
     setS((p) => ({ ...p, vecnaStatus: "ACTIVE", vecnaCutscene: true }));
@@ -1682,23 +1506,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     () => ({
       s,
       hydrated,
-      sessionVerified,
       session,
-      score:
-        typeof s.team?.totalScore === "number"
-          ? s.team.totalScore
-          : typeof s.team?.score === "number"
-          ? s.team.score
-          : Math.max(
-              totalScore(s.breakdown, s.penalty),
-              Object.values(s.taskScores || {}).reduce((a, b) => a + (b || 0), 0)
-            ),
+      score: Math.max(
+        typeof s.team?.totalScore === "number" ? s.team.totalScore : 0,
+        typeof s.team?.score === "number" ? s.team.score : 0,
+        totalScore(s.breakdown, s.penalty),
+        Object.values(s.taskScores || {}).reduce((a, b) => a + (b || 0), 0)
+      ),
       isPaused: Boolean(s.isPaused),
       sabotage,
       cutscene,
       endCutscene,
       start,
-      loginSession,
       loginPlayer,
       register,
       logout,
@@ -1732,26 +1551,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       submitRadiometerCode,
       radiometerPinCount,
       activeChapterId,
-      setActiveChapterId: setActiveChapterIdSafe,
+      setActiveChapterId,
       chapterModalOpen,
-      isLocationLocked,
-      isSystemCorrupted,
       setChapterModalOpen,
       unlockedHints: s.unlockedHints || {},
       unlockHint,
       isHintUnlocked,
       spendPoints,
+      modal,
+      showAlert,
+      showConfirm,
+      closeModal,
     }),
     [
       s,
       hydrated,
-      sessionVerified,
       session,
       sabotage,
       cutscene,
       endCutscene,
       start,
-      loginSession,
       loginPlayer,
       register,
       logout,
@@ -1781,13 +1600,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       submitRadiometerCode,
       radiometerPinCount,
       activeChapterId,
-      setActiveChapterIdSafe,
       chapterModalOpen,
-      isLocationLocked,
-      isSystemCorrupted,
       unlockHint,
       isHintUnlocked,
       spendPoints,
+      modal,
+      showAlert,
+      showConfirm,
+      closeModal,
     ]
   );
 

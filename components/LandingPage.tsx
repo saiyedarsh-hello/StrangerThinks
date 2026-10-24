@@ -6,7 +6,8 @@ import { sfx } from "@/lib/audio";
 import { authenticateTeamWithTiDB } from "@/lib/tidbService";
 import { saveSession } from "@/lib/config";
 import CinematicBackground from "./CinematicBackground";
-import IntroLightning, { unlockAudio } from "./IntroLightning";
+import RedLightningCanvas from "./RedLightningCanvas";
+import { unlockAudio } from "./IntroLightning";
 
 interface LandingPageProps {
   onEnterVecna?: () => void;
@@ -311,17 +312,20 @@ export default function LandingPage(_props: LandingPageProps) {
         justifyContent: "center",
         alignItems: "center",
         overflow: "hidden",
-        backgroundColor: "#000000",
-        background: "#000000",
+        backgroundColor: "#05080b",
+        background: "#05080b",
       }}
     >
-      {/* Cinematic Photorealistic Pumpkin Patch Background (Clean Static Image) */}
+      {/* Cinematic Photorealistic Hawkins Road Background */}
       <CinematicBackground
-        src="/pumpkin-patch-bg-hd.jpg"
+        src="/hawkins-town-bg.jpg"
         particles="none"
-        vignette="none"
-        overlayOpacity={1.0}
+        vignette="medium"
+        overlayOpacity={0.42}
       />
+
+      {/* Realistic Procedural Red Lightning & Embers Canvas (Layered behind text) */}
+      <RedLightningCanvas density="normal" onFlash={(intensity) => setFlashLevel(intensity)} />
 
       {/* Subtle Atmospheric Dark Vignette Layer */}
       <div
@@ -331,7 +335,7 @@ export default function LandingPage(_props: LandingPageProps) {
           pointerEvents: "none",
           opacity: 1,
           background:
-            "radial-gradient(circle at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.62) 100%), linear-gradient(180deg, rgba(0,0,0,0.25) 0%, transparent 45%, rgba(0,0,0,0.68) 100%)",
+            "radial-gradient(circle at 50% 50%, transparent 35%, rgba(0, 0, 0, 0.78) 100%), linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 50%, rgba(0,0,0,0.85) 100%)",
         }}
       />
 

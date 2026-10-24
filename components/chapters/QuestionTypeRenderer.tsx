@@ -1,14 +1,19 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 import { sfx } from "@/lib/audio";
 import { QuizQuestion, StageQuestionType } from "@/lib/chapterQuestions";
 
 interface QuestionTypeRendererProps {
   question: QuizQuestion;
   selectedAnswer: string | undefined;
-  onSelectOption: (optionId: string) => void;
+  onSelectOption: (optionId: string, silent?: boolean) => void;
   isVecnaMode?: boolean;
   disabled?: boolean;
+  questionIndex?: number;
+  isFirstQuestion?: boolean;
+  isVerified?: boolean;
+  isLocked?: boolean;
 }
 
 export default function QuestionTypeRenderer({
@@ -17,14 +22,46 @@ export default function QuestionTypeRenderer({
   onSelectOption,
   isVecnaMode = false,
   disabled = false,
+  questionIndex,
+  isFirstQuestion: isFirstQuestionProp,
+  isVerified = false,
+  isLocked = false,
 }: QuestionTypeRendererProps) {
   const stageType: StageQuestionType = question.stageType || "quiz";
+  const isFirstQuestion =
+    isFirstQuestionProp !== undefined
+      ? isFirstQuestionProp
+      : questionIndex !== undefined
+      ? questionIndex === 0
+      : false;
 
-  // Reorder state for Stage 3
-  const [reorderedTokens, setReorderedTokens] = useState<string[]>([]);
+  // Reorder state for Stage 3 (Initialized with saved tokens if available)
+  const [reorderedTokens, setReorderedTokens] = useState<string[]>(() => {
+    if (typeof window !== "undefined" && question.rearrangeData && question.id) {
+      try {
+        const saved = localStorage.getItem(`hawkins_rearrange_${question.id}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === question.rearrangeData.tokens.length) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return question.rearrangeData ? [...question.rearrangeData.tokens] : [];
+  });
+  const [draggedTokenIdx, setDraggedTokenIdx] = useState<number | null>(null);
+  const [dragOverTokenIdx, setDragOverTokenIdx] = useState<number | null>(null);
+  const [selectedTokenIdx, setSelectedTokenIdx] = useState<number | null>(null);
+
   // Connection state for Stage 2: leftId -> rightId
   const [activeConnections, setActiveConnections] = useState<Record<string, string>>({});
   const [selectedLeftId, setSelectedLeftId] = useState<string | null>(null);
+
+  // Ghost tutorial state for Stage 2 & Stage 3
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [ghostCoords, setGhostCoords] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const [reorderGhostCoords, setReorderGhostCoords] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
 
   // SVG String rendering coordinates
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -32,24 +69,113 @@ export default function QuestionTypeRenderer({
   const rightPinsRef = useRef<Record<string, HTMLDivElement | null>>({});
   const [lines, setLines] = useState<Array<{ key: string; x1: number; y1: number; x2: number; y2: number }>>([]);
 
-  // Initialize state when question changes
+  // Stage 3 Reorder container and tile refs
+  const reorderContainerRef = useRef<HTMLDivElement | null>(null);
+  const reorderTilesRef = useRef<Record<number, HTMLDivElement | null>>({});
+
+  // Helper to persist rearrange order
+  const saveTokensToStorage = useCallback((tokens: string[]) => {
+    if (typeof window !== "undefined" && question.id) {
+      try {
+        localStorage.setItem(`hawkins_rearrange_${question.id}`, JSON.stringify(tokens));
+      } catch {}
+    }
+  }, [question.id]);
+
+  // Initialize/sync state when question changes
   useEffect(() => {
     if (question.rearrangeData) {
-      const initialTokens = [...question.rearrangeData.tokens];
+      let initialTokens = [...question.rearrangeData.tokens];
+      if (typeof window !== "undefined" && question.id) {
+        try {
+          const saved = localStorage.getItem(`hawkins_rearrange_${question.id}`);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length === question.rearrangeData.tokens.length) {
+              initialTokens = parsed;
+            }
+          }
+        } catch {}
+      }
       setReorderedTokens(initialTokens);
-      // Check if already in correct order initially (unlikely)
-      const isInitialMatch =
+      // Silently set option if sequence already matches correct order
+      const isMatch =
         initialTokens.length === question.rearrangeData.correctOrder.length &&
         initialTokens.every((tok, idx) => tok === question.rearrangeData!.correctOrder[idx]);
-      if (isInitialMatch) {
-        onSelectOption(question.correctAnswerId);
-      } else {
-        onSelectOption("__UNSOLVED_REARRANGE__");
+      if (isMatch) {
+        onSelectOption(question.correctAnswerId, true);
       }
     }
     setActiveConnections({});
     setSelectedLeftId(null);
-  }, [question.id]);
+    setHasInteracted(false);
+    setDraggedTokenIdx(null);
+    setDragOverTokenIdx(null);
+    setSelectedTokenIdx(null);
+    setReorderGhostCoords(null);
+  }, [question.id, question.correctAnswerId]);
+
+  // Recalculate ghost tutorial coordinates for Stage 2 (First question only)
+  useEffect(() => {
+    if (stageType !== "connection" || !isFirstQuestion || hasInteracted) {
+      setGhostCoords(null);
+      return;
+    }
+    const calcGhost = () => {
+      if (!containerRef.current) return;
+      const firstPair = question.connectionData?.pairs[0];
+      if (!firstPair) return;
+      const leftEl = leftPinsRef.current[firstPair.leftId];
+      const rightEl = rightPinsRef.current[firstPair.rightId] || Object.values(rightPinsRef.current)[0];
+      if (leftEl && rightEl) {
+        const cRect = containerRef.current.getBoundingClientRect();
+        const lRect = leftEl.getBoundingClientRect();
+        const rRect = rightEl.getBoundingClientRect();
+        setGhostCoords({
+          x1: lRect.left + lRect.width / 2 - cRect.left,
+          y1: lRect.top + lRect.height / 2 - cRect.top,
+          x2: rRect.left + rRect.width / 2 - cRect.left,
+          y2: rRect.top + rRect.height / 2 - cRect.top,
+        });
+      }
+    };
+    const t = setTimeout(calcGhost, 160);
+    window.addEventListener("resize", calcGhost);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", calcGhost);
+    };
+  }, [stageType, hasInteracted, isFirstQuestion, question.id, question.connectionData]);
+
+  // Recalculate ghost tutorial coordinates for Stage 3 (First question only)
+  useEffect(() => {
+    if (stageType !== "rearrange" || !isFirstQuestion || hasInteracted) {
+      setReorderGhostCoords(null);
+      return;
+    }
+    const calcReorderGhost = () => {
+      if (!reorderContainerRef.current) return;
+      const el0 = reorderTilesRef.current[0];
+      const el1 = reorderTilesRef.current[2] || reorderTilesRef.current[1];
+      if (el0 && el1) {
+        const cRect = reorderContainerRef.current.getBoundingClientRect();
+        const r0 = el0.getBoundingClientRect();
+        const r1 = el1.getBoundingClientRect();
+        setReorderGhostCoords({
+          x1: r0.left + r0.width / 2 - cRect.left,
+          y1: r0.top + r0.height / 2 - cRect.top,
+          x2: r1.left + r1.width / 2 - cRect.left,
+          y2: r1.top + r1.height / 2 - cRect.top,
+        });
+      }
+    };
+    const t = setTimeout(calcReorderGhost, 200);
+    window.addEventListener("resize", calcReorderGhost);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", calcReorderGhost);
+    };
+  }, [stageType, hasInteracted, isFirstQuestion, question.id, reorderedTokens.length]);
 
   // Recalculate SVG string coordinates for Stage 2
   const updateStringCoordinates = useCallback(() => {
@@ -89,6 +215,7 @@ export default function QuestionTypeRenderer({
   // Handle Stage 2 Connection logic
   const handleConnect = (leftId: string, rightId: string) => {
     if (disabled) return;
+    setHasInteracted(true);
     sfx("click");
     const updated = { ...activeConnections, [leftId]: rightId };
     setActiveConnections(updated);
@@ -112,6 +239,7 @@ export default function QuestionTypeRenderer({
 
   const handleResetConnections = () => {
     if (disabled) return;
+    setHasInteracted(true);
     sfx("click");
     setActiveConnections({});
     setSelectedLeftId(null);
@@ -119,28 +247,91 @@ export default function QuestionTypeRenderer({
   };
 
   // Stage 3 Reorder Logic
-  const handleMoveToken = (index: number, direction: "up" | "down") => {
+  const checkReorderMatch = useCallback((tokens: string[]) => {
+    if (question.rearrangeData) {
+      const isMatch =
+        tokens.length === question.rearrangeData.correctOrder.length &&
+        tokens.every((tok, idx) => tok === question.rearrangeData!.correctOrder[idx]);
+      if (isMatch) {
+        // Do NOT play sfx("clue") - keep it silent so user must check their answer!
+        onSelectOption(question.correctAnswerId, true);
+      } else {
+        onSelectOption("__WRONG_REARRANGE__", true);
+      }
+    }
+  }, [question.rearrangeData, question.correctAnswerId, onSelectOption]);
+
+  const handleMoveToken = (index: number, direction: "up" | "down" | "left" | "right") => {
     if (disabled) return;
+    setHasInteracted(true);
     sfx("click");
-    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    const targetIdx = direction === "up" || direction === "left" ? index - 1 : index + 1;
     if (targetIdx < 0 || targetIdx >= reorderedTokens.length) return;
     const updated = [...reorderedTokens];
     const temp = updated[index];
     updated[index] = updated[targetIdx];
     updated[targetIdx] = temp;
     setReorderedTokens(updated);
+    saveTokensToStorage(updated);
+    setSelectedTokenIdx(null);
+    checkReorderMatch(updated);
+  };
 
-    // Verify if assembled correctly
-    if (question.rearrangeData) {
-      const isMatch =
-        updated.length === question.rearrangeData.correctOrder.length &&
-        updated.every((tok, idx) => tok === question.rearrangeData!.correctOrder[idx]);
-      if (isMatch) {
-        onSelectOption(question.correctAnswerId);
-      } else {
-        onSelectOption("__WRONG_REARRANGE__");
-      }
+  const handleDropToken = (targetIndex: number) => {
+    setHasInteracted(true);
+    if (disabled || draggedTokenIdx === null || draggedTokenIdx === targetIndex) {
+      setDraggedTokenIdx(null);
+      setDragOverTokenIdx(null);
+      return;
     }
+    sfx("click");
+    const updated = [...reorderedTokens];
+    const [moved] = updated.splice(draggedTokenIdx, 1);
+    updated.splice(targetIndex, 0, moved);
+    setReorderedTokens(updated);
+    saveTokensToStorage(updated);
+    setDraggedTokenIdx(null);
+    setDragOverTokenIdx(null);
+    setSelectedTokenIdx(null);
+    checkReorderMatch(updated);
+  };
+
+  const handleSelectToken = (index: number) => {
+    if (disabled) return;
+    setHasInteracted(true);
+    sfx("click");
+    if (selectedTokenIdx === null) {
+      setSelectedTokenIdx(index);
+    } else if (selectedTokenIdx === index) {
+      setSelectedTokenIdx(null);
+    } else {
+      // Swap the two tokens
+      const updated = [...reorderedTokens];
+      const temp = updated[selectedTokenIdx];
+      updated[selectedTokenIdx] = updated[index];
+      updated[index] = temp;
+      setReorderedTokens(updated);
+      saveTokensToStorage(updated);
+      setSelectedTokenIdx(null);
+      checkReorderMatch(updated);
+    }
+  };
+
+  const handleResetRearrange = () => {
+    if (disabled || !question.rearrangeData) return;
+    setHasInteracted(true);
+    sfx("click");
+    const initialTokens = [...question.rearrangeData.tokens];
+    setReorderedTokens(initialTokens);
+    if (typeof window !== "undefined" && question.id) {
+      try {
+        localStorage.removeItem(`hawkins_rearrange_${question.id}`);
+      } catch {}
+    }
+    setSelectedTokenIdx(null);
+    setDraggedTokenIdx(null);
+    setDragOverTokenIdx(null);
+    checkReorderMatch(initialTokens);
   };
 
   // Theme tokens for Old Classic Paper
@@ -148,6 +339,9 @@ export default function QuestionTypeRenderer({
   const paperAccent = isVecnaMode ? "#b81d24" : "#8b2500";
   const textColor = "#1f1812";
   const mutedText = "#5c4f42";
+
+  // Only reveal verified styling if the user actually clicked check and verified the answer
+  const showVerifiedState = Boolean(isVerified);
 
   return (
     <div
@@ -229,279 +423,411 @@ export default function QuestionTypeRenderer({
                   color: "#8f231e",
                 }}
               >
-                ✕ RESET STRINGS
+                RESET STRINGS
               </button>
             )}
           </div>
 
-          {/* Interactive Dual-Column Connection Board with SVG Strings */}
+          {/* Interactive Dual-Column Connection Board with SVG Strings (Shorter Answer Boxes & Centered) */}
           <div
-            ref={containerRef}
             style={{
-              position: "relative",
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "28px",
-              padding: "18px 16px",
-              background: "rgba(255, 255, 255, 0.5)",
-              border: paperBorder,
-              borderRadius: "3px",
-              boxShadow: "inset 0 1px 6px rgba(0,0,0,0.05)",
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              margin: "4px auto 10px",
             }}
           >
-            {/* SVG Overlay for Red Investigation Strings */}
-            <svg
+            <div
+              ref={containerRef}
+              onClick={() => setHasInteracted(true)}
               style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                pointerEvents: "none",
-                zIndex: 10,
+                position: "relative",
+                display: "grid",
+                gridTemplateColumns: "minmax(250px, 350px) minmax(250px, 350px)",
+                gap: "clamp(24px, 4vw, 56px)",
+                padding: "16px 18px",
+                background: "rgba(255, 255, 255, 0.65)",
+                border: paperBorder,
+                borderRadius: "4px",
+                boxShadow: "inset 0 1px 6px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.03)",
+                boxSizing: "border-box",
+                width: "fit-content",
+                maxWidth: "100%",
               }}
             >
-              {lines.map((line) => {
-                const midX = (line.x1 + line.x2) / 2;
-                return (
-                  <g key={line.key}>
-                    {/* Shadow / Glow */}
-                    <path
-                      d={`M ${line.x1} ${line.y1} C ${midX} ${line.y1 + 14}, ${midX} ${line.y2 + 14}, ${line.x2} ${line.y2}`}
-                      stroke="rgba(255, 45, 58, 0.4)"
-                      strokeWidth="6"
-                      fill="none"
-                    />
-                    {/* Main Red String */}
-                    <path
-                      d={`M ${line.x1} ${line.y1} C ${midX} ${line.y1 + 14}, ${midX} ${line.y2 + 14}, ${line.x2} ${line.y2}`}
+              {/* Ghost Cursor Interactive Tutorial Overlay (First question only) */}
+              {isFirstQuestion && ghostCoords && !hasInteracted && Object.keys(activeConnections).length === 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    pointerEvents: "none",
+                    zIndex: 25,
+                    overflow: "visible",
+                  }}
+                >
+                  <svg
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {/* Animated dotted tutorial string */}
+                    <motion.path
+                      d={`M ${ghostCoords.x1} ${ghostCoords.y1} C ${(ghostCoords.x1 + ghostCoords.x2) / 2} ${ghostCoords.y1 + 10}, ${(ghostCoords.x1 + ghostCoords.x2) / 2} ${ghostCoords.y2 + 10}, ${ghostCoords.x2} ${ghostCoords.y2}`}
                       stroke="#c41e24"
-                      strokeWidth="3"
+                      strokeWidth="2.5"
+                      strokeDasharray="5 4"
                       fill="none"
-                      strokeLinecap="round"
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{
+                        pathLength: [0, 0, 1, 1, 0],
+                        opacity: [0, 0.9, 0.9, 0, 0],
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        times: [0, 0.2, 0.7, 0.9, 1],
+                        ease: "easeInOut",
+                      }}
                     />
-                    {/* Anchor Pin Knots */}
-                    <circle cx={line.x1} cy={line.y1} r="5" fill="#8f1218" stroke="#fff" strokeWidth="1.5" />
-                    <circle cx={line.x2} cy={line.y2} r="5" fill="#8f1218" stroke="#fff" strokeWidth="1.5" />
-                  </g>
-                );
-              })}
-            </svg>
+                    {/* Pulsing beacon on source pin */}
+                    <motion.circle
+                      cx={ghostCoords.x1}
+                      cy={ghostCoords.y1}
+                      r="8"
+                      fill="none"
+                      stroke="#c41e24"
+                      strokeWidth="2"
+                      animate={{
+                        scale: [1, 2, 1],
+                        opacity: [0.8, 0, 0.8],
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeOut",
+                      }}
+                    />
+                  </svg>
 
-            {/* Left Column (Column A) */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", zIndex: 12 }}>
-              <div
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 900,
-                  letterSpacing: ".12em",
-                  color: paperAccent,
-                  borderBottom: "1px solid #d4c4a8",
-                  paddingBottom: "4px",
-                  fontFamily: "'Courier New', monospace",
-                }}
-              >
-                COLUMN A (SCENARIOS & VALUES)
-              </div>
-              {question.connectionData.pairs.map((p, idx) => {
-                const isSelected = selectedLeftId === p.leftId;
-                const isConnected = !!activeConnections[p.leftId];
-                const connectedRight = activeConnections[p.leftId];
-
-                return (
-                  <div
-                    key={p.leftId}
-                    draggable={!disabled}
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData("text/plain", p.leftId);
-                      setSelectedLeftId(p.leftId);
+                  {/* Animated Ghost Pointer Cursor */}
+                  <motion.div
+                    initial={{ x: ghostCoords.x1, y: ghostCoords.y1, opacity: 0 }}
+                    animate={{
+                      x: [ghostCoords.x1, ghostCoords.x1, ghostCoords.x2, ghostCoords.x2, ghostCoords.x1],
+                      y: [ghostCoords.y1, ghostCoords.y1, ghostCoords.y2, ghostCoords.y2, ghostCoords.y1],
+                      opacity: [0, 1, 1, 0, 0],
+                      scale: [0.9, 1.15, 1, 0.9, 0.9],
                     }}
-                    onClick={() => {
-                      if (disabled) return;
-                      sfx("click");
-                      setSelectedLeftId(isSelected ? null : p.leftId);
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      times: [0, 0.2, 0.7, 0.9, 1],
+                      ease: "easeInOut",
                     }}
                     style={{
-                      position: "relative",
+                      position: "absolute",
+                      top: -6,
+                      left: -6,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "10px",
-                      padding: "10px 12px",
-                      background: isSelected
-                        ? "rgba(184, 29, 36, 0.12)"
-                        : isConnected
-                        ? "#fdf7f4"
-                        : "#ffffff",
-                      border: isSelected
-                        ? "2px solid #b81d24"
-                        : isConnected
-                        ? "1.5px solid #c48a80"
-                        : "1px solid #d4c4a8",
-                      borderRadius: "3px",
-                      fontSize: "12.5px",
-                      fontFamily: "'Courier New', monospace",
-                      lineHeight: 1.4,
-                      cursor: "grab",
-                      boxShadow: isSelected
-                        ? "0 2px 8px rgba(184, 29, 36, 0.25)"
-                        : "0 1px 3px rgba(0,0,0,0.05)",
-                      transition: "all 0.15s ease",
-                      userSelect: "none",
+                      gap: 6,
+                      filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", flex: 1 }}>
-                      <span
-                        style={{
-                          fontWeight: 900,
-                          color: paperAccent,
-                          flexShrink: 0,
-                        }}
-                      >
-                        [{idx + 1}]
-                      </span>
-                      <div>
-                        <span style={{ color: textColor }}>{p.leftText}</span>
-                        {connectedRight && (
-                          <div
-                            style={{
-                              fontSize: "10px",
-                              color: "#8f1218",
-                              fontWeight: 800,
-                              marginTop: "2px",
-                            }}
-                          >
-                            STRING CONNECTED ➔ ({connectedRight})
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M5.5 3.2L18.5 12.8L12.2 14.1L15.5 20.8L12.5 22.2L9.2 15.5L4.8 19.2V3.2Z"
+                        fill="#c41e24"
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
 
-                    {/* Right Connection Pin Socket */}
-                    <div
-                      ref={(el) => {
-                        leftPinsRef.current[p.leftId] = el;
-                      }}
+                    <span
                       style={{
-                        width: "14px",
-                        height: "14px",
-                        borderRadius: "50%",
-                        background: isConnected ? "#c41e24" : isSelected ? "#ff2d3a" : "#d4c4a8",
-                        border: "2px solid #fff",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                        flexShrink: 0,
+                        background: "#24130d",
+                        color: "#ffcbb6",
+                        border: "1px solid #8f2d24",
+                        padding: "2px 7px",
+                        borderRadius: 3,
+                        fontSize: 9.5,
+                        fontFamily: "'Courier New', monospace",
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
+                        letterSpacing: ".08em",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
                       }}
-                      title="Drag from here to Column B"
-                    />
-                  </div>
-                );
-              })}
-            </div>
+                    >
+                      DRAG TO MATCH
+                    </span>
+                  </motion.div>
+                </div>
+              )}
 
-            {/* Right Column (Column B) */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", zIndex: 12 }}>
-              <div
+              {/* SVG Overlay for Red Investigation Strings */}
+              <svg
                 style={{
-                  fontSize: "11px",
-                  fontWeight: 900,
-                  letterSpacing: ".12em",
-                  color: "#184070",
-                  borderBottom: "1px solid #d4c4a8",
-                  paddingBottom: "4px",
-                  fontFamily: "'Courier New', monospace",
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  pointerEvents: "none",
+                  zIndex: 10,
                 }}
               >
-                COLUMN B (MATCH TARGETS)
-              </div>
-              {question.connectionData.pairs.map((p) => {
-                // Find if any left item connects to this right item
-                const connectedFromLeft = Object.entries(activeConnections).find(
-                  ([, rId]) => rId === p.rightId
-                )?.[0];
+                {lines.map((line) => {
+                  const midX = (line.x1 + line.x2) / 2;
+                  return (
+                    <g key={line.key}>
+                      {/* Shadow / Glow */}
+                      <path
+                        d={`M ${line.x1} ${line.y1} C ${midX} ${line.y1 + 14}, ${midX} ${line.y2 + 14}, ${line.x2} ${line.y2}`}
+                        stroke="rgba(255, 45, 58, 0.4)"
+                        strokeWidth="6"
+                        fill="none"
+                      />
+                      {/* Main Red String */}
+                      <path
+                        d={`M ${line.x1} ${line.y1} C ${midX} ${line.y1 + 14}, ${midX} ${line.y2 + 14}, ${line.x2} ${line.y2}`}
+                        stroke="#c41e24"
+                        strokeWidth="3"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      {/* Anchor Pin Knots */}
+                      <circle cx={line.x1} cy={line.y1} r="5" fill="#8f1218" stroke="#fff" strokeWidth="1.5" />
+                      <circle cx={line.x2} cy={line.y2} r="5" fill="#8f1218" stroke="#fff" strokeWidth="1.5" />
+                    </g>
+                  );
+                })}
+              </svg>
 
-                return (
-                  <div
-                    key={p.rightId}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const leftId = e.dataTransfer.getData("text/plain") || selectedLeftId;
-                      if (leftId) handleConnect(leftId, p.rightId);
-                    }}
-                    onClick={() => {
-                      if (selectedLeftId) {
-                        handleConnect(selectedLeftId, p.rightId);
-                      }
-                    }}
-                    style={{
-                      position: "relative",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      padding: "10px 12px",
-                      background: connectedFromLeft ? "#fdf7f4" : "#fdfbf7",
-                      border: connectedFromLeft
-                        ? "1.5px solid #c48a80"
-                        : selectedLeftId
-                        ? "1.5px dashed #205080"
-                        : "1px solid #c9bda4",
-                      borderRadius: "3px",
-                      fontSize: "12.5px",
-                      fontFamily: "'Courier New', monospace",
-                      lineHeight: 1.4,
-                      cursor: selectedLeftId ? "pointer" : "default",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                      transition: "all 0.15s ease",
-                      userSelect: "none",
-                    }}
-                  >
-                    {/* Left Connection Pin Socket */}
+              {/* Left Column (Column A) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", zIndex: 12 }}>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    letterSpacing: ".12em",
+                    color: paperAccent,
+                    borderBottom: "1px solid #d4c4a8",
+                    paddingBottom: "4px",
+                    fontFamily: "'Courier New', monospace",
+                  }}
+                >
+                  COLUMN A (SCENARIOS & VALUES)
+                </div>
+                {question.connectionData.pairs.map((p, idx) => {
+                  const isSelected = selectedLeftId === p.leftId;
+                  const isConnected = !!activeConnections[p.leftId];
+                  const connectedRight = activeConnections[p.leftId];
+
+                  return (
                     <div
-                      ref={(el) => {
-                        rightPinsRef.current[p.rightId] = el;
+                      key={p.leftId}
+                      draggable={!disabled}
+                      onDragStart={(e) => {
+                        setHasInteracted(true);
+                        e.dataTransfer.setData("text/plain", p.leftId);
+                        setSelectedLeftId(p.leftId);
+                      }}
+                      onClick={() => {
+                        if (disabled) return;
+                        setHasInteracted(true);
+                        sfx("click");
+                        setSelectedLeftId(isSelected ? null : p.leftId);
                       }}
                       style={{
-                        width: "14px",
-                        height: "14px",
-                        borderRadius: "50%",
-                        background: connectedFromLeft ? "#c41e24" : "#c9bda4",
-                        border: "2px solid #fff",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
-                        flexShrink: 0,
+                        position: "relative",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "10px",
+                        padding: "8px 12px",
+                        background: isSelected
+                          ? "rgba(184, 29, 36, 0.12)"
+                          : isConnected
+                          ? "#fdf7f4"
+                          : "#ffffff",
+                        border: isSelected
+                          ? "2px solid #b81d24"
+                          : isConnected
+                          ? "1.5px solid #c48a80"
+                          : "1px solid #d4c4a8",
+                        borderRadius: "3px",
+                        fontSize: "12px",
+                        fontFamily: "'Courier New', monospace",
+                        lineHeight: 1.35,
+                        cursor: "grab",
+                        boxShadow: isSelected
+                          ? "0 2px 8px rgba(184, 29, 36, 0.25)"
+                          : "0 1px 3px rgba(0,0,0,0.05)",
+                        transition: "all 0.15s ease",
+                        userSelect: "none",
                       }}
-                      title="Drop target socket"
-                    />
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", flex: 1 }}>
+                        <span
+                          style={{
+                            fontWeight: 900,
+                            color: paperAccent,
+                            flexShrink: 0,
+                          }}
+                        >
+                          [{idx + 1}]
+                        </span>
+                        <div>
+                          <span style={{ color: textColor }}>{p.leftText}</span>
+                          {connectedRight && (
+                            <div
+                              style={{
+                                fontSize: "10px",
+                                color: "#8f1218",
+                                fontWeight: 800,
+                                marginTop: "2px",
+                              }}
+                            >
+                              STRING CONNECTED ({connectedRight})
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", flex: 1 }}>
-                      <span
+                      {/* Right Connection Pin Socket */}
+                      <div
+                        ref={(el) => {
+                          leftPinsRef.current[p.leftId] = el;
+                        }}
                         style={{
-                          fontWeight: 900,
-                          color: "#184070",
+                          width: "14px",
+                          height: "14px",
+                          borderRadius: "50%",
+                          background: isConnected ? "#c41e24" : isSelected ? "#ff2d3a" : "#d4c4a8",
+                          border: "2px solid #fff",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
                           flexShrink: 0,
                         }}
-                      >
-                        ({p.rightId})
-                      </span>
-                      <div>
-                        <span style={{ color: textColor }}>{p.rightText}</span>
-                        {connectedFromLeft && (
-                          <div
-                            style={{
-                              fontSize: "10px",
-                              color: "#8f1218",
-                              fontWeight: 800,
-                              marginTop: "2px",
-                            }}
-                          >
-                            CONNECTED FROM [{connectedFromLeft}]
-                          </div>
-                        )}
+                        title="Drag from here to Column B"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Right Column (Column B) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", zIndex: 12 }}>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    letterSpacing: ".12em",
+                    color: "#184070",
+                    borderBottom: "1px solid #d4c4a8",
+                    paddingBottom: "4px",
+                    fontFamily: "'Courier New', monospace",
+                  }}
+                >
+                  COLUMN B (MATCH TARGETS)
+                </div>
+                {question.connectionData.pairs.map((p) => {
+                  // Find if any left item connects to this right item
+                  const connectedFromLeft = Object.entries(activeConnections).find(
+                    ([, rId]) => rId === p.rightId
+                  )?.[0];
+
+                  return (
+                    <div
+                      key={p.rightId}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setHasInteracted(true);
+                        const leftId = e.dataTransfer.getData("text/plain") || selectedLeftId;
+                        if (leftId) handleConnect(leftId, p.rightId);
+                      }}
+                      onClick={() => {
+                        setHasInteracted(true);
+                        if (selectedLeftId) {
+                          handleConnect(selectedLeftId, p.rightId);
+                        }
+                      }}
+                      style={{
+                        position: "relative",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "8px 12px",
+                        background: connectedFromLeft ? "#fdf7f4" : "#fdfbf7",
+                        border: connectedFromLeft
+                          ? "1.5px solid #c48a80"
+                          : selectedLeftId
+                          ? "1.5px dashed #205080"
+                          : "1px solid #c9bda4",
+                        borderRadius: "3px",
+                        fontSize: "12px",
+                        fontFamily: "'Courier New', monospace",
+                        lineHeight: 1.35,
+                        cursor: selectedLeftId ? "pointer" : "default",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                        transition: "all 0.15s ease",
+                        userSelect: "none",
+                      }}
+                    >
+                      {/* Left Connection Pin Socket */}
+                      <div
+                        ref={(el) => {
+                          rightPinsRef.current[p.rightId] = el;
+                        }}
+                        style={{
+                          width: "14px",
+                          height: "14px",
+                          borderRadius: "50%",
+                          background: connectedFromLeft ? "#c41e24" : "#c9bda4",
+                          border: "2px solid #fff",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                          flexShrink: 0,
+                        }}
+                        title="Drop target socket"
+                      />
+
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", flex: 1 }}>
+                        <span
+                          style={{
+                            fontWeight: 900,
+                            color: "#184070",
+                            flexShrink: 0,
+                          }}
+                        >
+                          ({p.rightId})
+                        </span>
+                        <div>
+                          <span style={{ color: textColor }}>{p.rightText}</span>
+                          {connectedFromLeft && (
+                            <div
+                              style={{
+                                fontSize: "10px",
+                                color: "#8f1218",
+                                fontWeight: 800,
+                                marginTop: "2px",
+                              }}
+                            >
+                              CONNECTED FROM [{connectedFromLeft}]
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -538,10 +864,10 @@ export default function QuestionTypeRenderer({
       )}
 
       {/* ──────────────────────────────────────────────────────────
-          STAGE 3: REARRANGE QUESTIONS (TARGET & ▲ ▼ WORKBENCH ONLY)
+          STAGE 3: REARRANGE QUESTIONS (BYERS CIPHER WORKBENCH WITH DRAG & DROP)
           ────────────────────────────────────────────────────────── */}
       {stageType === "rearrange" && question.rearrangeData && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px", width: "100%" }}>
           <div
             style={{
               fontSize: "14px",
@@ -549,6 +875,10 @@ export default function QuestionTypeRenderer({
               color: textColor,
               fontWeight: 700,
               fontFamily: "'Courier New', Courier, monospace",
+              background: "rgba(255, 255, 255, 0.55)",
+              padding: "14px 18px",
+              border: paperBorder,
+              borderRadius: "2px",
             }}
           >
             {question.question}
@@ -556,118 +886,865 @@ export default function QuestionTypeRenderer({
 
           {/* Interactive Reordering Workbench */}
           <div
+            ref={reorderContainerRef}
+            onClick={() => setHasInteracted(true)}
             style={{
-              padding: "16px 18px",
-              background: "rgba(255, 255, 255, 0.55)",
-              border: paperBorder,
-              borderRadius: "3px",
+              position: "relative",
+              padding: "14px 16px",
+              background: isVecnaMode
+                ? "linear-gradient(180deg, rgba(38, 16, 18, 0.75), rgba(24, 10, 12, 0.85))"
+                : "linear-gradient(180deg, rgba(253, 249, 240, 0.95), rgba(246, 238, 222, 0.92))",
+              border: showVerifiedState
+                ? "2px solid #27ae60"
+                : isLocked && !showVerifiedState
+                ? "2px solid #b81d24"
+                : paperBorder,
+              borderRadius: "4px",
+              boxShadow: showVerifiedState
+                ? "0 0 16px rgba(39, 174, 96, 0.25)"
+                : isLocked && !showVerifiedState
+                ? "0 0 16px rgba(184, 29, 36, 0.25)"
+                : "0 2px 10px rgba(0,0,0,0.06)",
               display: "flex",
               flexDirection: "column",
               gap: "12px",
             }}
           >
-            <div
-              style={{
-                fontSize: "11px",
-                fontWeight: 900,
-                color: mutedText,
-                letterSpacing: ".1em",
-                fontFamily: "'Courier New', monospace",
-              }}
-            >
-              TARGET: {question.rearrangeData.targetDescription.toUpperCase()}
-            </div>
+            {/* Ghost Cursor Interactive Tutorial Overlay for Stage 3 (First question only) */}
+            {isFirstQuestion && reorderGhostCoords && !hasInteracted && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  pointerEvents: "none",
+                  zIndex: 30,
+                  overflow: "visible",
+                }}
+              >
+                <svg
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {/* Animated curved drag path */}
+                  <motion.path
+                    d={`M ${reorderGhostCoords.x1} ${reorderGhostCoords.y1} Q ${(reorderGhostCoords.x1 + reorderGhostCoords.x2) / 2} ${Math.min(reorderGhostCoords.y1, reorderGhostCoords.y2) - 28}, ${reorderGhostCoords.x2} ${reorderGhostCoords.y2}`}
+                    stroke="#c41e24"
+                    strokeWidth="2.5"
+                    strokeDasharray="5 4"
+                    fill="none"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{
+                      pathLength: [0, 0, 1, 1, 0],
+                      opacity: [0, 0.9, 0.9, 0, 0],
+                    }}
+                    transition={{
+                      duration: 2.8,
+                      repeat: Infinity,
+                      times: [0, 0.2, 0.7, 0.9, 1],
+                      ease: "easeInOut",
+                    }}
+                  />
+                  {/* Pulsing beacon on source tile */}
+                  <motion.circle
+                    cx={reorderGhostCoords.x1}
+                    cy={reorderGhostCoords.y1}
+                    r="12"
+                    fill="none"
+                    stroke="#c41e24"
+                    strokeWidth="2"
+                    animate={{
+                      scale: [1, 1.8, 1],
+                      opacity: [0.8, 0, 0.8],
+                    }}
+                    transition={{
+                      duration: 1.4,
+                      repeat: Infinity,
+                      ease: "easeOut",
+                    }}
+                  />
+                  {/* Target drop slot marker */}
+                  <motion.circle
+                    cx={reorderGhostCoords.x2}
+                    cy={reorderGhostCoords.y2}
+                    r="10"
+                    fill="none"
+                    stroke="#b81d24"
+                    strokeWidth="1.5"
+                    strokeDasharray="3 3"
+                    animate={{
+                      opacity: [0, 0.2, 0.8, 0.2, 0],
+                    }}
+                    transition={{
+                      duration: 2.8,
+                      repeat: Infinity,
+                      times: [0, 0.3, 0.7, 0.9, 1],
+                    }}
+                  />
+                </svg>
 
-            {/* Token letter tray with ▲ and ▼ buttons */}
+                {/* Animated Ghost Pointer Cursor */}
+                <motion.div
+                  initial={{ x: reorderGhostCoords.x1, y: reorderGhostCoords.y1, opacity: 0 }}
+                  animate={{
+                    x: [reorderGhostCoords.x1, reorderGhostCoords.x1, reorderGhostCoords.x2, reorderGhostCoords.x2, reorderGhostCoords.x1],
+                    y: [reorderGhostCoords.y1, reorderGhostCoords.y1, reorderGhostCoords.y2, reorderGhostCoords.y2, reorderGhostCoords.y1],
+                    opacity: [0, 1, 1, 0, 0],
+                    scale: [0.9, 1.15, 1, 0.9, 0.9],
+                  }}
+                  transition={{
+                    duration: 2.8,
+                    repeat: Infinity,
+                    times: [0, 0.2, 0.7, 0.9, 1],
+                    ease: "easeInOut",
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: -6,
+                    left: -6,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))",
+                  }}
+                >
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M5.5 3.2L18.5 12.8L12.2 14.1L15.5 20.8L12.5 22.2L9.2 15.5L4.8 19.2V3.2Z"
+                      fill="#c41e24"
+                      stroke="#ffffff"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+
+                  <span
+                    style={{
+                      background: "#24130d",
+                      color: "#ffcbb6",
+                      border: "1px solid #8f2d24",
+                      padding: "2px 7px",
+                      borderRadius: 3,
+                      fontSize: 9.5,
+                      fontFamily: "'Courier New', monospace",
+                      fontWeight: 900,
+                      whiteSpace: "nowrap",
+                      letterSpacing: ".08em",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    DRAG TO RE-ARRANGE
+                  </span>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Header: Target description & Action toolbar */}
             <div
               style={{
                 display: "flex",
-                flexDirection:
-                  question.rearrangeData.category === "code" ||
-                  question.rearrangeData.category === "steps"
-                    ? "column"
-                    : "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "10px",
+                borderBottom: "1px solid #dcd2be",
+                paddingBottom: "10px",
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    letterSpacing: ".12em",
+                    color: paperAccent,
+                    fontFamily: "'Courier New', monospace",
+                  }}
+                >
+                  TARGET:
+                </span>{" "}
+                <span
+                  style={{
+                    fontSize: "12.5px",
+                    fontWeight: 800,
+                    color: textColor,
+                    fontFamily: "'Courier New', monospace",
+                  }}
+                >
+                  {question.rearrangeData.targetDescription.toUpperCase()}
+                </span>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontFamily: "'Courier New', monospace",
+                    fontWeight: 800,
+                    letterSpacing: ".06em",
+                    color: "#6b5e50",
+                    background: "rgba(0,0,0,0.05)",
+                    padding: "3px 8px",
+                    borderRadius: "2px",
+                  }}
+                >
+                  DRAG & DROP TILES TO RE-ORDER
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetRearrange}
+                  disabled={disabled}
+                  style={{
+                    background: "#ece2ce",
+                    border: "1px solid #c9bda4",
+                    borderRadius: "2px",
+                    padding: "4px 8px",
+                    cursor: disabled ? "default" : "pointer",
+                    fontSize: "10.5px",
+                    fontFamily: "'Courier New', monospace",
+                    fontWeight: 900,
+                    color: "#8f231e",
+                  }}
+                >
+                  RESET ORDER
+                </button>
+              </div>
+            </div>
+
+            {/* Christmas Lights Garland (for Words / Scrambled Letters) */}
+            {question.rearrangeData.category === "words" && (
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  marginBottom: "-6px",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  overflow: "visible",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "clamp(6px, 1.2vw, 14px)",
+                    width: "100%",
+                    maxWidth: "680px",
+                    position: "relative",
+                  }}
+                >
+                  {/* Garland black wire */}
+                  <svg
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      left: 0,
+                      width: "100%",
+                      height: "18px",
+                      pointerEvents: "none",
+                      zIndex: 1,
+                    }}
+                  >
+                    <path
+                      d="M 10 8 Q 200 18, 400 8 T 800 8"
+                      stroke="#42362b"
+                      strokeWidth="2"
+                      fill="none"
+                    />
+                  </svg>
+
+                  {/* Miniature Christmas Bulbs */}
+                  {reorderedTokens.map((_, idx) => {
+                    const bulbColors = ["#ff3344", "#10b981", "#f59e0b", "#38bdf8", "#ec4899"];
+                    const bulbColor = showVerifiedState ? "#10b981" : bulbColors[idx % bulbColors.length];
+                    return (
+                      <div
+                        key={`bulb-${idx}`}
+                        style={{
+                          width: "clamp(38px, 4.5vw, 54px)",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          zIndex: 2,
+                        }}
+                      >
+                        {/* Socket Cap */}
+                        <div
+                          style={{
+                            width: "8px",
+                            height: "5px",
+                            background: "#26201a",
+                            borderRadius: "1px 1px 0 0",
+                          }}
+                        />
+                        {/* Glowing Bulb */}
+                        <div
+                          style={{
+                            width: "10px",
+                            height: "14px",
+                            borderRadius: "50% 50% 45% 45%",
+                            background: bulbColor,
+                            boxShadow: `0 0 8px ${bulbColor}, inset -1px -1px 2px rgba(0,0,0,0.35)`,
+                            border: "1px solid rgba(255,255,255,0.4)",
+                            transition: "all 0.3s ease",
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Letter Tiles Tray (category: "words") */}
+            {question.rearrangeData.category === "words" ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  flexWrap: "wrap",
+                  gap: "clamp(6px, 1.2vw, 14px)",
+                  padding: "10px 4px",
+                }}
+              >
+                {reorderedTokens.map((tok, idx) => {
+                  const isSelected = selectedTokenIdx === idx;
+                  const isDragged = draggedTokenIdx === idx;
+                  const isDragOver = dragOverTokenIdx === idx;
+
+                  return (
+                    <motion.div
+                      layout
+                      key={`${tok}-${idx}`}
+                      ref={(el) => {
+                        reorderTilesRef.current[idx] = el;
+                      }}
+                      draggable={!disabled}
+                      onDragStart={(e: any) => {
+                        if (disabled) return;
+                        setDraggedTokenIdx(idx);
+                        e.dataTransfer?.setData("text/plain", String(idx));
+                        sfx("click");
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                      }}
+                      onDragEnter={() => {
+                        if (draggedTokenIdx !== null && draggedTokenIdx !== idx) {
+                          setDragOverTokenIdx(idx);
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverTokenIdx === idx) {
+                          setDragOverTokenIdx(null);
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        handleDropToken(idx);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedTokenIdx(null);
+                        setDragOverTokenIdx(null);
+                      }}
+                      onClick={() => handleSelectToken(idx)}
+                      whileHover={{ y: -3, scale: 1.03 }}
+                      whileTap={{ scale: 0.96 }}
+                      style={{
+                        position: "relative",
+                        width: "clamp(38px, 4.5vw, 54px)",
+                        height: "clamp(52px, 6vw, 68px)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: isSelected
+                          ? "#ffe8e6"
+                          : isDragOver
+                          ? "#fff3d4"
+                          : "#fdfaf3",
+                        border: isSelected
+                          ? "2px solid #b81d24"
+                          : isDragOver
+                          ? "2px dashed #b81d24"
+                          : "2px solid #a89478",
+                        borderRadius: "4px",
+                        boxShadow: isSelected
+                          ? "0 0 0 2px rgba(184, 29, 36, 0.4), 0 4px 10px rgba(0,0,0,0.15)"
+                          : isDragOver
+                          ? "0 4px 12px rgba(184, 29, 36, 0.3)"
+                          : "0 4px 0 #9e896d, 0 6px 12px rgba(0,0,0,0.12)",
+                        cursor: disabled ? "default" : "grab",
+                        opacity: isDragged ? 0.35 : 1,
+                        userSelect: "none",
+                        transition: "border 0.15s, background 0.15s, box-shadow 0.15s",
+                      }}
+                      title="Drag to reorder, or click two letters to swap"
+                    >
+                      {/* Slot position marker */}
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: "2px",
+                          left: "4px",
+                          fontSize: "8.5px",
+                          fontWeight: 900,
+                          color: "#96816a",
+                          fontFamily: "'Courier New', monospace",
+                        }}
+                      >
+                        {idx + 1}
+                      </span>
+
+                      {/* Letter Glyph */}
+                      <span
+                        style={{
+                          fontSize: "clamp(20px, 2.4vw, 28px)",
+                          fontWeight: 900,
+                          color: isSelected ? "#b81d24" : "#1a120b",
+                          fontFamily: "'Courier New', Courier, monospace",
+                          marginTop: "2px",
+                        }}
+                      >
+                        {tok}
+                      </span>
+
+                      {/* Tactile drag grip indicator */}
+                      <span
+                        style={{
+                          position: "absolute",
+                          bottom: "2px",
+                          fontSize: "8px",
+                          letterSpacing: "1px",
+                          color: "#ab9880",
+                          lineHeight: 1,
+                        }}
+                      >
+                        :::
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Statement / Code / Steps Tiles Tray */
+              (() => {
+                const isShortTokens = reorderedTokens.every((t) => t.length <= 16);
+
+                if (isShortTokens) {
+                  return (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px",
+                        padding: "6px 2px",
+                        alignItems: "center",
+                      }}
+                    >
+                      {reorderedTokens.map((tok, idx) => {
+                        const isSelected = selectedTokenIdx === idx;
+                        const isDragged = draggedTokenIdx === idx;
+                        const isDragOver = dragOverTokenIdx === idx;
+
+                        return (
+                          <motion.div
+                            layout
+                            key={`${tok}-${idx}`}
+                            ref={(el) => {
+                              reorderTilesRef.current[idx] = el;
+                            }}
+                            draggable={!disabled}
+                            onDragStart={(e: any) => {
+                              if (disabled) return;
+                              setDraggedTokenIdx(idx);
+                              e.dataTransfer?.setData("text/plain", String(idx));
+                              sfx("click");
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = "move";
+                            }}
+                            onDragEnter={() => {
+                              if (draggedTokenIdx !== null && draggedTokenIdx !== idx) {
+                                setDragOverTokenIdx(idx);
+                              }
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverTokenIdx === idx) {
+                                setDragOverTokenIdx(null);
+                              }
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              handleDropToken(idx);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedTokenIdx(null);
+                              setDragOverTokenIdx(null);
+                            }}
+                            onClick={() => handleSelectToken(idx)}
+                            whileHover={{ y: -2, scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "6px 12px",
+                              background: isSelected
+                                ? "#ffeae8"
+                                : isDragOver
+                                ? "#fff3d4"
+                                : "#ffffff",
+                              border: isSelected
+                                ? "2px solid #b81d24"
+                                : isDragOver
+                                ? "2px dashed #b81d24"
+                                : "1.5px solid #c9bda4",
+                              borderRadius: "3px",
+                              boxShadow: isSelected
+                                ? "0 2px 8px rgba(184, 29, 36, 0.25)"
+                                : "0 1px 3px rgba(0,0,0,0.06)",
+                              cursor: disabled ? "default" : "grab",
+                              opacity: isDragged ? 0.35 : 1,
+                              userSelect: "none",
+                              transition: "background 0.15s, border 0.15s",
+                            }}
+                            title="Drag to reorder or click two items to swap"
+                          >
+                            <span
+                              style={{
+                                color: "#96816a",
+                                fontWeight: 900,
+                                fontSize: "11px",
+                                cursor: "grab",
+                                lineHeight: 1,
+                              }}
+                            >
+                              ⋮⋮
+                            </span>
+
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                fontWeight: 900,
+                                color: paperAccent,
+                                fontFamily: "'Courier New', monospace",
+                              }}
+                            >
+                              [{idx + 1 < 10 ? `0${idx + 1}` : idx + 1}]
+                            </span>
+
+                            <span
+                              style={{
+                                color: textColor,
+                                fontFamily: "'Courier New', Courier, monospace",
+                                fontSize: "13px",
+                                fontWeight: 800,
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {tok}
+                            </span>
+
+                            {/* Inline Nudge Arrows (Left / Right) */}
+                            <div
+                              style={{ display: "inline-flex", gap: "2px", marginLeft: "4px" }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleMoveToken(idx, "left")}
+                                disabled={idx === 0 || disabled}
+                                style={{
+                                  background: "#e4dac5",
+                                  border: "none",
+                                  borderRadius: "2px",
+                                  cursor: idx === 0 || disabled ? "default" : "pointer",
+                                  opacity: idx === 0 || disabled ? 0.3 : 1,
+                                  padding: "2px 5px",
+                                  fontSize: "9px",
+                                  fontWeight: 900,
+                                  lineHeight: 1,
+                                }}
+                                title="Move left"
+                              >
+                                ◄
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveToken(idx, "right")}
+                                disabled={idx === reorderedTokens.length - 1 || disabled}
+                                style={{
+                                  background: "#e4dac5",
+                                  border: "none",
+                                  borderRadius: "2px",
+                                  cursor: idx === reorderedTokens.length - 1 || disabled ? "default" : "pointer",
+                                  opacity: idx === reorderedTokens.length - 1 || disabled ? 0.3 : 1,
+                                  padding: "2px 5px",
+                                  fontSize: "9px",
+                                  fontWeight: 900,
+                                  lineHeight: 1,
+                                }}
+                                title="Move right"
+                              >
+                                ►
+                              </button>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                      maxHeight: "clamp(180px, 28vh, 270px)",
+                      overflowY: "auto",
+                      paddingRight: "6px",
+                      padding: "2px 0",
+                      scrollbarWidth: "thin",
+                    }}
+                  >
+                    {reorderedTokens.map((tok, idx) => {
+                      const isSelected = selectedTokenIdx === idx;
+                      const isDragged = draggedTokenIdx === idx;
+                      const isDragOver = dragOverTokenIdx === idx;
+
+                      return (
+                        <motion.div
+                          layout
+                          key={`${tok}-${idx}`}
+                          ref={(el) => {
+                            reorderTilesRef.current[idx] = el;
+                          }}
+                          draggable={!disabled}
+                          onDragStart={(e: any) => {
+                            if (disabled) return;
+                            setDraggedTokenIdx(idx);
+                            e.dataTransfer?.setData("text/plain", String(idx));
+                            sfx("click");
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                          }}
+                          onDragEnter={() => {
+                            if (draggedTokenIdx !== null && draggedTokenIdx !== idx) {
+                              setDragOverTokenIdx(idx);
+                            }
+                          }}
+                          onDragLeave={() => {
+                            if (dragOverTokenIdx === idx) {
+                              setDragOverTokenIdx(null);
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            handleDropToken(idx);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedTokenIdx(null);
+                            setDragOverTokenIdx(null);
+                          }}
+                          onClick={() => handleSelectToken(idx)}
+                          whileHover={{ x: 2 }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            padding: "7px 12px",
+                            background: isSelected
+                              ? "#ffeae8"
+                              : isDragOver
+                              ? "#fff3d4"
+                              : "#ffffff",
+                            border: isSelected
+                              ? "2px solid #b81d24"
+                              : isDragOver
+                              ? "2px dashed #b81d24"
+                              : "1.5px solid #c9bda4",
+                            borderRadius: "3px",
+                            boxShadow: isSelected
+                              ? "0 2px 8px rgba(184, 29, 36, 0.25)"
+                              : "0 1px 3px rgba(0,0,0,0.06)",
+                            cursor: disabled ? "default" : "grab",
+                            opacity: isDragged ? 0.35 : 1,
+                            userSelect: "none",
+                            transition: "background 0.15s, border 0.15s",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
+                            {/* Drag Handle Icon */}
+                            <span
+                              style={{
+                                color: "#96816a",
+                                fontWeight: 900,
+                                fontSize: "11px",
+                                cursor: "grab",
+                                lineHeight: 1,
+                              }}
+                              title="Drag to reorder"
+                            >
+                              ⋮⋮
+                            </span>
+
+                            {/* Step index */}
+                            <span
+                              style={{
+                                fontSize: "10.5px",
+                                fontWeight: 900,
+                                color: paperAccent,
+                                fontFamily: "'Courier New', monospace",
+                              }}
+                            >
+                              [{idx + 1 < 10 ? `0${idx + 1}` : idx + 1}]
+                            </span>
+
+                            <span
+                              style={{
+                                color: textColor,
+                                fontFamily: "'Courier New', Courier, monospace",
+                                fontSize: "12.5px",
+                                fontWeight: 700,
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+                              }}
+                            >
+                              {tok}
+                            </span>
+                          </div>
+
+                          {/* Nudge Arrows (Up / Down) */}
+                          <div
+                            style={{ display: "flex", gap: "4px", flexShrink: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleMoveToken(idx, "up")}
+                              disabled={idx === 0 || disabled}
+                              style={{
+                                background: "#e4dac5",
+                                border: "none",
+                                borderRadius: "2px",
+                                cursor: idx === 0 || disabled ? "default" : "pointer",
+                                opacity: idx === 0 || disabled ? 0.3 : 1,
+                                padding: "3px 6px",
+                                fontSize: "9px",
+                                fontWeight: 900,
+                              }}
+                              title="Move up"
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveToken(idx, "down")}
+                              disabled={idx === reorderedTokens.length - 1 || disabled}
+                              style={{
+                                background: "#e4dac5",
+                                border: "none",
+                                borderRadius: "2px",
+                                cursor: idx === reorderedTokens.length - 1 || disabled ? "default" : "pointer",
+                                opacity: idx === reorderedTokens.length - 1 || disabled ? 0.3 : 1,
+                                padding: "3px 6px",
+                                fontSize: "9px",
+                                fontWeight: 900,
+                              }}
+                              title="Move down"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                );
+              })()
+            )}
+
+            {/* Assembled Readout Banner */}
+            <div
+              style={{
+                padding: "8px 12px",
+                background: showVerifiedState
+                  ? "rgba(39, 174, 96, 0.12)"
+                  : isLocked && !showVerifiedState
+                  ? "rgba(184, 29, 36, 0.12)"
+                  : "#e9dfcb",
+                border: showVerifiedState
+                  ? "1.5px solid #27ae60"
+                  : isLocked && !showVerifiedState
+                  ? "1.5px solid #b81d24"
+                  : "1px solid #d4c5a9",
+                borderRadius: "3px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
                 flexWrap: "wrap",
                 gap: "8px",
               }}
             >
-              {reorderedTokens.map((tok, idx) => (
-                <div
-                  key={`${tok}-${idx}`}
+              <div
+                style={{
+                  fontSize: "12px",
+                  fontFamily: "'Courier New', Courier, monospace",
+                  color: "#2b1c11",
+                }}
+              >
+                <b>ASSEMBLED SEQUENCE:</b>{" "}
+                <span
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "8px",
-                    padding: "8px 12px",
-                    background: "#fff",
-                    border: "1.5px solid #c9bda4",
-                    borderRadius: "2px",
-                    fontSize: "13px",
-                    fontFamily: "'Courier New', Courier, monospace",
-                    fontWeight: 800,
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                    fontWeight: 900,
+                    color: showVerifiedState
+                      ? "#15652f"
+                      : isLocked && !showVerifiedState
+                      ? "#990f16"
+                      : "#1a120b",
+                    letterSpacing: question.rearrangeData.category === "words" ? ".15em" : "normal",
                   }}
                 >
-                  <span style={{ color: textColor }}>{tok}</span>
-                  <div style={{ display: "flex", gap: "3px" }}>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveToken(idx, "up")}
-                      disabled={idx === 0 || disabled}
-                      style={{
-                        background: "#e4dac5",
-                        border: "none",
-                        borderRadius: "2px",
-                        cursor: idx === 0 || disabled ? "default" : "pointer",
-                        opacity: idx === 0 || disabled ? 0.3 : 1,
-                        padding: "3px 6px",
-                        fontSize: "10px",
-                        fontWeight: 900,
-                      }}
-                      title="Move Up / Left"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveToken(idx, "down")}
-                      disabled={idx === reorderedTokens.length - 1 || disabled}
-                      style={{
-                        background: "#e4dac5",
-                        border: "none",
-                        borderRadius: "2px",
-                        cursor: idx === reorderedTokens.length - 1 || disabled ? "default" : "pointer",
-                        opacity: idx === reorderedTokens.length - 1 || disabled ? 0.3 : 1,
-                        padding: "3px 6px",
-                        fontSize: "10px",
-                        fontWeight: 900,
-                      }}
-                      title="Move Down / Right"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  {question.rearrangeData.category === "words"
+                    ? reorderedTokens.join("")
+                    : reorderedTokens.join(" → ")}
+                </span>
+              </div>
 
-            {/* Live Assembled Preview */}
-            <div
-              style={{
-                padding: "10px 14px",
-                background: "#e9dfcb",
-                borderRadius: "2px",
-                borderLeft: `3px solid ${paperAccent}`,
-                fontSize: "12.5px",
-                fontFamily: "'Courier New', Courier, monospace",
-                color: "#2b1c11",
-              }}
-            >
-              <b>ASSEMBLED:</b>{" "}
-              {question.rearrangeData.category === "words"
-                ? reorderedTokens.join(" ")
-                : reorderedTokens.join(" → ")}
+              <div
+                style={{
+                  fontSize: "11px",
+                  fontFamily: "'Courier New', monospace",
+                  fontWeight: 900,
+                  letterSpacing: ".08em",
+                  color: showVerifiedState
+                    ? "#1b7a41"
+                    : isLocked && !showVerifiedState
+                    ? "#990f16"
+                    : "#755f4c",
+                }}
+              >
+                {showVerifiedState
+                  ? "DECRYPTED // MATCH VERIFIED"
+                  : isLocked
+                  ? "TERMINAL LOCKED // SEQUENCE REJECTED"
+                  : reorderedTokens.length > 0
+                  ? "SEQUENCE RECORDED"
+                  : "ORDER PENDING"}
+              </div>
             </div>
           </div>
         </div>
@@ -677,18 +1754,20 @@ export default function QuestionTypeRenderer({
           STAGE 4: CASE STUDY QUESTIONS (EVIDENCE REPORTS)
           ────────────────────────────────────────────────────────── */}
       {stageType === "case_study" && question.caseStudyData && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          {/* Forensic Case Dossier Box */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
+          {/* Forensic Case Dossier Section */}
           <div
             style={{
-              padding: "16px 18px",
+              padding: "20px 24px",
               background: "#faf4e8",
               border: "2px solid #b81d24",
-              borderRadius: "2px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+              borderRadius: "4px",
+              boxShadow: "0 4px 16px rgba(184, 29, 36, 0.08)",
               display: "flex",
               flexDirection: "column",
-              gap: "10px",
+              gap: "12px",
+              width: "100%",
+              boxSizing: "border-box",
             }}
           >
             <div
@@ -696,8 +1775,8 @@ export default function QuestionTypeRenderer({
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                borderBottom: "1px solid #d4c4a8",
-                paddingBottom: "6px",
+                borderBottom: "1.5px solid #d4c4a8",
+                paddingBottom: "8px",
                 flexWrap: "wrap",
                 gap: "8px",
               }}
@@ -705,7 +1784,7 @@ export default function QuestionTypeRenderer({
               <span
                 style={{
                   fontFamily: "'Benguiat Bold', Georgia, serif",
-                  fontSize: "13px",
+                  fontSize: "14px",
                   color: "#b81d24",
                   fontWeight: 900,
                   letterSpacing: ".1em",
@@ -719,6 +1798,10 @@ export default function QuestionTypeRenderer({
                   fontSize: "11px",
                   color: mutedText,
                   fontWeight: 800,
+                  background: "rgba(184, 29, 36, 0.08)",
+                  padding: "2px 8px",
+                  borderRadius: "2px",
+                  border: "1px solid rgba(184, 29, 36, 0.2)",
                 }}
               >
                 [{question.caseStudyData.caseDocket}]
@@ -727,27 +1810,28 @@ export default function QuestionTypeRenderer({
 
             <div
               style={{
-                fontSize: "12.5px",
-                lineHeight: 1.55,
+                fontSize: "13px",
+                lineHeight: 1.6,
                 color: textColor,
                 fontFamily: "'Courier New', Courier, monospace",
                 fontStyle: "italic",
-                background: "rgba(255,255,255,0.7)",
-                padding: "8px 12px",
-                borderLeft: "3px solid #8b2500",
+                background: "rgba(255,255,255,0.75)",
+                padding: "10px 14px",
+                borderLeft: "3.5px solid #8b2500",
+                borderRadius: "2px",
               }}
             >
               &quot;{question.caseStudyData.incidentBrief}&quot;
             </div>
 
-            <div style={{ marginTop: "4px" }}>
+            <div style={{ marginTop: "6px" }}>
               <div
                 style={{
                   fontSize: "11px",
                   fontWeight: 900,
                   color: paperAccent,
                   letterSpacing: ".1em",
-                  marginBottom: "4px",
+                  marginBottom: "6px",
                   fontFamily: "'Courier New', monospace",
                 }}
               >
@@ -756,15 +1840,15 @@ export default function QuestionTypeRenderer({
               <ul
                 style={{
                   margin: 0,
-                  paddingLeft: "18px",
-                  fontSize: "12px",
-                  lineHeight: 1.5,
+                  paddingLeft: "20px",
+                  fontSize: "12.5px",
+                  lineHeight: 1.6,
                   color: textColor,
                   fontFamily: "'Courier New', Courier, monospace",
                 }}
               >
                 {question.caseStudyData.evidence.map((ev, i) => (
-                  <li key={i} style={{ marginBottom: "4px" }}>
+                  <li key={i} style={{ marginBottom: "6px" }}>
                     {ev}
                   </li>
                 ))}
@@ -966,7 +2050,14 @@ export default function QuestionTypeRenderer({
             [SELECT DIAGNOSTIC ANSWER ENTRY BELOW]:
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 520px), 1fr))",
+              gap: "12px",
+              width: "100%",
+            }}
+          >
             {question.options.map((opt) => {
               const isSelected = selectedAnswer === opt.id;
               return (
@@ -982,26 +2073,26 @@ export default function QuestionTypeRenderer({
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
-                    gap: "12px",
-                    padding: "12px 16px",
+                    gap: "14px",
+                    padding: "14px 18px",
                     background: isSelected
                       ? isVecnaMode
                         ? "rgba(184, 29, 36, 0.15)"
                         : "rgba(220, 180, 130, 0.35)"
-                      : "rgba(255, 255, 255, 0.7)",
+                      : "rgba(255, 255, 255, 0.75)",
                     border: isSelected
                       ? `2px solid ${paperAccent}`
                       : "1.5px solid #d4c4a8",
-                    borderRadius: "3px",
+                    borderRadius: "4px",
                     cursor: disabled ? "not-allowed" : "pointer",
                     opacity: disabled ? 0.8 : 1,
                     textAlign: "left",
                     width: "100%",
                     boxSizing: "border-box",
                     boxShadow: isSelected
-                      ? "0 2px 8px rgba(0,0,0,0.12)"
-                      : "0 1px 3px rgba(0,0,0,0.04)",
-                    transition: "all 0.12s ease",
+                      ? "0 4px 12px rgba(0,0,0,0.12)"
+                      : "0 1px 4px rgba(0,0,0,0.04)",
+                    transition: "all 0.15s ease",
                   }}
                 >
                   {/* Stamp Checkbox */}

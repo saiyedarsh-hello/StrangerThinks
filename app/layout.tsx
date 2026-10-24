@@ -2,6 +2,9 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { GameProvider } from "@/lib/store";
 import Crt from "@/components/Crt";
+import FullscreenEnforcer from "@/components/FullscreenEnforcer";
+
+import GameModalHost from "@/components/GameModalHost";
 
 export const metadata: Metadata = {
   title: "The Hawkins Protocol",
@@ -28,8 +31,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        <FullscreenEnforcer />
         <GameProvider>
           {children}
+          <GameModalHost />
           <Crt />
         </GameProvider>
       </body>

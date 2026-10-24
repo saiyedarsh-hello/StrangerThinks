@@ -102,9 +102,8 @@ export const ValidationService = {
         }
       });
 
-      // Questions are already individually evaluated and scored via QuestionService (+10 PTS per correct question).
-      // Final docket submission completes the chapter milestone and must NOT double-award points (+20 glitch fix).
-      const totalAwarded = 0;
+      const chapterPoints = correctCount * 10;
+      let totalAwarded = chapterPoints;
 
       if (team) {
         const isAlreadySolved = team.solvedChapters?.includes(chapterId);
@@ -126,6 +125,8 @@ export const ValidationService = {
 
         const nextSolvedChapters = Array.from(new Set([...team.solvedChapters, chapterId]));
         const nextCompletedTasks = Array.from(new Set([...team.completedTasks, taskId]));
+        const nextTaskScores = { ...(team.taskScores || {}), [taskId]: totalAwarded };
+        const newTotalScore = (team.totalScore || 0) + totalAwarded;
 
         // Determine next unlocked locations
         const nextUnlocked = { ...team.unlockedLocations };
@@ -152,6 +153,8 @@ export const ValidationService = {
         const nextProgress = Math.min(100, Math.round((nextSolvedChapters.length / 7) * 100));
 
         const updated = db.updateTeam(team.id, {
+          totalScore: newTotalScore,
+          taskScores: nextTaskScores,
           solvedChapters: nextSolvedChapters,
           completedTasks: nextCompletedTasks,
           unlockedLocations: nextUnlocked,
@@ -160,7 +163,7 @@ export const ValidationService = {
         });
 
         // Record in TiDB chapter_solves
-        db.recordChapterSolve(team.id, chapterId, 0).catch(() => {});
+        db.recordChapterSolve(team.id, chapterId, totalAwarded).catch(() => {});
 
         if (updated) {
           socketService.broadcastLeaderboard();
@@ -169,7 +172,7 @@ export const ValidationService = {
 
       return {
         success: true,
-        pointsAwarded: 0,
+        pointsAwarded: totalAwarded,
         speedBonus: 0,
         correctCount,
         totalCount: questions.length,

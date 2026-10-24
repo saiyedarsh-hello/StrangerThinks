@@ -134,7 +134,7 @@ export const SpecGameController = {
    */
   async submitAnswer(req: Request, res: Response) {
     const { questionCode } = req.params;
-    const { answer } = req.body;
+    const { answer, attemptNumber } = req.body;
     const teamId = resolveTeamId(req);
 
     if (!answer || typeof answer !== "string") {
@@ -145,7 +145,12 @@ export const SpecGameController = {
       });
     }
 
-    const result = await QuestionService.submitAnswer(teamId, questionCode, answer);
+    const result = await QuestionService.submitAnswer(
+      teamId,
+      questionCode,
+      answer,
+      Math.max(1, Number(attemptNumber) || 1)
+    );
     if (!result.success) {
       if (
         result.error === "EVENT_PAUSED" ||

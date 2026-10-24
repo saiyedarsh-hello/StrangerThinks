@@ -369,7 +369,7 @@ function PokemonFireRedBottomDialog({
     }
   }, [isTyping, lineIdx, lines.length, currentLine.length, mode, onNextEpisode, onComplete]);
 
-  const { unlockHint, isHintUnlocked, score } = useGame();
+  const { unlockHint, isHintUnlocked, score, showAlert, showConfirm } = useGame();
   const dialogHintKey = `ch${chapter.id}-story-intel`;
   const isDialogUnlocked = isHintUnlocked(dialogHintKey);
   const [isUnlockingIntel, setIsUnlockingIntel] = useState(false);
@@ -378,23 +378,37 @@ function PokemonFireRedBottomDialog({
     e.stopPropagation();
     if (isUnlockingIntel) return;
     if (score < 5) {
-      alert("INSUFFICIENT SCORE: You need at least 5 points to unlock an Intel Clue.");
+      showAlert(
+        "You need at least 5 squad points to unlock an Intel Clue. Complete tasks or submit accurate answers to earn points.",
+        {
+          title: "CLEARANCE RESTRICTED // INSUFFICIENT SCORE",
+          confirmLabel: "ACKNOWLEDGE",
+          type: "warning",
+        }
+      );
       return;
     }
-    const confirmed = window.confirm(
-      "Use this Intel Clue? It will deduct 5 points from your current score."
+    showConfirm(
+      "Decrypt classified surveillance dossier? This action will deduct 5 points from your current squad score.",
+      () => {
+        setIsUnlockingIntel(true);
+        unlockHint(dialogHintKey, 5);
+        const hintText = `${character.nameTag || character.name.toUpperCase()} INTEL: "${CHAPTER_HINTS[chapter.id] || "Investigate the facility telemetry carefully."}"`;
+        setLines((prev) => [...prev, hintText]);
+        setLineIdx((prev) => prev + 1);
+        setCharCount(0);
+        setIsTyping(true);
+        setTimeout(() => {
+          setIsUnlockingIntel(false);
+        }, 400);
+      },
+      {
+        title: "CLASSIFIED INTEL DOSSIER DECRYPTION",
+        confirmLabel: "DECRYPT CLUE (-5 PTS)",
+        cancelLabel: "ABORT",
+        type: "warning",
+      }
     );
-    if (!confirmed) return;
-    setIsUnlockingIntel(true);
-    unlockHint(dialogHintKey, 5);
-    const hintText = `${character.nameTag || character.name.toUpperCase()} INTEL: "${CHAPTER_HINTS[chapter.id] || "Investigate the facility telemetry carefully."}"`;
-    setLines((prev) => [...prev, hintText]);
-    setLineIdx((prev) => prev + 1);
-    setCharCount(0);
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsUnlockingIntel(false);
-    }, 400);
   };
 
   useEffect(() => {
@@ -940,12 +954,41 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
   const ch5Solved = radiometerPinCount === 5 || s.radiometer.codeSolved || !!s.completedTasks?.includes("ch5-radio-tower") || !!s.solved?.["ch5-radio-tower"] || !!s.completedTasks?.includes("ch6-radio-tower");
   const ch6Solved = !!s.completedTasks?.includes("ch6-upsidedown") || !!s.solved?.["ch6-upsidedown"] || !!s.completedTasks?.includes("ch7-upsidedown");
 
-  // Active lore briefing state: pops up immediately upon opening a chapter!
-  const [activeLoreChapterId, setActiveLoreChapterId] = useState<number | null>(() => activeChapterId);
+  // Track chapters whose intro case briefing has already been shown once
+  const [seenBriefings, setSeenBriefings] = useState<number[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("hawkins_seen_briefings");
+        if (stored) return JSON.parse(stored);
+      } catch {}
+    }
+    return [];
+  });
+
+  const [activeLoreChapterId, setActiveLoreChapterId] = useState<number | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("hawkins_seen_briefings");
+        const list: number[] = stored ? JSON.parse(stored) : [];
+        if (list.includes(activeChapterId)) return null;
+      } catch {}
+    }
+    return activeChapterId;
+  });
 
   useEffect(() => {
-    setActiveLoreChapterId(activeChapterId);
-  }, [activeChapterId]);
+    if (!seenBriefings.includes(activeChapterId)) {
+      setActiveLoreChapterId(activeChapterId);
+      setSeenBriefings((prev) => {
+        if (prev.includes(activeChapterId)) return prev;
+        const next = [...prev, activeChapterId];
+        try {
+          localStorage.setItem("hawkins_seen_briefings", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }
+  }, [activeChapterId, seenBriefings]);
 
   const [completionStoryChapterId, setCompletionStoryChapterId] = useState<number | null>(null);
   const isLoreActive = completionStoryChapterId !== null;
@@ -1024,15 +1067,39 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
       return;
     }
 
+    // Calculate actual points earned from this chapter's questions (respecting 10 vs 5 pts per attempt)
+    let sectionPointsEarned = 0;
+    try {
+      const stored = localStorage.getItem(`hawkins_quiz_results_ch${chapterId}_${s.team?.id || "anon"}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        questions.forEach((_, idx) => {
+          if (parsed[idx]?.isCorrect) {
+            sectionPointsEarned += typeof parsed[idx].pointsAwarded === "number" ? parsed[idx].pointsAwarded : 10;
+          }
+        });
+      }
+    } catch {}
+
+    if (sectionPointsEarned === 0) {
+      questions.forEach((q, idx) => {
+        const ans = answers[idx];
+        if (ans && q.correctAnswerId && String(ans).trim().toLowerCase() === String(q.correctAnswerId).trim().toLowerCase()) {
+          sectionPointsEarned += 10;
+        }
+      });
+    }
+
+    const finalPoints = totalPointsAwarded > 0 ? totalPointsAwarded : sectionPointsEarned;
+
     sfx("ok");
     submitTask(
       taskId,
-      totalPointsAwarded,
+      finalPoints,
       `Chapter ${chapterId} Docket Verified (${correctCount}/${questions.length} Solved)`,
-      serverResponded
+      false
     );
-    // Return directly to Investigation Board instead of auto opening next stage
-    handleBackToBoard();
+    // Stay on chapter without abruptly going back
   };
 
   return (
@@ -1040,18 +1107,18 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
       className="screen"
       style={{
         minHeight: "100vh",
-        height: "100vh",
+        width: "100%",
         overflowY: "auto",
         overflowX: "hidden",
         position: "relative",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
+        alignItems: "stretch",
         justifyContent: "flex-start",
-        paddingTop: "94px",
-        paddingBottom: "40px",
-        paddingLeft: "clamp(10px, 2vw, 20px)",
-        paddingRight: "clamp(10px, 2vw, 20px)",
+        paddingTop: "64px",
+        paddingBottom: 0,
+        paddingLeft: 0,
+        paddingRight: 0,
         boxSizing: "border-box",
       }}
     >
@@ -1106,29 +1173,21 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
         )}
       </AnimatePresence>
 
-      {/* Main Single Centered Challenge Console (Animated Elemental Box) */}
+      {/* Main Single Challenge Section (Full-width section instead of a window) */}
       <motion.div
         key={`task-${currentChapter.id}`}
-        initial={{ opacity: 0, scale: 0.98, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
         style={{
-          width: "min(1240px, 96vw)",
-          maxHeight: "calc(100vh - 94px)",
-          height: "calc(100vh - 94px)",
-          background: "rgba(10, 5, 10, 0.95)",
-          backdropFilter: "blur(14px)",
-          WebkitBackdropFilter: "blur(14px)",
-          border: "none",
-          boxShadow: "0 25px 60px rgba(0,0,0,0.85)",
-          borderRadius: 6,
+          width: "100%",
+          minHeight: "calc(100vh - 64px)",
+          background: "transparent",
           display: "flex",
           flexDirection: "column",
           position: "relative",
           zIndex: 10,
-          overflowY: "auto",
-          overflowX: "hidden",
-          minHeight: 0,
+          boxSizing: "border-box",
         }}
       >
         {isCurrentSolved ? (

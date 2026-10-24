@@ -1378,6 +1378,7 @@ export default function VecnaDashboard() {
               selectedAnswer={selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]}
               onSelectOption={(optId) => handleSelectOption(currentTrial.id, activeQuestionIdx, optId)}
               isVecnaMode={true}
+              questionIndex={activeQuestionIdx}
             />
           </div>
 

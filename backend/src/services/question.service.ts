@@ -129,7 +129,8 @@ export class QuestionService {
   public static async submitAnswer(
     teamId: string,
     questionCode: string,
-    submittedAnswer: string
+    submittedAnswer: string,
+    attemptNumber: number = 1
   ): Promise<SubmitAnswerResult> {
     // 1. Check event state
     const eventState = await EventControlService.getEventState();
@@ -245,7 +246,25 @@ export class QuestionService {
           submittedAnswer,
           expectedFallbackAnswer
         );
-        const pointsAwarded = isCorrect ? questionPoints : 0;
+        const pointsAwarded = isCorrect ? (attemptNumber <= 1 ? questionPoints : Math.round(questionPoints / 2)) : 0;
+        const isLocked = isCorrect || attemptNumber >= 2;
+
+        if (!isLocked) {
+          // First attempt failed: deduct value to 5 PTS, allow one more attempt
+          const [scoreRows] = await pool.query<any[]>(
+            "SELECT COALESCE(SUM(points_delta), 0) AS total FROM score_ledger WHERE team_id = ?",
+            [teamId]
+          );
+          const currentScore = Number(scoreRows?.[0]?.total || 0);
+          return {
+            success: true,
+            isCorrect: false,
+            pointsAwarded: 0,
+            currentScore,
+            isLocked: false,
+            message: "EVIDENCE DISCREPANCY DETECTED · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)",
+          };
+        }
 
         // Use atomic transaction for submission and ledger
         const conn = await pool.getConnection();
@@ -407,8 +426,8 @@ export class QuestionService {
           currentScore,
           isLocked: true,
           message: isCorrect
-            ? "CORRECT! Solution verified by central cipher."
-            : "INCORRECT! Terminal access for this frequency has been locked.",
+            ? (attemptNumber <= 1 ? "CORRECT! Solution verified by central cipher [+10 PTS]." : "CORRECT ON SECOND ATTEMPT [+5 PTS].")
+            : "TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS].",
         };
       } catch (err: any) {
         console.warn("[QUESTION SERVICE] TiDB submitAnswer error:", err);
@@ -462,7 +481,19 @@ export class QuestionService {
       ? submittedAnswer.trim().toUpperCase() === expectedAnswer.trim().toUpperCase()
       : submittedAnswer.trim().toUpperCase() === "A";
 
-    const pointsAwarded = isCorrect ? 10 : 0;
+    const isLocked = isCorrect || attemptNumber >= 2;
+    if (!isLocked) {
+      return {
+        success: true,
+        isCorrect: false,
+        pointsAwarded: 0,
+        currentScore: team.totalScore || 0,
+        isLocked: false,
+        message: "EVIDENCE DISCREPANCY DETECTED · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)",
+      };
+    }
+
+    const pointsAwarded = isCorrect ? (attemptNumber <= 1 ? 10 : 5) : 0;
     const newScore = (team.totalScore || 0) + pointsAwarded;
     const nextCompleted = Array.from(new Set([...completed, questionCode]));
     const nextTaskScores = { ...(team.taskScores || {}), [questionCode]: pointsAwarded };
@@ -497,8 +528,8 @@ export class QuestionService {
       currentScore: newScore,
       isLocked: true,
       message: isCorrect
-        ? "CORRECT! Solution verified by central cipher."
-        : "INCORRECT! Terminal access for this frequency has been locked.",
+        ? (attemptNumber <= 1 ? "CORRECT! Solution verified by central cipher [+10 PTS]." : "CORRECT ON SECOND ATTEMPT [+5 PTS].")
+        : "TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS].",
     };
   }
 
