@@ -1,9 +1,8 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   CONFIG,
-  PLAYER_TEAMS,
   getStoredSession,
   clearSession,
   AuthSession,
@@ -20,9 +19,10 @@ import { API_BASE } from "@/lib/api";
 import CinematicBackground from "@/components/CinematicBackground";
 import { sfx } from "@/lib/audio";
 import { motion, AnimatePresence } from "framer-motion";
+import { useGame } from "@/lib/store";
 
 import VecnaTacticalMap, { MapTeamInfo } from "@/components/vecna/VecnaTacticalMap";
-import VecnaTriggerPanel, { TriggerAction } from "@/components/vecna/VecnaTriggerPanel";
+import VecnaTriggerPanel, { TriggerAction, TargetSquadItem } from "@/components/vecna/VecnaTriggerPanel";
 import VecnaMessagePanel from "@/components/vecna/VecnaMessagePanel";
 import VecnaStoryDialog from "@/components/vecna/VecnaStoryDialog";
 import VecnaChaptersModal from "@/components/vecna/VecnaChaptersModal";
@@ -110,8 +110,9 @@ const VECNA_TRIALS: VecnaTrial[] = [
   },
 ];
 
-export default function VecnaPage() {
+export default function VecnaDashboard() {
   const router = useRouter();
+  const { logout } = useGame();
   const [session, setSession] = useState<AuthSession | null>(null);
 
   // Active Trial & Question Selection
@@ -128,6 +129,7 @@ export default function VecnaPage() {
   const [trialResults, setTrialResults] = useState<Record<number, boolean>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Modals state
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -135,20 +137,132 @@ export default function VecnaPage() {
   const [isPowersOpen, setIsPowersOpen] = useState(false);
   const [isChaptersModalOpen, setIsChaptersModalOpen] = useState(false);
   const [isStoryDialogOpen, setIsStoryDialogOpen] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFs = () => setIsFullscreen(Boolean(typeof document !== "undefined" && document.fullscreenElement));
+    handleFs();
+    document.addEventListener("fullscreenchange", handleFs);
+    return () => document.removeEventListener("fullscreenchange", handleFs);
+  }, []);
+
+  const toggleFullscreen = () => {
+    sfx("click");
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  };
 
   // Selected team state for targeting
   const [selectedLocation, setSelectedLocation] = useState("town");
   const [selectedTeamName, setSelectedTeamName] = useState<string | undefined>("Null Pointers");
 
-  // Fallback Teams for simulation
-  const teamsAtLocation: Record<string, MapTeamInfo[]> = {
-    town: [{ id: "T01", name: "Null Pointers", status: "Online" }],
-    lab: [{ id: "T02", name: "Stack Smashers", status: "Stuck" }],
-    police: [{ id: "T03", name: "Rift Runners", status: "Online" }],
-    forest: [{ id: "T04", name: "Byte Byters", status: "Online" }],
-    radioTower: [{ id: "T05", name: "Signal Seekers", status: "Online" }],
-    upsideDown: [{ id: "T06", name: "Hellfire Club", status: "Stuck" }],
-  };
+  // Live Tactical Map state for 6 canonical tournament stages
+  const [tacticalMapData, setTacticalMapData] = useState<Record<string, MapTeamInfo[]>>({
+    town: [],
+    police: [],
+    byers: [],
+    lab: [],
+    radioTower: [],
+    gate: [],
+  });
+  const [availableSquads, setAvailableSquads] = useState<TargetSquadItem[]>([]);
+
+  const refreshTacticalMap = useCallback(async () => {
+    try {
+      const stored = getStoredSession();
+      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const res = await fetch(`${API_BASE}/vecna/tactical-map`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && Array.isArray(data.stages)) {
+        const nextMap: Record<string, MapTeamInfo[]> = {
+          town: [],
+          police: [],
+          byers: [],
+          lab: [],
+          radioTower: [],
+          gate: [],
+        };
+        const uniqueMap = new Map<string, TargetSquadItem>();
+        data.stages.forEach((stg: any) => {
+          const locKey =
+            stg.slug ||
+            (stg.id === 1
+              ? "town"
+              : stg.id === 2
+              ? "police"
+              : stg.id === 3
+              ? "byers"
+              : stg.id === 4
+              ? "lab"
+              : stg.id === 5
+              ? "radioTower"
+              : "gate");
+          const teamList: MapTeamInfo[] = Array.isArray(stg.teams)
+            ? stg.teams.map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                leader: t.leader,
+                status: t.status || "Online",
+              }))
+            : [];
+          nextMap[locKey] = teamList;
+          teamList.forEach((t) => {
+            if (!uniqueMap.has(t.id)) {
+              uniqueMap.set(t.id, {
+                id: t.id,
+                name: t.name,
+                leader: t.leader,
+                status: t.status,
+              });
+            }
+          });
+        });
+        const squads = Array.from(uniqueMap.values());
+        setTacticalMapData(nextMap);
+        setAvailableSquads(squads);
+        if (squads.length > 0 && (!selectedTeamName || !squads.some((s) => s.name === selectedTeamName))) {
+          setSelectedTeamName(squads[0].name);
+        }
+      }
+    } catch (err) {
+      // Ignore transient fetch errors
+    }
+  }, [selectedTeamName]);
+
+  useEffect(() => {
+    refreshTacticalMap();
+    const interval = setInterval(refreshTacticalMap, 10000);
+    const unsub = subscribe((msg: any) => {
+      if (
+        msg.type === "presence" ||
+        msg.type === "presence:update" ||
+        msg.type === "vecna:tactical_update" ||
+        msg.type === "event_state" ||
+        msg.type === "SCORE_UPDATE"
+      ) {
+        refreshTacticalMap();
+      }
+    });
+    const sock = getSocket();
+    const onUpdate = () => refreshTacticalMap();
+    sock?.on("presence:update", onUpdate);
+    sock?.on("vecna:tactical_update", onUpdate);
+    sock?.on("event:state_changed", onUpdate);
+
+    return () => {
+      clearInterval(interval);
+      unsub();
+      sock?.off("presence:update", onUpdate);
+      sock?.off("vecna:tactical_update", onUpdate);
+      sock?.off("event:state_changed", onUpdate);
+    };
+  }, [refreshTacticalMap]);
 
   useEffect(() => {
     const s = getStoredSession();
@@ -189,18 +303,106 @@ export default function VecnaPage() {
     return () => clearInterval(interval);
   }, [session]);
 
+  const handleLogout = useCallback(async () => {
+    sfx("click");
+    try {
+      getSocket()?.emit("team:logout");
+    } catch {}
+    try {
+      if (logout) {
+        await logout();
+      }
+    } catch {}
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    try {
+      const stored = getStoredSession();
+      const token = (stored as any)?.token;
+      if (token) {
+        await fetch(`${API_BASE}/vecna/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }).catch(() => {});
+      }
+    } catch {}
+    clearSession();
+    if (typeof document !== "undefined") {
+      document.cookie = "hawkins_session_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      document.cookie = "hawkins_admin_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    }
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("hawkins_admin_token");
+      localStorage.removeItem("hawkins_admin_leader");
+      localStorage.removeItem("hawkins-protocol:session");
+      sessionStorage.clear();
+      window.location.href = "/";
+    }
+  }, [logout]);
+
   // Realtime logout & event termination handler (Issue 4 & 5)
   useEffect(() => {
     const unsub = subscribe((msg: any) => {
       if (msg.type === "force_logout" || (msg.type === "event_state" && msg.status === "ended")) {
-        clearSession();
-        router.push("/");
+        handleLogout();
       }
     });
     return () => unsub();
-  }, [router]);
+  }, [handleLogout]);
 
-  // Fetch authoritative trial progress from backend to enforce sequential progression (Issue 3)
+  // Eagerly fetch progress for ALL 6 trials on mount so totalVecnaSolved is accurate on reload
+  useEffect(() => {
+    let isCancelled = false;
+    const fetchAllProgress = async () => {
+      try {
+        const stored = getStoredSession();
+        const token = stored && (stored as any).token ? (stored as any).token : "";
+        if (!token) return;
+        const trialIds = [1, 2, 3, 4, 5, 6];
+        const responses = await Promise.all(
+          trialIds.map((tId) =>
+            fetch(`${API_BASE}/vecna/trials/${tId}/progress`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .catch(() => null)
+          )
+        );
+
+        if (isCancelled) return;
+
+        responses.forEach((data, i) => {
+          const tId = trialIds[i];
+          if (data && data.success && data.progress) {
+            Object.entries(data.progress).forEach(([idxStr, att]: [string, any]) => {
+              const idx = parseInt(idxStr, 10);
+              if (att.status === "solved") {
+                setSolvedQuestions((prev) => ({ ...prev, [`${tId}-${idx}`]: true }));
+              } else if (att.status === "failed") {
+                setFailedQuestions((prev) => ({ ...prev, [`${tId}-${idx}`]: true }));
+              }
+              if (att.chosenAnswer) {
+                setSelectedAnswers((prev) => ({ ...prev, [`${tId}-${idx}`]: att.chosenAnswer }));
+              }
+            });
+            if (tId === activeTrialId && typeof data.maxUnlockedIdx === "number") {
+              setActiveQuestionIdx((curr) => Math.min(curr, data.maxUnlockedIdx));
+            }
+          }
+        });
+      } catch {}
+    };
+    fetchAllProgress();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // Fetch authoritative trial progress from backend to enforce sequential progression
   useEffect(() => {
     let isCancelled = false;
     const fetchProgress = async () => {
@@ -237,15 +439,6 @@ export default function VecnaPage() {
     };
   }, [activeTrialId]);
 
-  const handleLogout = () => {
-    sfx("click");
-    try {
-      getSocket()?.emit("team:logout");
-    } catch {}
-    clearSession();
-    router.push("/");
-  };
-
   const handleSelectOption = (trialId: number, qIdx: number, optionId: string) => {
     if (isLevelAttempted(trialId, qIdx)) return;
     sfx("click");
@@ -278,13 +471,80 @@ export default function VecnaPage() {
 
   // Unified scoring rules: 1 question solved = +10 PTS across all questions
   const [spentPowerPoints, setSpentPowerPoints] = useState(0);
+  const [serverVecnaScore, setServerVecnaScore] = useState<number | null>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const fetchMe = async () => {
+      try {
+        const stored = getStoredSession();
+        const token = stored && (stored as any).token ? (stored as any).token : "";
+        if (!token) return;
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok && !isCancelled) {
+          const data = await res.json();
+          if (data && data.team && typeof data.team.score === "number") {
+            setServerVecnaScore(data.team.score);
+          }
+        }
+      } catch {}
+    };
+    fetchMe();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleScore = (data: any) => {
+      // Guard against foreign squad score contamination (e.g. Hawkins teams playing concurrently)
+      const targetTeamId = (data?.teamId || data?.team || "").toString().trim().toUpperCase();
+      const myTeamId = (session?.teamId || "").toString().trim().toUpperCase();
+      const isForVecna =
+        !targetTeamId ||
+        targetTeamId === myTeamId ||
+        targetTeamId === "VECNA" ||
+        targetTeamId === "VECNA-001" ||
+        targetTeamId === "VECNA-1" ||
+        data?.role === "VECNA";
+
+      if (!isForVecna) return;
+
+      const s =
+        typeof data?.score === "number"
+          ? data.score
+          : typeof data?.totalScore === "number"
+          ? data.totalScore
+          : typeof data?.newScore === "number"
+          ? data.newScore
+          : null;
+      if (s !== null) {
+        setServerVecnaScore(s);
+      }
+    };
+    const unsub = subscribe((data: any) => {
+      if (data && (data.type === "SCORE_UPDATE" || data.type === "score:update")) {
+        handleScore(data);
+      }
+    });
+    const sock = getSocket();
+    sock?.on("score:update", handleScore);
+    return () => {
+      unsub();
+      sock?.off("score:update", handleScore);
+    };
+  }, [session?.teamId]);
+
   const totalVecnaSolved = Object.values(solvedQuestions).filter(Boolean).length;
-  const totalVecnaScore = totalVecnaSolved * 10 - spentPowerPoints;
+  const computedVecnaScore = Math.max(0, totalVecnaSolved * 10 - spentPowerPoints);
+  const effectiveVecnaScore = serverVecnaScore !== null ? serverVecnaScore : computedVecnaScore;
   const currentTrialSolvedCount = currentQuestions.filter((_, idx) => !!solvedQuestions[`${currentTrial.id}-${idx}`]).length;
   const currentTrialScore = currentTrialSolvedCount * 10;
 
   const handleVerifyCurrentQuestion = async () => {
-    if (!currentQuestion || isQuestionAttempted) return;
+    if (!currentQuestion || isQuestionAttempted || isSubmitting) return;
 
     let chosen = selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`];
     if (!chosen) {
@@ -293,7 +553,11 @@ export default function VecnaPage() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
+      // Simulate authentic transmitting delay (~1.2s) matching Hawkins terminal
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
       const stored = getStoredSession();
       const token = stored && (stored as any).token ? (stored as any).token : "";
       const res = await fetch(`${API_BASE}/vecna/trials/${currentTrial.id}/questions/${activeQuestionIdx}/submit`, {
@@ -320,6 +584,11 @@ export default function VecnaPage() {
           setTimeout(() => setErrorMessage(null), 3000);
           return;
         }
+        // General server or auth failure: report cleanly without failing question
+        setErrorMessage(data.message || `TRANSMISSION FAILED (${res.status}): Central server rejected override telemetry.`);
+        sfx("err");
+        setTimeout(() => setErrorMessage(null), 3500);
+        return;
       }
 
       const isCorrect = Boolean(data.isCorrect);
@@ -330,6 +599,9 @@ export default function VecnaPage() {
           ...prev,
           [`${currentTrial.id}-${activeQuestionIdx}`]: true,
         }));
+        if (typeof data.totalScore === "number" || typeof data.newScore === "number") {
+          setServerVecnaScore(data.totalScore ?? data.newScore);
+        }
         setSuccessMessage(`LEVEL ${activeQuestionIdx + 1} OVERRIDE CONFIRMED (+10 PTS)`);
         setErrorMessage(null);
 
@@ -380,6 +652,8 @@ export default function VecnaPage() {
       sfx("err");
       setTimeout(() => setErrorMessage(null), 3000);
       return;
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -407,40 +681,21 @@ export default function VecnaPage() {
     }
   };
 
-  const handleSendMessage = (target: "all" | string, message: string) => {
+  const handleSendMessage = async (target: "all" | string, message: string): Promise<boolean> => {
     sfx("boom");
 
-    const TEAM_MAP: Record<string, string> = {
-      "Null Pointers": "T01",
-      "Stack Smashers": "T02",
-      "Rift Runners": "T03",
-      "Byte Byters": "T04",
-      "Shadow Walkers": "T05",
-      "Signal Seekers": "T05",
-      "Hellfire Club": "T06",
-      "Hawkins AV Club": "T07",
-      "Mind Flayers": "T08",
-    };
-    const targetTeamId = target === "all" ? undefined : (TEAM_MAP[target] || target);
-    const targetTeamName = target === "all" ? undefined : target;
+    const matchedSquad = availableSquads.find(
+      (s) => s.name.toLowerCase() === target.toLowerCase() || s.id.toLowerCase() === target.toLowerCase()
+    );
+    const targetTeamId = target === "all" ? undefined : (matchedSquad ? matchedSquad.id : target);
+    const targetTeamName = target === "all" ? undefined : (matchedSquad ? matchedSquad.name : target);
 
-    publish({
-      type: "sabotage",
-      kind: "MESSAGE",
-      target,
-      targetTeamId,
-      targetTeamName,
-      message,
-      duration: 10,
-      durationSec: 10,
-      ts: Date.now(),
-    });
-
-    // Persist to Express backend Vecna approval queue (Port 5055/5000)
     try {
       const stored = getStoredSession();
       const token = stored && (stored as any).token ? (stored as any).token : "";
-      fetch(`${API_BASE}/vecna/messages`, {
+      const clientRequestId = `dispatch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      const res = await fetch(`${API_BASE}/vecna/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -451,48 +706,99 @@ export default function VecnaPage() {
           recipientScope: target === "all" ? "all_teams" : "selected_teams",
           selectedTeamIds: target === "all" ? undefined : [targetTeamId || target],
           bodyText: message.slice(0, 150),
+          clientRequestId,
         }),
-      }).catch(() => {});
-    } catch {}
+      });
 
-    // Fallback to Next.js route
-    fetch("/api/vecna/sabotage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target, kind: "MESSAGE", message: message.slice(0, 150), duration: 45 }),
-    }).catch(() => {});
-    setIsMessageOpen(false);
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (data.error === "DISPATCH_LIMIT_REACHED" || res.status === 429) {
+          return false;
+        }
+        throw new Error(data.message || data.error || "Failed to dispatch message.");
+      }
+
+      // Realtime publication for local preview and immediate delivery
+      publish({
+        type: "sabotage",
+        kind: "MESSAGE",
+        target,
+        targetTeamId,
+        targetTeamName,
+        message,
+        duration: 10,
+        durationSec: 10,
+        ts: Date.now(),
+      });
+
+      setIsMessageOpen(false);
+      return true;
+    } catch (err: any) {
+      console.error("[VECNA DISPATCH ERROR]", err);
+      throw err;
+    }
   };
 
-  const handleExecuteTrigger = (action: TriggerAction) => {
+  const handleExecuteTrigger = async (action: TriggerAction) => {
     sfx("boom");
-    const cost = action.totalCost || (action.targetTeams && action.targetTeams.length > 0 ? action.targetTeams.length * 10 : 10);
-    setSpentPowerPoints((prev) => prev + cost);
+    const kind = action.id; // "LOCK" | "CORRUPT"
+    const targetTeams = action.targetTeams && action.targetTeams.length > 0 ? action.targetTeams : [];
+    const clientRequestId = `power-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-    const kind = action.id;
-    const duration = action.id === "LOCK" ? 120 : 45;
-    const targetTeams = action.targetTeams || [];
+    try {
+      const stored = getStoredSession();
+      const token = stored && (stored as any).token ? (stored as any).token : "";
+      const res = await fetch(`${API_BASE}/vecna/powers/activate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          power: kind,
+          targetTeams: targetTeams.length > 0 ? targetTeams : undefined,
+          targetScope: targetTeams.length > 0 ? "selected" : "all",
+          location: selectedLocation,
+          clientRequestId,
+        }),
+      });
 
-    publish({
-      type: "sabotage",
-      kind,
-      target: selectedLocation,
-      teams: targetTeams,
-      duration,
-      ts: Date.now(),
-    });
-    // Persist in database
-    fetch("/api/vecna/sabotage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        target: selectedLocation,
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setErrorMessage(data.message || data.error || "Failed to unleash power.");
+        sfx("err");
+        setTimeout(() => setErrorMessage(null), 3500);
+        return;
+      }
+
+      if (typeof data.newScore === "number") {
+        setServerVecnaScore(data.newScore);
+      }
+
+      setSuccessMessage(data.message || `POWER ACTIVATED: ${action.label}`);
+      sfx("boom");
+      setTimeout(() => setSuccessMessage(null), 3000);
+
+      // Local publication for immediate UI response
+      const duration = kind === "LOCK" ? 120 : 80;
+      publish({
+        type: "sabotage",
         kind,
+        target: selectedLocation,
+        teams: targetTeams,
         duration,
-        targetTeams,
-      }),
-    }).catch(() => {});
-    setIsPowersOpen(false);
+        ts: Date.now(),
+      });
+
+      setIsPowersOpen(false);
+    } catch (err: any) {
+      console.error("[EXECUTE TRIGGER ERROR]", err);
+      setErrorMessage(err?.message || "Network error while unleashing power.");
+      sfx("err");
+      setTimeout(() => setErrorMessage(null), 3500);
+    }
   };
 
   return (
@@ -619,7 +925,7 @@ export default function VecnaPage() {
                 textShadow: "0 0 10px rgba(255, 45, 58, 0.8)",
               }}
             >
-              {totalVecnaScore}
+              {effectiveVecnaScore}
             </div>
           </div>
         </div>
@@ -632,6 +938,7 @@ export default function VecnaPage() {
             type="button"
             onClick={() => {
               sfx("click");
+              refreshTacticalMap();
               setIsMapOpen(true);
             }}
             style={{
@@ -684,6 +991,7 @@ export default function VecnaPage() {
             type="button"
             onClick={() => {
               sfx("click");
+              refreshTacticalMap();
               setIsPowersOpen(true);
             }}
             style={{
@@ -737,6 +1045,34 @@ export default function VecnaPage() {
           </button>
 
           <button
+            id="vecna-fullscreen-btn"
+            type="button"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
+            style={{
+              background: isFullscreen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
+              color: isFullscreen ? "#000000" : "#ffb3ba",
+              border: "1.5px solid #ff2d3a",
+              padding: "8px 16px",
+              borderRadius: "3px",
+              fontSize: "12px",
+              fontFamily: '"Share Tech Mono", monospace',
+              fontWeight: "bold",
+              letterSpacing: "0.15em",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <span style={{ fontSize: "12px" }}>{isFullscreen ? "✖" : "⛶"}</span>
+            <span>{isFullscreen ? "EXIT FS" : "FULLSCREEN"}</span>
+          </button>
+
+          <button
+            id="vecna-logout-btn"
             type="button"
             onClick={handleLogout}
             style={{
@@ -1030,7 +1366,7 @@ export default function VecnaPage() {
                   letterSpacing: "0.06em",
                 }}
               >
-                TRIAL: {currentTrialScore} PTS · TOTAL: {totalVecnaScore} PTS
+                TRIAL: {currentTrialScore} PTS · TOTAL: {effectiveVecnaScore} PTS
               </div>
             </div>
           </div>
@@ -1178,9 +1514,15 @@ export default function VecnaPage() {
                 id="vecna-override-submit-btn"
                 type="button"
                 onClick={handleVerifyCurrentQuestion}
-                disabled={isQuestionAttempted}
+                disabled={isQuestionAttempted || isSubmitting}
                 style={{
-                  background: isQuestionSolved ? "#2e6930" : isQuestionFailed ? "#66181b" : "#8f231e",
+                  background: isQuestionSolved
+                    ? "#2e6930"
+                    : isQuestionFailed
+                    ? "#66181b"
+                    : isSubmitting
+                    ? "#4a1215"
+                    : "#8f231e",
                   color: "#ffffff",
                   fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
                   fontSize: "13.5px",
@@ -1189,7 +1531,7 @@ export default function VecnaPage() {
                   padding: "12px 26px",
                   border: "none",
                   borderRadius: "3px",
-                  cursor: isQuestionAttempted ? "default" : "pointer",
+                  cursor: isQuestionAttempted ? "default" : isSubmitting ? "wait" : "pointer",
                   boxShadow: isQuestionSolved
                     ? "0 3px 12px rgba(46, 105, 48, 0.45)"
                     : isQuestionFailed
@@ -1200,13 +1542,18 @@ export default function VecnaPage() {
                   alignItems: "center",
                   gap: "8px",
                   textTransform: "uppercase",
-                  opacity: isQuestionAttempted ? 0.9 : 1,
+                  opacity: isQuestionAttempted ? 0.9 : isSubmitting ? 0.75 : 1,
                 }}
               >
                 {isQuestionSolved ? (
                   <span>✓ LEVEL CLEARED (+10 PTS)</span>
                 ) : isQuestionFailed ? (
                   <span>✕ VECTOR RECORDED (0 PTS)</span>
+                ) : isSubmitting ? (
+                  <>
+                    <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⚙</span>
+                    <span>TRANSMITTING OVERRIDE TELEMETRY...</span>
+                  </>
                 ) : (
                   <span>SUBMIT LEVEL (+10 PTS)</span>
                 )}
@@ -1285,7 +1632,7 @@ export default function VecnaPage() {
               <VecnaTacticalMap
                 selectedLocationId={selectedLocation}
                 onSelectLocation={(locId) => setSelectedLocation(locId)}
-                teamsAtLocation={teamsAtLocation}
+                teamsAtLocation={tacticalMapData}
                 onInspectTeam={(tId) => {
                   setSelectedTeamName(tId);
                 }}
@@ -1362,6 +1709,7 @@ export default function VecnaPage() {
               <VecnaMessagePanel
                 onSendMessage={handleSendMessage}
                 selectedTeamName={selectedTeamName}
+                availableSquads={availableSquads}
               />
             </motion.div>
           </motion.div>
@@ -1436,7 +1784,8 @@ export default function VecnaPage() {
                 selectedLocation={selectedLocation}
                 onSelectLocation={(locId) => setSelectedLocation(locId)}
                 onTriggerAction={handleExecuteTrigger}
-                currentVecnaScore={totalVecnaScore}
+                currentVecnaScore={effectiveVecnaScore}
+                availableSquads={availableSquads}
               />
             </motion.div>
           </motion.div>

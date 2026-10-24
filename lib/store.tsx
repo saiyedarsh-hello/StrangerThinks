@@ -157,6 +157,49 @@ export const stageIndex = (s: StageId) => STAGE_ORDER.indexOf(s);
 export const totalScore = (b: Breakdown, penalty = 0) =>
   Math.round(b.tech + b.puzzle + b.clue + b.speed + b.story + b.teamwork - penalty);
 
+export function computeAggregatedTaskScore(taskScores: Record<string, number> = {}): number {
+  const chapterSubScores: Record<number, number> = {};
+  const chapterMainScores: Record<number, number> = {};
+  let otherTasksScore = 0;
+
+  for (const [key, val] of Object.entries(taskScores)) {
+    const pts = typeof val === "number" ? val : 0;
+    // Check if subquestion: ch1-q1, ch2-q3, etc.
+    const subMatch = key.match(/^(?:ch|chapter)[\-_]?(\d+)[\-_]q(\d+)/i);
+    if (subMatch) {
+      const chId = Number(subMatch[1]);
+      chapterSubScores[chId] = (chapterSubScores[chId] || 0) + pts;
+      continue;
+    }
+
+    // Check if chapter completion task: ch1-quiz, ch2-police, ch1, etc.
+    const chMatch = key.match(/^(?:ch|chapter)[\-_]?(\d+)(?:-(?:quiz|police|byers|lab|radio-tower|upsidedown|case-study|coding))?$/i);
+    if (chMatch) {
+      const chId = Number(chMatch[1]);
+      chapterMainScores[chId] = Math.max(chapterMainScores[chId] || 0, pts);
+      continue;
+    }
+
+    // Other tasks (radiometer, mini-games, etc.)
+    otherTasksScore += pts;
+  }
+
+  // Combine chapters using max(subScores, mainScore)
+  const allChapterIds = new Set([
+    ...Object.keys(chapterSubScores).map(Number),
+    ...Object.keys(chapterMainScores).map(Number),
+  ]);
+
+  let chaptersScore = 0;
+  for (const chId of allChapterIds) {
+    const sub = chapterSubScores[chId] || 0;
+    const main = chapterMainScores[chId] || 0;
+    chaptersScore += Math.max(sub, main);
+  }
+
+  return chaptersScore + otherTasksScore;
+}
+
 export interface InGameModalConfig {
   title?: string;
   message: string;
@@ -170,13 +213,16 @@ export interface InGameModalConfig {
 interface Ctx {
   s: GameState;
   hydrated: boolean;
+  sessionVerified: boolean;
   session: AuthSession | null;
   score: number;
   sabotage: Sabotage | null;
   isPaused: boolean;
+  isLocationLocked: boolean;
   cutscene: StageId | null;
   endCutscene: () => void;
   start: () => void;
+  loginSession: (sessionData: AuthSession) => void;
   loginPlayer: (team: {
     id: string;
     teamName: string;
@@ -256,6 +302,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const isGame = path === "/";
   const [s, setS] = useState<GameState>(INITIAL);
   const [hydrated, setHydrated] = useState(false);
+  const [sessionVerified, setSessionVerified] = useState(false);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [sabotage, setSabotage] = useState<Sabotage | null>(null);
   const [cutscene, setCutscene] = useState<StageId | null>(null);
@@ -380,9 +427,40 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           },
         });
       } else if (currentSession && currentSession.role === "PLAYER") {
+        let localSave: any = null;
+        try {
+          const raw = localStorage.getItem(`hawkins_team_save_${currentSession.teamId}`);
+          if (raw) localSave = JSON.parse(raw);
+        } catch {}
+
+        const teamScore = localSave?.totalScore ?? localSave?.score ?? 0;
+        const teamSolvedChapters = localSave?.solvedChapters || [];
+        const teamCompleted = localSave?.completedTasks || [];
+        const teamUnlocked = { ...INITIAL_UNLOCKED, ...(localSave?.unlockedLocations || {}) };
+        const teamProgress = localSave?.storyProgress ?? 10;
+        const teamBreakdown = localSave?.breakdown || {
+          tech: teamScore,
+          puzzle: 0,
+          clue: 0,
+          speed: 0,
+          story: 0,
+          teamwork: 0,
+        };
+
         setS((p) => ({
           ...p,
           phase: "play",
+          breakdown: teamBreakdown,
+          penalty: localSave?.penalty || 0,
+          taskScores: localSave?.taskScores || {},
+          completedTasks: teamCompleted,
+          unlocked: teamUnlocked,
+          storyProgress: teamProgress,
+          solved: {
+            ...p.solved,
+            ...(localSave?.solved || {}),
+            ...teamCompleted.reduce((acc: any, t: string) => ({ ...acc, [t]: true }), {}),
+          },
           team: {
             id: currentSession.teamId || "T01",
             name: currentSession.teamName,
@@ -390,16 +468,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             members: [currentSession.leaderName],
             location: "town",
             currentTask: "town-1",
-            storyProgress: 10,
-            score: 0,
+            storyProgress: teamProgress,
+            score: teamScore,
+            totalScore: teamScore,
+            solvedChapters: teamSolvedChapters,
             powers: ["vision"],
             powerCharges: { vision: 3, will: 2, eleven: 2 },
-            completedTasks: [],
+            completedTasks: teamCompleted,
             clues: {},
             inventory: [],
             timeRemaining: TOTAL_TIME,
             vecnaStatus: "INACTIVE",
-            unlocked: { ...INITIAL_UNLOCKED },
+            unlocked: teamUnlocked,
           },
         }));
       } else {
@@ -410,70 +490,110 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     // Validate live session with server if token available
     const sessionToken = (currentSession as any)?.token;
-    fetch("/api/auth/session", {
-      headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {},
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.authenticated && data.team) {
-          const sData: AuthSession = {
-            role: "PLAYER",
-            teamName: data.team.teamName,
-            leaderName: data.team.squadLeader,
-            teamId: data.team.id,
-            ...(sessionToken ? { token: sessionToken } : {}),
-          };
-          saveSession(sData);
-          setSession(sData);
-
-          const teamScore = data.team.totalScore ?? data.team.score ?? 0;
-          const sBreakdown: Breakdown = data.team.breakdown || {
-            tech: teamScore,
-            puzzle: 0,
-            clue: 0,
-            speed: 0,
-            story: 0,
-            teamwork: 0,
-          };
-
-          const teamTaskScores: Record<string, number> = { ...(data.team.taskScores || {}) };
-          if (Object.keys(teamTaskScores).length === 0 && data.team.completedTasks?.length && teamScore > 0) {
-            const perTask = Math.floor(teamScore / data.team.completedTasks.length);
-            data.team.completedTasks.forEach((tid: string, idx: number) => {
-              teamTaskScores[tid] = idx === 0 ? teamScore - perTask * (data.team.completedTasks.length - 1) : perTask;
-            });
-          }
-          setS((prev) => ({
-            ...prev,
-            phase: "play",
-            breakdown: sBreakdown,
-            penalty: data.team.penalty ?? prev.penalty,
-            taskScores: Object.keys(teamTaskScores).length > 0 ? teamTaskScores : prev.taskScores,
-            completedTasks:
-              data.team.completedTasks && data.team.completedTasks.length > 0
-                ? data.team.completedTasks
-                : prev.completedTasks,
-            unlocked: data.team.unlockedLocations
-              ? { ...prev.unlocked, ...data.team.unlockedLocations }
-              : prev.unlocked,
-            storyProgress: data.team.storyProgress ?? prev.storyProgress,
-            isPaused: Boolean(data.event?.isPaused),
-            team: {
-              ...prev.team,
-              id: data.team.id,
-              name: data.team.teamName,
-              leaderName: data.team.squadLeader,
-              members: [data.team.squadLeader],
-              score: teamScore,
-            },
-          }));
-
-          if (sessionToken) {
-            authenticateSocket(sessionToken);
-          }
-        }
+    if (!sessionToken) {
+      setSessionVerified(true);
+    } else {
+      fetch("/api/auth/session", {
+        headers: { Authorization: `Bearer ${sessionToken}` },
       })
-      .catch(() => {});
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.authenticated) {
+            const serverRole: AuthSession["role"] =
+              data.role === "ADMIN" || data.role === "VECNA" ? data.role : "PLAYER";
+            const sData: AuthSession = {
+              role: serverRole,
+              teamName: data.session?.teamName || data.team?.teamName || "",
+              leaderName: data.session?.leaderName || data.team?.squadLeader || "",
+              teamId: data.session?.teamId || data.team?.id || "",
+              ...(data.session?.adminId ? { adminId: data.session.adminId } : {}),
+              ...(sessionToken ? { token: sessionToken } : {}),
+            };
+            saveSession(sData);
+            setSession(sData);
+            setSessionVerified(true);
+
+            if (serverRole !== "PLAYER") {
+              authenticateSocket(sessionToken);
+              return;
+            }
+
+            let localSave: any = null;
+            try {
+              const raw = localStorage.getItem(`hawkins_team_save_${sData.teamId}`);
+              if (raw) localSave = JSON.parse(raw);
+            } catch {}
+
+            const teamScore = data.team?.totalScore ?? data.team?.score ?? localSave?.totalScore ?? localSave?.score ?? 0;
+            const teamSolvedChapters = Array.from(
+              new Set([...(data.team?.solvedChapters || []), ...(localSave?.solvedChapters || [])])
+            );
+            const teamCompleted = Array.from(
+              new Set([...(data.team?.completedTasks || []), ...(localSave?.completedTasks || [])])
+            );
+            const sBreakdown: Breakdown = data.team?.breakdown || localSave?.breakdown || {
+              tech: teamScore,
+              puzzle: 0,
+              clue: 0,
+              speed: 0,
+              story: 0,
+              teamwork: 0,
+            };
+
+            const teamTaskScores: Record<string, number> = {
+              ...(localSave?.taskScores || {}),
+              ...(data.team?.taskScores || {}),
+            };
+            if (Object.keys(teamTaskScores).length === 0 && teamCompleted.length > 0 && teamScore > 0) {
+              const perTask = Math.floor(teamScore / teamCompleted.length);
+              teamCompleted.forEach((tid: string, idx: number) => {
+                teamTaskScores[tid] = idx === 0 ? teamScore - perTask * (teamCompleted.length - 1) : perTask;
+              });
+            }
+            const teamUnlocked = {
+              ...INITIAL_UNLOCKED,
+              ...(localSave?.unlockedLocations || {}),
+              ...(data.team?.unlockedLocations || {}),
+            };
+            const teamStoryProg = data.team?.storyProgress ?? localSave?.storyProgress ?? 10;
+            setS((prev) => ({
+              ...prev,
+              phase: "play",
+              breakdown: sBreakdown,
+              penalty: data.team?.penalty ?? localSave?.penalty ?? prev.penalty,
+              taskScores: Object.keys(teamTaskScores).length > 0 ? teamTaskScores : prev.taskScores,
+              completedTasks: teamCompleted.length > 0 ? teamCompleted : prev.completedTasks,
+              unlocked: teamUnlocked,
+              storyProgress: teamStoryProg,
+              isPaused: Boolean(data.event?.isPaused),
+              solved: {
+                ...prev.solved,
+                ...(localSave?.solved || {}),
+                ...teamCompleted.reduce((acc: any, t: string) => ({ ...acc, [t]: true }), {}),
+              },
+              team: {
+                ...prev.team,
+                id: data.team?.id || sData.teamId || prev.team.id,
+                name: data.team?.teamName || prev.team.name,
+                leaderName: data.team?.squadLeader || prev.team.leaderName,
+                members: [data.team?.squadLeader || prev.team.leaderName || ""],
+                score: teamScore,
+                totalScore: teamScore,
+                solvedChapters: teamSolvedChapters,
+              },
+            }));
+
+            authenticateSocket(sessionToken);
+          } else {
+            clearSession();
+            setSession(null);
+            setSessionVerified(true);
+          }
+        })
+        .catch(() => {
+          setSessionVerified(true);
+        });
+    }
   }, [isGame]);
 
   // Persist to localStorage
@@ -844,6 +964,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       };
       saveSession(sessionData);
       setSession(sessionData);
+      setSessionVerified(true);
 
       if (typeof document !== "undefined" && team.token) {
         document.cookie = `hawkins_session_token=${team.token}; path=/; max-age=86400; SameSite=Lax`;
@@ -853,8 +974,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         authenticateSocket(team.token);
       }
 
-      const teamScore = team.totalScore ?? team.score ?? 0;
-      const teamBreakdown: Breakdown = team.breakdown || {
+      let localSave: any = null;
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem(`hawkins_team_save_${team.id}`);
+          if (raw) localSave = JSON.parse(raw);
+        } catch {}
+      }
+
+      const teamScore = team.totalScore ?? team.score ?? localSave?.totalScore ?? localSave?.score ?? 0;
+      const teamSolvedChapters = Array.from(
+        new Set([...(team.solvedChapters || []), ...(localSave?.solvedChapters || [])])
+      );
+      const teamCompleted = Array.from(
+        new Set([...(team.completedTasks || []), ...(localSave?.completedTasks || [])])
+      );
+      const teamBreakdown: Breakdown = team.breakdown || localSave?.breakdown || {
         tech: teamScore,
         puzzle: 0,
         clue: 0,
@@ -862,11 +997,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         story: 0,
         teamwork: 0,
       };
-      const teamUnlocked = { ...INITIAL_UNLOCKED, ...(team.unlockedLocations || {}) };
-      const teamCompleted = team.completedTasks || [];
-      const teamProgress = team.storyProgress ?? 10;
+      const teamUnlocked = { ...INITIAL_UNLOCKED, ...(localSave?.unlockedLocations || {}), ...(team.unlockedLocations || {}) };
+      const teamProgress = team.storyProgress ?? localSave?.storyProgress ?? 10;
 
-      let teamTaskScores: Record<string, number> = { ...(team.taskScores || {}) };
+      let teamTaskScores: Record<string, number> = { ...(localSave?.taskScores || {}), ...(team.taskScores || {}) };
       if (Object.keys(teamTaskScores).length === 0 && teamCompleted.length > 0 && teamScore > 0) {
         const perTask = Math.floor(teamScore / teamCompleted.length);
         teamCompleted.forEach((tid, idx) => {
@@ -883,6 +1017,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         currentTask: "town-1",
         storyProgress: teamProgress,
         score: teamScore,
+        totalScore: teamScore,
+        solvedChapters: teamSolvedChapters,
         powers: ["vision"],
         powerCharges: { vision: 3, will: 2, eleven: 2 },
         completedTasks: teamCompleted,
@@ -900,18 +1036,40 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         location: "town",
         viewMode: "board",
         breakdown: teamBreakdown,
-        penalty: team.penalty || 0,
+        penalty: team.penalty || localSave?.penalty || 0,
         taskScores: teamTaskScores,
         completedTasks: teamCompleted,
         unlocked: teamUnlocked,
         storyProgress: teamProgress,
         introSeen: false, // ensures cinematic typewriter intro runs on fresh login
+        solved: {
+          ...p.solved,
+          ...(localSave?.solved || {}),
+          ...teamCompleted.reduce((acc: any, t: string) => ({ ...acc, [t]: true }), {}),
+        },
       }));
       setCutscene("hawkins");
       sfx("boom");
     },
     []
   );
+
+  const loginSession = useCallback((sessionData: AuthSession) => {
+    saveSession(sessionData);
+    setSession(sessionData);
+    setSessionVerified(true);
+
+    if (typeof document !== "undefined" && sessionData.token) {
+      document.cookie = `hawkins_session_token=${sessionData.token}; path=/; max-age=86400; SameSite=Lax`;
+      if (sessionData.role === "ADMIN") {
+        document.cookie = `hawkins_admin_token=${sessionData.token}; path=/; max-age=86400; SameSite=Lax`;
+      }
+    }
+
+    if (sessionData.token) {
+      authenticateSocket(sessionData.token);
+    }
+  }, []);
 
   const register = useCallback((name: string, members: string[]) => {
     const randomId = `HP-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -950,7 +1108,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const grantItem = useCallback((id: string) => {
     setS((p) => (p.inventory.includes(id) ? p : { ...p, inventory: [...p.inventory, id] }));
     sfx("clue");
-    if (ITEMS[id]) say(`ITEM ACQUIRED — ${ITEMS[id].name.toUpperCase()}`);
+    if (ITEMS[id]) say(`ITEM ACQUIRED ÔÇö ${ITEMS[id].name.toUpperCase()}`);
   }, [say]);
 
   // Fast Travel between locations on Hawkins Map
@@ -1045,7 +1203,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             [category]: Math.max(0, (p.breakdown[category] || 0) + (pointDelta > 0 ? pointDelta : points)),
           };
 
-      const taskScoresSum = Object.values(nextTaskScores).reduce((a, b) => a + (b || 0), 0);
+      const taskScoresSum = computeAggregatedTaskScore(nextTaskScores);
       const computedTotalScore = alreadyAwarded
         ? Math.max(p.team?.score ?? 0, p.team?.totalScore ?? 0, taskScoresSum, totalScore(nextBreakdown, p.penalty))
         : Math.max(
@@ -1054,33 +1212,53 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             (p.team?.score || 0) + Math.max(0, pointDelta)
           );
 
+      // Extract chapter number if applicable (Only whole chapter tasks, NOT individual subquestions)
+      const isChapterCompletionTask = (id: string) => {
+        if (/[-_]q\d+/i.test(id) || /item/i.test(id)) return null;
+        const m = id.match(/^(?:ch|chapter)[\-_]?(\d+)(?:-(?:quiz|police|byers|lab|radio-tower|upsidedown|case-study|coding))?$/i);
+        return m ? Number(m[1]) : null;
+      };
+      const chNum = isChapterCompletionTask(taskId);
+      const solvedChapters = p.team?.id
+        ? Array.from(
+            new Set([
+              ...(p.team.solvedChapters || []),
+              ...nextCompleted
+                .map((t) => isChapterCompletionTask(t))
+                .filter((n): n is number => typeof n === "number" && n > 0),
+              chNum ? chNum : 0,
+            ].filter((n) => n > 0))
+          )
+        : [];
+
       const nextTeam = p.team
         ? {
             ...p.team,
             score: computedTotalScore,
             totalScore: computedTotalScore,
             completedTasks: nextCompleted,
+            solvedChapters,
           }
         : p.team;
 
-      // Extract chapter number if applicable
-      const chMatch = taskId.match(/^(?:ch|chapter)[\-_]?(\d+)/i);
-      const solvedChapters = p.team?.id
-        ? Array.from(
-            new Set([
-              ...nextCompleted
-                .map((t) => {
-                  const m = t.match(/^(?:ch|chapter)[\-_]?(\d+)/i);
-                  return m ? Number(m[1]) : 0;
-                })
-                .filter((n) => n > 0),
-              chMatch ? Number(chMatch[1]) : 0,
-            ].filter((n) => n > 0))
-          )
-        : [];
-
-      // Persist to Express backend immediately
+      // Persist to Express backend immediately and save locally per team
       if (p.team?.id) {
+        try {
+          const teamSave = {
+            teamId: p.team.id,
+            completedTasks: nextCompleted,
+            solvedChapters,
+            taskScores: nextTaskScores,
+            unlockedLocations: nextUnlocked,
+            storyProgress: newProgress,
+            breakdown: nextBreakdown,
+            totalScore: computedTotalScore,
+            penalty: p.penalty || 0,
+            solved: { ...p.solved, [taskId]: true },
+          };
+          localStorage.setItem(`hawkins_team_save_${p.team.id}`, JSON.stringify(teamSave));
+        } catch {}
+
         saveTeamProgressToServer({
           teamId: p.team.id,
           completedTasks: nextCompleted,
@@ -1162,7 +1340,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (!powerUnlocked(p)) return null;
       if (sabotage && sabotage.kind === "SIGNAL_JAM") {
         sfx("err");
-        say("SIGNAL JAMMED — POWERS OFFLINE");
+        say("SIGNAL JAMMED ÔÇö POWERS OFFLINE");
         return null;
       }
       if (cur.revealed[cid]?.[p]) return "ALREADY";
@@ -1379,6 +1557,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     clearSession();
     setSession(null);
+    setSessionVerified(true);
     reset();
     setS({ ...INITIAL, phase: "login", introSeen: false });
     sfx("click");
@@ -1506,18 +1685,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     () => ({
       s,
       hydrated,
+      sessionVerified,
       session,
       score: Math.max(
         typeof s.team?.totalScore === "number" ? s.team.totalScore : 0,
         typeof s.team?.score === "number" ? s.team.score : 0,
         totalScore(s.breakdown, s.penalty),
-        Object.values(s.taskScores || {}).reduce((a, b) => a + (b || 0), 0)
+        computeAggregatedTaskScore(s.taskScores || {})
       ),
       isPaused: Boolean(s.isPaused),
+      isLocationLocked: Boolean(
+        sabotage &&
+        sabotage.kind === "LOCK" &&
+        sabotage.until &&
+        sabotage.until > Date.now()
+      ),
       sabotage,
       cutscene,
       endCutscene,
       start,
+      loginSession,
       loginPlayer,
       register,
       logout,
@@ -1566,11 +1753,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     [
       s,
       hydrated,
+      sessionVerified,
       session,
       sabotage,
       cutscene,
       endCutscene,
       start,
+      loginSession,
       loginPlayer,
       register,
       logout,

@@ -143,6 +143,8 @@ export const AdminController = {
       solvedCount: isUnstarted ? 0 : t.solvedCount,
       currentStage: isUnstarted ? 1 : ((t as any).currentStage || 1),
       isOnline: socketService.isTeamOnline(t.teamId),
+      lastScoreAchievedAt: (t as any).lastScoreAchievedAt || (t as any).lastSolvedAt || null,
+      lastSolvedAt: (t as any).lastSolvedAt || null,
     }));
     return res.json({
       success: true,
@@ -154,7 +156,7 @@ export const AdminController = {
    * POST /api/admin/teams — Dynamically registers a new participant squad
    */
   createTeam(req: Request, res: Response) {
-    const { teamName, leaderName, teamId, initialScore } = req.body;
+    const { teamName, leaderName, teamId, initialScore, role } = req.body;
 
     if (!teamName || !leaderName) {
       return res.status(400).json({
@@ -164,7 +166,17 @@ export const AdminController = {
       });
     }
 
-    const team = db.createTeam(teamName, leaderName, teamId, Number(initialScore) || 0);
+    const existing = db.getTeamByCredentials(teamName, leaderName);
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        error: "TEAM_ALREADY_EXISTS",
+        message: `A squad with these credentials already exists (${existing.id}).`,
+      });
+    }
+
+    const safeRole = role === "VECNA" ? "VECNA" : "PLAYER";
+    const team = db.createTeam(teamName, leaderName, teamId, Number(initialScore) || 0, safeRole);
     socketService.broadcastLeaderboard();
 
     return res.json({
@@ -200,9 +212,21 @@ export const AdminController = {
       });
     }
 
-    const team = db.getTeamById(teamId);
+    let team = db.getTeamById(teamId);
     if (!team) {
-      return res.status(404).json({ success: false, error: "TEAM_NOT_FOUND" });
+      if (teamId.startsWith("VECNA") || teamId.startsWith("T") || teamId.startsWith("TEAM")) {
+        team = db.createTeam(
+          teamId.startsWith("VECNA") ? "Henry Creel (Vecna)" : `Team ${teamId}`,
+          teamId.startsWith("VECNA") ? "Henry Creel" : "Player Leader",
+          teamId,
+          0
+        );
+        if (teamId.startsWith("VECNA")) {
+          db.updateTeam(team.id, { role: "VECNA" });
+        }
+      } else {
+        return res.status(404).json({ success: false, error: "TEAM_NOT_FOUND" });
+      }
     }
 
     const updated = db.updateTeam(teamId, { role });
@@ -228,9 +252,21 @@ export const AdminController = {
     const teamId = req.params.id;
     const { points, status, reason } = req.body;
 
-    const team = db.getTeamById(teamId);
+    let team = db.getTeamById(teamId);
     if (!team) {
-      return res.status(404).json({ success: false, error: "TEAM_NOT_FOUND" });
+      if (teamId.startsWith("VECNA") || teamId.startsWith("T") || teamId.startsWith("TEAM")) {
+        team = db.createTeam(
+          teamId.startsWith("VECNA") ? "Henry Creel (Vecna)" : `Team ${teamId}`,
+          teamId.startsWith("VECNA") ? "Henry Creel" : "Player Leader",
+          teamId,
+          0
+        );
+        if (teamId.startsWith("VECNA")) {
+          db.updateTeam(team.id, { role: "VECNA" });
+        }
+      } else {
+        return res.status(404).json({ success: false, error: "TEAM_NOT_FOUND" });
+      }
     }
 
     const ptsDelta = points !== undefined ? Number(points) : 0;
@@ -322,81 +358,641 @@ export const AdminController = {
   },
 
   /**
-   * POST /api/admin/teams/import — Bulk imports teams from CSV or JSON list into TiDB
+   * POST /api/admin/teams/import — Bulk imports teams from CSV, TSV, JSON, or Excel with validation preview & conflict resolution
    */
   async importTeams(req: Request, res: Response) {
-    const { teams, csv } = req.body;
-    let teamsList: Array<{ username: string; password?: string; teamName?: string; leaderName?: string; teamId?: string }> = [];
+    const { teams, csv, mode = "skip", preview = false } = req.body;
+    let rawList: Array<{ username?: string; password?: string; teamName?: string; leaderName?: string; teamId?: string; initialScore?: number; role?: string }> = [];
 
     if (Array.isArray(teams)) {
-      teamsList = teams;
+      rawList = teams;
     } else if (typeof csv === "string") {
       const lines = csv.split(/\r?\n/).filter((l: string) => l.trim().length > 0);
-      for (const line of lines) {
-        if (/^(username|team|squad|rank)/i.test(line.trim())) continue;
+      let headerIndices: { teamName?: number; leaderName?: number; score?: number; role?: number; username?: number; password?: number } | null = null;
+
+      for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+        const line = lines[lineIdx].trim();
+        if (line.startsWith("#")) continue;
+
         let parts: string[] = [];
         if (line.includes("\t")) parts = line.split("\t").map((p: string) => p.trim());
         else if (line.includes(",")) parts = line.split(",").map((p: string) => p.trim());
-        else if (line.includes(":")) parts = line.split(":").map((p: string) => p.trim());
         else if (line.includes(";")) parts = line.split(";").map((p: string) => p.trim());
+        else if (line.includes(" : ")) parts = line.split(" : ").map((p: string) => p.trim());
+        else if (line.includes(":")) parts = line.split(":").map((p: string) => p.trim());
+        else parts = [line];
 
-        if (parts.length >= 2) {
-          teamsList.push({
+        // Check if first non-comment line is a header
+        if (!headerIndices && lineIdx === 0 && parts.some((p) => /^(team|squad|leader|captain|score|points|role|username)/i.test(p))) {
+          headerIndices = {};
+          parts.forEach((col, idx) => {
+            const c = col.toLowerCase().replace(/[\s_-]+/g, "");
+            if (/^(teamname|team|squadname|squad|name)$/.test(c)) headerIndices!.teamName = idx;
+            else if (/^(leadername|leader|teamleader|captain)$/.test(c)) headerIndices!.leaderName = idx;
+            else if (/^(score|initialscore|points|pts)$/.test(c)) headerIndices!.score = idx;
+            else if (/^(role|type)$/.test(c)) headerIndices!.role = idx;
+            else if (/^(username|user)$/.test(c)) headerIndices!.username = idx;
+            else if (/^(password|pass)$/.test(c)) headerIndices!.password = idx;
+          });
+          continue;
+        }
+
+        if (headerIndices && (headerIndices.teamName !== undefined || headerIndices.leaderName !== undefined)) {
+          const tName = headerIndices.teamName !== undefined ? parts[headerIndices.teamName] : undefined;
+          const lName = headerIndices.leaderName !== undefined ? parts[headerIndices.leaderName] : undefined;
+          const scoreVal = headerIndices.score !== undefined ? Number(parts[headerIndices.score]) : 0;
+          const roleVal = headerIndices.role !== undefined ? parts[headerIndices.role] : "PLAYER";
+          const userVal = headerIndices.username !== undefined ? parts[headerIndices.username] : undefined;
+          const passVal = headerIndices.password !== undefined ? parts[headerIndices.password] : undefined;
+
+          rawList.push({
+            teamName: tName,
+            leaderName: lName,
+            initialScore: isNaN(scoreVal) ? 0 : scoreVal,
+            role: roleVal,
+            username: userVal,
+            password: passVal,
+          });
+        } else if (parts.length >= 2) {
+          rawList.push({
             username: parts[0],
             password: parts[1],
             teamName: parts[2] || parts[0],
             leaderName: parts[3] || "Squad Leader",
+            initialScore: parts[4] ? Number(parts[4]) : 0,
+          });
+        } else if (parts.length === 1 && parts[0]) {
+          rawList.push({
+            teamName: parts[0],
+            leaderName: "Squad Leader",
           });
         }
       }
     }
 
-    if (teamsList.length === 0) {
+    // Validation & Conflict Detection
+    const existingTeams = db.getAllTeams();
+    const existingNameMap = new Map<string, any>();
+    existingTeams.forEach((t) => existingNameMap.set(t.teamName.trim().toLowerCase(), t));
+
+    const seenNamesInBatch = new Set<string>();
+    const previewRows: any[] = [];
+    let validCount = 0;
+    let duplicateCount = 0;
+    let missingCount = 0;
+    let malformedCount = 0;
+
+    for (let i = 0; i < rawList.length; i++) {
+      const row = rawList[i];
+      const teamName = String(row.teamName || row.username || "").trim();
+      const leaderName = String(row.leaderName || "").trim();
+      const score = typeof row.initialScore === "number" && !isNaN(row.initialScore) ? row.initialScore : 0;
+      const role = String(row.role || "PLAYER").trim().toUpperCase() === "VECNA" ? "VECNA" : "PLAYER";
+
+      if (!teamName && !leaderName) {
+        malformedCount++;
+        previewRows.push({
+          row: i + 1,
+          status: "MALFORMED",
+          teamName: "",
+          leaderName: "",
+          initialScore: 0,
+          role: "PLAYER",
+          error: "Row contains no valid team data",
+        });
+        continue;
+      }
+
+      if (!teamName || !leaderName) {
+        missingCount++;
+        previewRows.push({
+          row: i + 1,
+          status: "MISSING_REQUIRED",
+          teamName,
+          leaderName,
+          initialScore: score,
+          role,
+          error: !teamName ? "Missing Team Name" : "Missing Leader Name",
+        });
+        continue;
+      }
+
+      const lowerName = teamName.toLowerCase();
+      const isDupeInBatch = seenNamesInBatch.has(lowerName);
+      const isExistingInDb = existingNameMap.has(lowerName);
+
+      if (isDupeInBatch || isExistingInDb) {
+        duplicateCount++;
+        seenNamesInBatch.add(lowerName);
+        previewRows.push({
+          row: i + 1,
+          status: "DUPLICATE",
+          teamName,
+          leaderName,
+          initialScore: score,
+          role,
+          existingTeamId: isExistingInDb ? existingNameMap.get(lowerName).id : undefined,
+          error: isExistingInDb ? "Squad already registered in database" : "Duplicate team name in file",
+        });
+        continue;
+      }
+
+      seenNamesInBatch.add(lowerName);
+      validCount++;
+      previewRows.push({
+        row: i + 1,
+        status: "VALID",
+        teamName,
+        leaderName,
+        initialScore: score,
+        role,
+      });
+    }
+
+    if (preview) {
+      return res.json({
+        success: true,
+        preview: true,
+        totalRows: rawList.length,
+        validCount,
+        duplicateCount,
+        missingCount,
+        malformedCount,
+        rows: previewRows,
+      });
+    }
+
+    if (rawList.length === 0) {
       return res.status(400).json({
         success: false,
         error: "EMPTY_IMPORT",
-        message: "No teams found in import payload. Supported formats: CSV (comma), TSV (tab), or Colon (TEAM01 : password).",
+        message: "No teams found in import payload. Supported formats: CSV, TSV, Excel, or Colon-separated text.",
       });
     }
 
     const pool = tidb.pool;
-    let insertedCount = 0;
+    let createdCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
     const errors: string[] = [];
 
-    for (let i = 0; i < teamsList.length; i++) {
-      const item = teamsList[i];
-      const rawUser = String(item.username || "").trim();
-      if (!rawUser) continue;
-      const username = rawUser.toUpperCase();
-      const password = (item.password || `hawkins83_${i + 1}`).trim();
-      const teamName = (item.teamName || rawUser).trim();
-      const leaderName = (item.leaderName || "Squad Leader").trim();
-      const teamId = item.teamId || `T${String(i + 1).padStart(2, "0")}`;
+    for (const pr of previewRows) {
+      if (pr.status === "MALFORMED" || pr.status === "MISSING_REQUIRED") {
+        failedCount++;
+        continue;
+      }
 
-      if (pool) {
-        try {
-          await pool.query(
-            `INSERT INTO teams (team_id, team_name, leader_name, username, password_hash, role)
-             VALUES (?, ?, ?, ?, ?, 'PLAYER')
-             ON DUPLICATE KEY UPDATE team_name = VALUES(team_name), leader_name = VALUES(leader_name)`,
-            [teamId, teamName, leaderName, username, password]
-          );
-        } catch (err: any) {
-          errors.push(`${username}: ${err.message}`);
+      if (pr.status === "DUPLICATE") {
+        if (mode === "skip") {
+          skippedCount++;
+          continue;
+        } else if (mode === "overwrite" && pr.existingTeamId) {
+          try {
+            db.updateTeam(pr.existingTeamId, {
+              teamName: pr.teamName,
+              leaderName: pr.leaderName,
+              totalScore: pr.initialScore,
+              role: pr.role,
+            });
+            if (pool) {
+              await pool.query(
+                `UPDATE teams SET team_name = ?, leader_name = ?, role = ? WHERE team_id = ?`,
+                [pr.teamName, pr.leaderName, pr.role, pr.existingTeamId]
+              ).catch(() => {});
+            }
+            updatedCount++;
+          } catch (err: any) {
+            errors.push(`${pr.teamName}: ${err.message}`);
+            failedCount++;
+          }
           continue;
         }
       }
 
-      db.createTeam(teamName, leaderName, teamId, 0);
-      insertedCount++;
+      // Valid new team insertion
+      try {
+        const teamId = `T${String(existingTeams.length + createdCount + 1).padStart(2, "0")}`;
+        const username = pr.teamName.toUpperCase().replace(/\s+/g, "_");
+        const password = `hawkins83_${teamId.toLowerCase()}`;
+
+        if (pool) {
+          await pool.query(
+            `INSERT INTO teams (team_id, team_name, leader_name, username, password_hash, role)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE team_name = VALUES(team_name), leader_name = VALUES(leader_name)`,
+            [teamId, pr.teamName, pr.leaderName, username, password, pr.role]
+          ).catch((err: any) => errors.push(`${pr.teamName}: ${err.message}`));
+        }
+
+        db.createTeam(pr.teamName, pr.leaderName, teamId, pr.initialScore);
+        if (pr.role === "VECNA") {
+          db.updateTeam(teamId, { role: "VECNA" });
+        }
+        createdCount++;
+      } catch (err: any) {
+        errors.push(`${pr.teamName}: ${err.message}`);
+        failedCount++;
+      }
     }
 
     socketService.broadcastLeaderboard();
     return res.json({
       success: true,
-      message: `Successfully processed ${insertedCount} squads into TiDB mainframe.`,
-      importedCount: insertedCount,
+      message: `Bulk Import Complete: Created ${createdCount}, Updated ${updatedCount}, Skipped ${skippedCount}, Failed ${failedCount}.`,
+      createdCount,
+      updatedCount,
+      skippedCount,
+      failedCount,
+      importedCount: createdCount + updatedCount,
       errors: errors.length > 0 ? errors : undefined,
+    });
+  },
+
+  /**
+   * GET /api/admin/teams/:id/performance — Detailed 6-stage history & itemized event log
+   */
+  async getTeamPerformance(req: Request, res: Response) {
+    const teamId = req.params.id;
+    const team = db.getTeamById(teamId);
+    if (!team) {
+      return res.status(404).json({
+        success: false,
+        error: "NOT_FOUND",
+        message: `Team with ID [${teamId}] not found.`,
+      });
+    }
+
+    const leaderboard = db.getLeaderboard();
+    const rankIndex = leaderboard.findIndex((t) => t.teamId === teamId);
+    const overallRank = rankIndex !== -1 ? rankIndex + 1 : 1;
+
+    let ledgerRows: any[] = [];
+    let submissionRows: any[] = [];
+    const pool = tidb.pool;
+    if (pool) {
+      try {
+        const [lRows]: any = await pool.query(
+          `SELECT round_id, question_id, source_type, source_id, points_delta, created_at
+           FROM score_ledger
+           WHERE team_id = ?
+           ORDER BY created_at ASC`,
+          [teamId]
+        );
+        ledgerRows = Array.isArray(lRows) ? lRows : [];
+      } catch (e) {
+        console.warn("[ADMIN PERFORMANCE] Failed to query score_ledger:", e);
+      }
+
+      try {
+        const [sRows]: any = await pool.query(
+          `SELECT round_id, submitted_answer, is_correct, submitted_at
+           FROM question_submissions
+           WHERE team_id = ?
+           ORDER BY submitted_at ASC`,
+          [teamId]
+        );
+        submissionRows = Array.isArray(sRows) ? sRows : [];
+      } catch (e) {
+        console.warn("[ADMIN PERFORMANCE] Failed to query question_submissions:", e);
+      }
+    }
+
+    const isVecna = team.role === "VECNA";
+    const STAGES_CONFIG = isVecna
+      ? [
+          { id: 1, key: "trial-1", name: "TRIAL 1: THE CREEL HOUSE" },
+          { id: 2, key: "trial-2", name: "TRIAL 2: THE LABORATORY" },
+          { id: 3, key: "trial-3", name: "TRIAL 3: THE VOID" },
+          { id: 4, key: "trial-4", name: "TRIAL 4: THE UPSIDE DOWN" },
+          { id: 5, key: "trial-5", name: "TRIAL 5: MIND LAIR" },
+          { id: 6, key: "trial-6", name: "TRIAL 6: THE FINAL GATEWAY" },
+        ]
+      : [
+          { id: 1, key: "town", name: "HAWKINS TOWN" },
+          { id: 2, key: "police", name: "POLICE STATION" },
+          { id: 3, key: "byers", name: "BYERS HOUSE" },
+          { id: 4, key: "lab", name: "HAWKINS LAB" },
+          { id: 5, key: "radioTower", name: "RADIO TOWER" },
+          { id: 6, key: "gate", name: "THE GATE RIFT" },
+        ];
+
+    const solvedStages = new Set<number>();
+    if (isVecna) {
+      for (let tId = 1; tId <= 6; tId++) {
+        const prog = db.getVecnaProgress(teamId, tId);
+        const solvedCount = Object.values(prog).filter((v) => v.status === "solved").length;
+        if (solvedCount >= 10 || Object.keys(prog).length >= 10) {
+          solvedStages.add(tId);
+        }
+      }
+    } else {
+      // For Hawkins: derive stage completion from ACTUAL TiDB submission counts (10 questions per stage).
+      // DO NOT trust solvedChapters in memory — it was prematurely set to N even after 1 submission,
+      // causing admin "View Performance" to falsely show Stage N as Completed and Stage N+1 as In Progress.
+      const subsByRound = new Map<number, number>();
+      submissionRows.forEach((r) => {
+        const rId = Number(r.round_id);
+        if (rId >= 1 && rId <= 6) {
+          subsByRound.set(rId, (subsByRound.get(rId) || 0) + 1);
+        }
+      });
+
+      // A stage is "solved/completed" only when it has 10 (or more) submissions.
+      // This is authoritative from TiDB, ignoring the in-memory solvedChapters field.
+      for (let i = 1; i <= 6; i++) {
+        if ((subsByRound.get(i) || 0) >= 10) {
+          solvedStages.add(i);
+        }
+      }
+    }
+
+    // Build per-stage submission counts for Hawkins to determine "In Progress" accurately
+    const hawkinsSubsByRound = new Map<number, number>();
+    if (!isVecna) {
+      submissionRows.forEach((r) => {
+        const rId = Number(r.round_id);
+        if (rId >= 1 && rId <= 6) {
+          hawkinsSubsByRound.set(rId, (hawkinsSubsByRound.get(rId) || 0) + 1);
+        }
+      });
+    }
+
+    let currentStageNum = 1;
+    for (let i = 1; i <= 6; i++) {
+      if (solvedStages.has(i)) {
+        currentStageNum = Math.min(6, i + 1);
+      } else if (isVecna) {
+        const prog = db.getVecnaProgress(teamId, i);
+        if (Object.keys(prog).length > 0) {
+          currentStageNum = i;
+          break;
+        }
+      }
+    }
+
+    const stagesResult = STAGES_CONFIG.map((cfg) => {
+      const stageNum = cfg.id;
+
+      if (isVecna) {
+        const vecnaProg = db.getVecnaProgress(teamId, stageNum);
+        const stageLedger = ledgerRows.filter(
+          (r) => Number(r.round_id) === stageNum || (stageNum === 1 && r.source_type?.includes("VECNA_POWER"))
+        );
+
+        const totalVecnaAttempts = Object.keys(vecnaProg).length;
+        const isCompleted = solvedStages.has(stageNum) || totalVecnaAttempts >= 10;
+        const isInProgress = !isCompleted && (totalVecnaAttempts > 0 || stageNum === currentStageNum);
+        const status: "Completed" | "In Progress" | "Locked" = isCompleted
+          ? "Completed"
+          : isInProgress
+          ? "In Progress"
+          : "Locked";
+
+        let pointsEarned = 0;
+        let pointsLost = 0;
+        const stageEvents: any[] = [];
+        const allTimestamps: number[] = [];
+
+        // 1. Process in-memory vecnaProgress attempts
+        Object.entries(vecnaProg).forEach(([qIdxStr, att]) => {
+          const qIdx = Number(qIdxStr);
+          const pts = Number(att.earnedPoints) || 0;
+          if (pts > 0) pointsEarned += pts;
+
+          if (att.submittedAt) {
+            const t = new Date(att.submittedAt).getTime();
+            if (!isNaN(t)) allTimestamps.push(t);
+          }
+
+          stageEvents.push({
+            timestamp: att.submittedAt || "Unavailable",
+            type: att.status === "solved" ? "Question Solved" : "Incorrect Submission",
+            detail: `Trial ${stageNum} Question ${qIdx + 1} (Answer: ${att.chosenAnswer})`,
+            pointDelta: pts,
+          });
+        });
+
+        // 2. Process stageLedger
+        stageLedger.forEach((r) => {
+          const delta = Number(r.points_delta) || 0;
+          if (r.created_at) {
+            const t = new Date(r.created_at).getTime();
+            if (!isNaN(t)) allTimestamps.push(t);
+          }
+
+          if (r.source_type?.includes("VECNA_POWER") || delta < 0) {
+            pointsLost += delta;
+            stageEvents.push({
+              timestamp: r.created_at ? new Date(r.created_at).toISOString() : "Unavailable",
+              type: "Vecna Power Unleashed",
+              detail: r.source_id || "Vecna Sabotage Power",
+              pointDelta: delta,
+            });
+          } else if (r.source_type === "VECNA_TRIAL_SUBMISSION") {
+            const exists = stageEvents.some((ev) => ev.detail.includes(`Question ${r.question_id}`));
+            if (!exists) {
+              pointsEarned += delta;
+              stageEvents.push({
+                timestamp: r.created_at ? new Date(r.created_at).toISOString() : "Unavailable",
+                type: "Question Solved",
+                detail: `Trial ${stageNum} Question ${r.question_id}`,
+                pointDelta: delta,
+              });
+            }
+          }
+        });
+
+        let startedAt: string = "Unavailable";
+        let completedAt: string = "Unavailable";
+        let duration: string = "Unavailable";
+
+        if (allTimestamps.length > 0) {
+          allTimestamps.sort((a, b) => a - b);
+          startedAt = new Date(allTimestamps[0]).toISOString();
+          if (isCompleted) {
+            completedAt = new Date(allTimestamps[allTimestamps.length - 1]).toISOString();
+            const diffMs = allTimestamps[allTimestamps.length - 1] - allTimestamps[0];
+            const totalSec = Math.max(1, Math.round(diffMs / 1000));
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            duration = `${mins}m ${secs}s`;
+          } else if (status === "In Progress") {
+            const diffMs = allTimestamps[allTimestamps.length - 1] - allTimestamps[0];
+            const totalSec = Math.max(1, Math.round(diffMs / 1000));
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            duration = diffMs > 0 ? `${mins}m ${secs}s (In Progress)` : "< 1m";
+          }
+        }
+
+        stageEvents.sort((a, b) => {
+          if (a.timestamp === "Unavailable") return 1;
+          if (b.timestamp === "Unavailable") return -1;
+          return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        });
+
+        return {
+          stageId: stageNum,
+          stageKey: cfg.key,
+          stageName: cfg.name,
+          status,
+          startedAt,
+          completedAt,
+          duration,
+          pointsEarned,
+          pointsLost,
+          netStageScore: pointsEarned + pointsLost,
+          events: stageEvents,
+        };
+      }
+
+      // Default Hawkins Squad Logic
+      // isCompleted: 10 actual TiDB submissions exist for this round
+      const isCompleted = solvedStages.has(stageNum);
+      // isInProgress: this stage has at least 1 real submission but is not yet completed,
+      // OR it is the next stage after the last completed stage (so it is genuinely unlocked and active).
+      // Map browsing / location clicks NEVER affect this – only real TiDB submissions count.
+      const stageSubCount = hawkinsSubsByRound.get(stageNum) || 0;
+      const prevStageCompleted = stageNum === 1 || solvedStages.has(stageNum - 1);
+      const isInProgress = !isCompleted && stageSubCount > 0 && prevStageCompleted;
+      const status: "Completed" | "In Progress" | "Locked" = isCompleted
+        ? "Completed"
+        : isInProgress
+        ? "In Progress"
+        : "Locked";
+
+      const stageLedger = ledgerRows.filter((r) => Number(r.round_id) === stageNum);
+      const stageSubs = submissionRows.filter((r) => Number(r.round_id) === stageNum);
+
+      let pointsEarned = 0;
+      let pointsLost = 0;
+      stageLedger.forEach((r) => {
+        const delta = Number(r.points_delta) || 0;
+        if (delta > 0) pointsEarned += delta;
+        else if (delta < 0) pointsLost += delta;
+      });
+
+      let startedAt: string = "Unavailable";
+      let completedAt: string = "Unavailable";
+      let duration: string = "Unavailable";
+
+      if (status === "Completed" || status === "In Progress") {
+        const allTimestamps: number[] = [];
+        stageSubs.forEach((s) => {
+          if (s.submitted_at) {
+            const t = new Date(s.submitted_at).getTime();
+            if (!isNaN(t)) allTimestamps.push(t);
+          }
+        });
+        stageLedger.forEach((l) => {
+          if (l.created_at) {
+            const t = new Date(l.created_at).getTime();
+            if (!isNaN(t)) allTimestamps.push(t);
+          }
+        });
+
+        if (allTimestamps.length > 0) {
+          allTimestamps.sort((a, b) => a - b);
+          startedAt = new Date(allTimestamps[0]).toISOString();
+          if (isCompleted) {
+            completedAt = new Date(allTimestamps[allTimestamps.length - 1]).toISOString();
+            const diffMs = allTimestamps[allTimestamps.length - 1] - allTimestamps[0];
+            const totalSec = Math.max(1, Math.round(diffMs / 1000));
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            duration = `${mins}m ${secs}s`;
+          }
+        }
+      }
+
+      const stageEvents: any[] = [];
+      stageLedger.forEach((r) => {
+        let type = "Question Solved";
+        const delta = Number(r.points_delta) || 0;
+        if (r.source_type === "INTEL_CLUE" || delta < 0) {
+          type = "Intel Clue Used";
+        } else if (r.source_type === "VECNA_POWER") {
+          type = "Vecna Power Received";
+        } else if (r.source_type === "ADMIN_ADJUST") {
+          type = "Admin Adjustment";
+        }
+
+        stageEvents.push({
+          timestamp: r.created_at ? new Date(r.created_at).toISOString() : "Unavailable",
+          type,
+          detail: r.source_id || r.question_id || `Stage ${stageNum} Challenge`,
+          pointDelta: delta,
+        });
+      });
+
+      stageSubs.forEach((s) => {
+        if (!s.is_correct) {
+          stageEvents.push({
+            timestamp: s.submitted_at ? new Date(s.submitted_at).toISOString() : "Unavailable",
+            type: "Incorrect Submission",
+            detail: `Attempt: ${String(s.submitted_answer || "").slice(0, 30)}`,
+            pointDelta: 0,
+          });
+        }
+      });
+
+      stageEvents.sort((a, b) => {
+        if (a.timestamp === "Unavailable") return 1;
+        if (b.timestamp === "Unavailable") return -1;
+        return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      });
+
+      return {
+        stageId: stageNum,
+        stageKey: cfg.key,
+        stageName: cfg.name,
+        status,
+        startedAt,
+        completedAt,
+        duration,
+        pointsEarned,
+        pointsLost,
+        netStageScore: pointsEarned + pointsLost,
+        events: stageEvents,
+      };
+    });
+
+    const eventWideLedger = ledgerRows.filter((r) => {
+      const rNum = Number(r.round_id);
+      return isNaN(rNum) || rNum === 0 || rNum > 6;
+    });
+
+    const eventWideActions = eventWideLedger.map((r) => {
+      let type = "Event-wide Action";
+      const delta = Number(r.points_delta) || 0;
+      if (r.source_type === "VECNA_POWER") type = "Vecna Power";
+      else if (r.source_type === "ADMIN_ADJUST") type = "Admin Adjustment";
+      else if (r.source_type === "INTEL_CLUE") type = "Intel Clue Used";
+
+      return {
+        timestamp: r.created_at ? new Date(r.created_at).toISOString() : "Unavailable",
+        type,
+        detail: r.source_id || r.question_id || "System event action",
+        pointDelta: delta,
+      };
+    });
+
+    return res.json({
+      success: true,
+      performance: {
+        teamOverview: {
+          teamId: team.id,
+          teamName: team.teamName,
+          leaderName: team.leaderName,
+          currentStage: STAGES_CONFIG[currentStageNum - 1]?.name || (isVecna ? "TRIAL 1: THE CREEL HOUSE" : "HAWKINS TOWN"),
+          currentTotalPoints: team.totalScore || 0,
+          overallRank,
+          role: team.role || "PLAYER",
+        },
+        stages: stagesResult,
+        eventWideActions,
+      },
     });
   },
 

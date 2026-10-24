@@ -19,6 +19,7 @@ function buildPoolOptions(): PoolOptions {
         queueLimit: 0,
         enableKeepAlive: true,
         keepAliveInitialDelay: 10000,
+        timezone: "Z",
         ssl: isSsl ? { rejectUnauthorized: true } : undefined,
       };
     } catch {
@@ -39,6 +40,7 @@ function buildPoolOptions(): PoolOptions {
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
+    timezone: "Z",
     ssl: ENV.TIDB_SSL ? { rejectUnauthorized: true } : undefined,
   };
 }

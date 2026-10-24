@@ -137,7 +137,7 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
           { id: "C", text: "800 lb" },
           { id: "D", text: "1,000 lb" },
         ],
-        correctAnswerId: "B",
+        correctAnswerId: "A",
         hint: "Dustin called Mr. Clarke late at night while he was watching 'The Thing from Another World'.",
         docketTag: "PHYSICS CALC",
       },

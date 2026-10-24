@@ -22,7 +22,7 @@ export default function VecnaEntryScreen({ onEnter }: VecnaEntryScreenProps) {
       if (onEnter) {
         onEnter();
       } else {
-        router.push("/vecna");
+        router.push("/");
       }
     }, 3800);
   };
@@ -31,7 +31,7 @@ export default function VecnaEntryScreen({ onEnter }: VecnaEntryScreenProps) {
     if (onEnter) {
       onEnter();
     } else {
-      router.push("/vecna");
+      router.push("/");
     }
   };
 

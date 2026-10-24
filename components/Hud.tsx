@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { POWERS, PowerId, useGame } from "@/lib/store";
@@ -405,7 +405,7 @@ const LABEL: Record<PowerId, string> = { vision: "EYE", will: "WAVE", eleven: "P
 export function Dock() {
   const { s, powerUnlocked, castPower, active, say } = useGame();
   const cast = (p: PowerId) => {
-    if (!powerUnlocked(p)) return say(`${POWERS[p].name} — LOCKED`);
+    if (!powerUnlocked(p)) return say(`${POWERS[p].name} ÔÇö LOCKED`);
     if (!active) return say("OPEN A TASK FIRST");
     const r = castPower(p, active);
     if (r === "ALREADY") say("ALREADY USED ON THIS TASK");
@@ -421,7 +421,7 @@ export function Dock() {
             key={p}
             className={`slot ${un && left > 0 ? "ready" : "locked"}`}
             onClick={() => cast(p)}
-            title={`${POWERS[p].name} — ${POWERS[p].blurb} (-10 pts)`}
+            title={`${POWERS[p].name} ÔÇö ${POWERS[p].blurb} (-10 pts)`}
           >
             <span className="g" style={{ fontSize: un ? 28 : 12, letterSpacing: ".1em" }}>
               {un ? ICON[p] : "[LOCK]"}
@@ -437,7 +437,7 @@ export function Dock() {
       {s.inventory?.map((id) => (
         <div key={id} className="slot item" title={`${ITEMS[id]?.name}: ${ITEMS[id]?.desc}`}>
           <span className="g" style={{ color: "var(--accent2)" }}>
-            {ITEMS[id]?.glyph || "▤"}
+            {ITEMS[id]?.glyph || "Ôûñ"}
           </span>
         </div>
       ))}

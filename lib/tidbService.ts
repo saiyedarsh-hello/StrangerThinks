@@ -22,32 +22,19 @@ import { getSocket } from "@/lib/realtime";
 export interface TiDBAuthResult {
   success: boolean;
   session?: {
-    role: "PLAYER" | "VECNA";
+    role: "PLAYER" | "VECNA" | "ADMIN";
     teamName: string;
     leaderName: string;
     teamId: string;
+    adminId?: string;
   };
+  requiresPassword?: boolean;
+  adminLeader?: string;
   team?: any;
   token?: string;
   source?: "tidb" | "backend" | "canon";
   error?: string;
 }
-
-// Canon fallback teams when offline or initializing
-const CANON_FALLBACK_TEAMS = [
-  { id: "T01", teamName: "Null Pointers", leaderName: "Aarav Sharma" },
-  { id: "T02", teamName: "Stack Smashers", leaderName: "Maya Lin" },
-  { id: "T03", teamName: "Rift Runners", leaderName: "Lucas Sinclair" },
-  { id: "T04", teamName: "Byte Byters", leaderName: "Dustin Henderson" },
-  { id: "T05", teamName: "Shadow Walkers", leaderName: "Mike Wheeler" },
-  { id: "T06", teamName: "Hellfire Club", leaderName: "Eddie Munson" },
-  { id: "T07", teamName: "Hawkins AV Club", leaderName: "Will Byers" },
-  { id: "T08", teamName: "Mind Flayers", leaderName: "Max Mayfield" },
-  { id: "TEAM-AV-CLUB", teamName: "Hawkins AV Club", leaderName: "Dustin Henderson" },
-  { id: "TEAM-HELLFIRE", teamName: "The Hellfire Club", leaderName: "Eddie Munson" },
-  { id: "TEAM-SCOOPS", teamName: "Scoops Troop", leaderName: "Robin Buckley" },
-  { id: "TEAM-THE-PARTY", teamName: "The Party (Paladins)", leaderName: "Mike Wheeler" },
-];
 
 /**
  * Fetch live leaderboard standings from the TiDB backend
@@ -75,20 +62,9 @@ export async function getTiDBLeaderboard(token?: string): Promise<{
     }
     throw new Error("Backend leaderboard query returned empty or unready");
   } catch (err: any) {
-    console.warn("[TIDB SERVICE] Leaderboard fetch fallback:", err.message);
-    // Construct local fallback leaderboard
-    const fallback: AdminLeaderboardItem[] = CANON_FALLBACK_TEAMS.slice(0, 8).map((t, idx) => ({
-      rank: idx + 1,
-      teamId: t.id,
-      teamName: t.teamName,
-      leaderName: t.leaderName,
-      score: 0,
-      solvedCount: 0,
-      completedTasks: [],
-      lastSubmissionTime: new Date().toISOString(),
-      status: "ACTIVE",
-    }));
-    return { success: true, leaderboard: fallback };
+    console.warn("[TIDB SERVICE] Leaderboard fetch failed:", err.message);
+    // Never fabricate squads. An empty board is the correct empty state.
+    return { success: false, leaderboard: [], error: "BACKEND_UNREACHABLE" };
   }
 }
 
@@ -250,7 +226,8 @@ export function subscribeToPresence(onPresence: (data: { teamId: string; isOnlin
  */
 export async function authenticateTeamWithTiDB(
   teamNameInput: string,
-  leaderNameInput: string
+  leaderNameInput: string,
+  passwordInput?: string
 ): Promise<TiDBAuthResult> {
   const normTeam = teamNameInput.trim().toLowerCase();
   const normLeader = leaderNameInput.trim().toLowerCase();
@@ -261,9 +238,16 @@ export async function authenticateTeamWithTiDB(
 
   // 1. Try server-side authentication (TiDB + JWT)
   try {
-    const res = await loginOnServer(teamNameInput, leaderNameInput);
+    const res = await loginOnServer(teamNameInput, leaderNameInput, passwordInput);
+    if (res.requiresPassword) {
+      return {
+        success: false,
+        requiresPassword: true,
+        adminLeader: res.adminLeader,
+      };
+    }
     if (res.success && res.session) {
-      const role: "PLAYER" | "VECNA" = res.session.role === "VECNA" ? "VECNA" : "PLAYER";
+      const role: "PLAYER" | "VECNA" | "ADMIN" = res.session.role;
       return {
         success: true,
         session: {
@@ -271,6 +255,7 @@ export async function authenticateTeamWithTiDB(
           teamName: res.session.teamName,
           leaderName: res.session.leaderName,
           teamId: res.session.teamId,
+          adminId: res.session.adminId,
         },
         team: res.team,
         token: res.token,
@@ -322,18 +307,36 @@ export async function registerTeamInTiDB(
   teamName: string,
   leaderName: string,
   initialScore: number = 0,
-  token?: string
+  token?: string,
+  role: "PLAYER" | "VECNA" = "PLAYER"
 ): Promise<{ success: boolean; team?: any; error?: string }> {
   try {
-    if (token) {
-      const res = await createAdminTeam(teamName, leaderName, initialScore, token);
+    const sessionToken = token || (typeof window !== "undefined" ? (
+      localStorage.getItem("admin_token") ||
+      localStorage.getItem("token") ||
+      (() => {
+        try {
+          return JSON.parse(localStorage.getItem("hawkins-protocol:session") || "{}")?.token;
+        } catch {
+          return undefined;
+        }
+      })()
+    ) : undefined);
+
+    if (sessionToken) {
+      const res = await createAdminTeam(teamName, leaderName, initialScore, sessionToken, role);
       return { success: res.success, team: res.team, error: res.error };
+    }
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (sessionToken) {
+      headers["Authorization"] = `Bearer ${sessionToken}`;
     }
 
     const res = await fetch(`${API_BASE}/admin/teams`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName, leaderName, initialScore }),
+      headers,
+      body: JSON.stringify({ teamName, leaderName, initialScore, role }),
     });
     const data = await res.json();
     return { success: data.success, team: data.team, error: data.error };

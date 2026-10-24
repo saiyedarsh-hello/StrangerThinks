@@ -92,6 +92,11 @@ export class EventControlService {
 
     // Initialize/reset all team scores to 0 upon event start while archiving past history
     await db.resetAllTeamScores();
+
+    // Reset event-wide Vecna dispatch quota to 5/5
+    const { VecnaService } = await import("./vecna.service");
+    await VecnaService.resetDispatchQuota().catch(() => {});
+
     this.localEvent.status = "active";
     this.localEvent.loginOpen = true;
     this.localEvent.submissionsOpen = true;

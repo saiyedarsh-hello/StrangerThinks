@@ -65,10 +65,11 @@ export const OPERATORS: Operator[] = [
 ];
 
 export interface AuthSession {
-  role: "PLAYER" | "VECNA";
+  role: "PLAYER" | "VECNA" | "ADMIN";
   teamName: string;
   leaderName: string;
   teamId?: string;
+  adminId?: string;
   token?: string;
 }
 

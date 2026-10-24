@@ -88,6 +88,7 @@ export const VecnaController = {
   async logout(req: Request, res: Response) {
     const senderId = (req.user as any)?.senderId || 1;
     await SessionService.deleteVecnaSession(senderId);
+    await SessionService.deleteTeamSession("VECNA-001");
     return res.json({ success: true, message: "Vecna sender logged out." });
   },
 
@@ -95,9 +96,15 @@ export const VecnaController = {
    * GET /api/vecna/auth/me
    */
   getMe(req: Request, res: Response) {
+    const team =
+      (req.user?.teamId ? db.getTeamById(req.user.teamId) : null) ||
+      db.getTeamById("VECNA-001") ||
+      db.getAllTeams().find((t) => t.role === "VECNA") ||
+      null;
     return res.json({
       success: true,
       session: req.user,
+      team: team ? { ...team, score: team.totalScore } : null,
       role: "VECNA",
     });
   },
@@ -176,10 +183,110 @@ export const VecnaController = {
   },
 
   /**
+   * GET /api/vecna/dispatch/quota — Returns authoritative event-wide dispatch quota (5 max shared)
+   */
+  async getDispatchQuota(_req: Request, res: Response) {
+    const quota = await VecnaService.getDispatchQuota();
+    return res.json({ success: true, ...quota });
+  },
+
+  /**
+   * POST /api/vecna/dispatch/reset — Resets the event-wide dispatch quota back to 5/5
+   */
+  async resetDispatchQuota(_req: Request, res: Response) {
+    await VecnaService.resetDispatchQuota();
+    const quota = await VecnaService.getDispatchQuota();
+    return res.json({ success: true, ...quota });
+  },
+
+  /**
+   * POST /api/vecna/powers/activate — Authoritative power activation with atomic 10 PTS deduction per team
+   */
+  async activatePower(req: Request, res: Response) {
+    const vecnaTeamId = (req.user as any)?.teamId || "VECNA-001";
+    const { power, targetTeams, targetScope, location, clientRequestId } = req.body;
+
+    if (!power || (power !== "LOCK" && power !== "CORRUPT")) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_POWER",
+        message: "Power must be 'LOCK' or 'CORRUPT'.",
+      });
+    }
+
+    const result = await VecnaService.activatePower({
+      vecnaTeamId,
+      power,
+      targetTeams,
+      targetScope,
+      location,
+      clientRequestId,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  },
+
+  /**
+   * POST /api/vecna/challenge/verify — Verifies 4-question technical challenge for System Corrupted
+   */
+  verifyChallenge(req: Request, res: Response) {
+    const teamId = (req.user as any)?.teamId || String(req.body.teamId || "");
+    const { answers } = req.body;
+
+    if (!teamId || !answers) {
+      return res.status(400).json({
+        success: false,
+        error: "MISSING_FIELDS",
+        message: "teamId and answers required.",
+      });
+    }
+
+    const result = VecnaService.verifyChallenge(teamId, answers);
+    return res.json(result);
+  },
+
+  /**
+   * GET /api/vecna/tactical-map — Returns occupancy for 6 actual stages with online Hawkins teams
+   */
+  getTacticalMap(_req: Request, res: Response) {
+    const data = VecnaService.getTacticalMap();
+    return res.json({ success: true, ...data });
+  },
+
+  /**
    * POST /api/vecna/sabotage — Trigger real-time power sabotage
    */
   async triggerSabotage(req: Request, res: Response) {
-    const { target = "all", kind = "GLITCH", message, duration = 45, operatorName = "HENRY CREEL" } = req.body;
+    const {
+      target = "all",
+      kind = "GLITCH",
+      message,
+      duration = 45,
+      operatorName = "HENRY CREEL",
+      targetTeams,
+      location,
+    } = req.body;
+
+    // Route LOCK and CORRUPT through authoritative power activation (with point deduction)
+    if (kind === "LOCK" || kind === "CORRUPT") {
+      const vecnaTeamId = (req.user as any)?.teamId || "VECNA-001";
+      const powerResult = await VecnaService.activatePower({
+        vecnaTeamId,
+        power: kind,
+        targetTeams: targetTeams || (target === "all" ? undefined : [target]),
+        targetScope: target === "all" ? "all" : "selected",
+        location,
+      });
+
+      if (!powerResult.success) {
+        return res.status(400).json(powerResult);
+      }
+      return res.json(powerResult);
+    }
+
     const pool = tidb.pool;
     let sabotageId = Date.now();
 
@@ -319,17 +426,20 @@ export const VecnaController = {
 
     const teamId = (req.user as any)?.teamId || "VECNA-001";
     const progress = db.getVecnaProgress(teamId, trialId);
+    const isAdmin = (req.user as any)?.role === "ADMIN";
 
-    // Enforce sequential progression: all prior questions 0..(questionIdx - 1) MUST be attempted
-    for (let i = 0; i < questionIdx; i++) {
-      const priorState = progress[i];
-      if (!priorState || (priorState.status !== "solved" && priorState.status !== "failed")) {
-        return res.status(403).json({
-          success: false,
-          error: "SEQUENTIAL_PROGRESSION_REQUIRED",
-          message: `ACCESS DENIED: Sequential progression required. Question ${i + 1} must be completed first.`,
-          unlockedMaxIndex: i,
-        });
+    // Enforce sequential progression for non-admins: all prior questions 0..(questionIdx - 1) MUST be attempted
+    if (!isAdmin) {
+      for (let i = 0; i < questionIdx; i++) {
+        const priorState = progress[i];
+        if (!priorState || (priorState.status !== "solved" && priorState.status !== "failed")) {
+          return res.status(403).json({
+            success: false,
+            error: "SEQUENTIAL_PROGRESSION_REQUIRED",
+            message: `ACCESS DENIED: Sequential progression required. Question ${i + 1} must be completed first.`,
+            unlockedMaxIndex: i,
+          });
+        }
       }
     }
 
@@ -400,6 +510,12 @@ export const VecnaController = {
       }
     }
 
+    const team =
+      db.getTeamById(teamId) ||
+      db.getTeamById("VECNA-001") ||
+      db.getAllTeams().find((t) => t.role === "VECNA");
+    const existingScore = team ? team.totalScore : 0;
+
     // Check if this question is already submitted (idempotent, no points duplicate)
     const existing = progress[questionIdx];
     if (existing && (existing.status === "solved" || existing.status === "failed")) {
@@ -410,6 +526,8 @@ export const VecnaController = {
         status: existing.status,
         isLocked: true,
         nextQuestionIdx: Math.min(9, questionIdx + 1),
+        totalScore: existingScore,
+        newScore: existingScore,
         message: "Question already submitted and locked.",
       });
     }
@@ -427,18 +545,65 @@ export const VecnaController = {
     // Record authoritative attempt in backend
     db.recordVecnaAttempt(teamId, trialId, questionIdx, status, pointsAwarded, answer);
 
-    if (pointsAwarded > 0) {
-      const team = db.getTeamById(teamId);
-      if (team) {
-        db.updateTeam(team.id, {
-          totalScore: team.totalScore + pointsAwarded,
-          breakdown: {
-            ...team.breakdown,
-            tech: team.breakdown.tech + pointsAwarded,
-          },
-        });
-        socketService.broadcastLeaderboard();
+    // Persist to TiDB question_submissions and score_ledger for Admin Telemetry
+    if (tidb.pool) {
+      tidb.pool.query(
+        `INSERT INTO question_submissions (team_id, round_id, question_id, submitted_answer, is_correct, submitted_at)
+         VALUES (?, ?, ?, ?, ?, NOW(3))`,
+        [teamId, trialId, questionIdx + 1, answer, isCorrect ? 1 : 0]
+      ).catch((err: any) => console.warn("[VECNA TIDB SUBMISSION WARN]", err.message));
+
+      if (pointsAwarded > 0) {
+        tidb.pool.query(
+          `INSERT INTO score_ledger (team_id, round_id, question_id, source_type, source_id, points_delta, created_at)
+           VALUES (?, ?, ?, 'VECNA_TRIAL_SUBMISSION', ?, ?, NOW(3))`,
+          [teamId, trialId, questionIdx + 1, `Trial ${trialId} Question ${questionIdx + 1}`, pointsAwarded]
+        ).catch((err: any) => console.warn("[VECNA TIDB LEDGER WARN]", err.message));
+
+        tidb.pool.query(
+          `UPDATE teams SET total_score = total_score + ?, last_solved_at = NOW(3) WHERE team_id = ?`,
+          [pointsAwarded, teamId]
+        ).catch((err: any) => console.warn("[VECNA TIDB TEAMS UPDATE WARN]", err.message));
       }
+    }
+
+    let updatedScore: number | undefined = existingScore;
+    if (pointsAwarded > 0) {
+      let activeTeam = team;
+      if (!activeTeam) {
+        activeTeam = db.createTeam(
+          "Henry Creel (Vecna)",
+          "Henry Creel",
+          teamId,
+          0
+        );
+        db.updateTeam(activeTeam.id, { role: "VECNA" });
+      }
+      db.updateTeam(activeTeam.id, {
+        totalScore: activeTeam.totalScore + pointsAwarded,
+        breakdown: {
+          ...activeTeam.breakdown,
+          tech: activeTeam.breakdown.tech + pointsAwarded,
+        },
+      });
+      updatedScore = activeTeam.totalScore;
+      socketService.broadcastLeaderboard();
+      socketService.emitToTeam(activeTeam.id, "score:update", {
+        teamId: activeTeam.id,
+        score: updatedScore,
+        totalScore: updatedScore,
+        newScore: updatedScore,
+        delta: pointsAwarded,
+        ts: Date.now(),
+      });
+      socketService.broadcastToVecna("score:update", {
+        teamId: activeTeam.id,
+        score: updatedScore,
+        totalScore: updatedScore,
+        newScore: updatedScore,
+        delta: pointsAwarded,
+        ts: Date.now(),
+      });
     }
 
     return res.json({
@@ -448,6 +613,8 @@ export const VecnaController = {
       status,
       isLocked: true,
       nextQuestionIdx: Math.min(9, questionIdx + 1),
+      totalScore: updatedScore,
+      newScore: updatedScore,
       message: isCorrect
         ? `LEVEL ${questionIdx + 1} OVERRIDE CONFIRMED (+10 PTS)`
         : `INCORRECT VECTOR · LEVEL ${questionIdx + 1} LOCKED (0 PTS)`,

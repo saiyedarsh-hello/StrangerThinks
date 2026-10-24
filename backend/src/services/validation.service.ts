@@ -61,6 +61,30 @@ export const ValidationService = {
         message: "ACCESS DENIED: Vecna squads cannot submit Hawkins investigation solutions.",
       };
     }
+
+    // Check if team is currently restrained by Lock Location power (120s lockout)
+    if (teamId) {
+      const now = Date.now();
+      const activeLock = db
+        .getActiveSabotages()
+        .find(
+          (s) =>
+            (s.target === teamId || (s as any).targetTeamId === teamId || s.target === "all") &&
+            s.kind === "LOCK" &&
+            s.expiresAt > now
+        );
+
+      if (activeLock) {
+        const remainingSeconds = Math.max(1, Math.ceil((activeLock.expiresAt - now) / 1000));
+        return {
+          success: false,
+          pointsAwarded: 0,
+          error: "LOCATION_LOCKED",
+          remainingSeconds,
+          message: `VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted for ${remainingSeconds}s.`,
+        };
+      }
+    }
     const questions = rawChapter.questions || [];
 
     // Case A: Batch docket submission (Array or Object map of answers)
@@ -166,9 +190,10 @@ export const ValidationService = {
 
     // Check against first question or secret pattern
     const firstQ = questions[0];
-    const isMcqCorrect = firstQ && candidateAnswer.toUpperCase() === firstQ.correctAnswerId.toUpperCase();
-    const taskSecret = STORY_TASK_SECRETS[taskId];
-    const isTaskSecretCorrect = taskSecret && taskSecret.answerPattern.test(candidateAnswer);
+    const isMcqCorrect = firstQ && candidateAnswer.trim().toUpperCase() === firstQ.correctAnswerId.trim().toUpperCase();
+    const effectiveTaskId = taskId === "ch6-upsidedown" ? "ch7-upsidedown" : taskId;
+    const taskSecret = STORY_TASK_SECRETS[taskId] || STORY_TASK_SECRETS[effectiveTaskId];
+    const isTaskSecretCorrect = taskSecret && taskSecret.answerPattern.test(candidateAnswer.trim());
 
     if (isMcqCorrect || isTaskSecretCorrect) {
       // Unified scoring rules: Correct = +10 PTS, Wrong = 0 PTS
@@ -270,7 +295,8 @@ export const ValidationService = {
       };
     }
 
-    const secret = STORY_TASK_SECRETS[taskId];
+    const effectiveTaskId = taskId === "ch6-upsidedown" ? "ch7-upsidedown" : taskId;
+    const secret = STORY_TASK_SECRETS[taskId] || STORY_TASK_SECRETS[effectiveTaskId];
     if (!secret) {
       return {
         success: false,

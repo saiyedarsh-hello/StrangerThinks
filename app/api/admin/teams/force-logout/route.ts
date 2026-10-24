@@ -11,7 +11,10 @@ export async function POST(req: NextRequest) {
     }
 
     const base = getApiBase();
-    const token = req.headers.get("authorization") || "Bearer HAWKINS_CHIEF_1983";
+    const token = req.headers.get("authorization");
+    if (!token) {
+      return NextResponse.json({ success: false, error: "UNAUTHORIZED", message: "Admin authorization required." }, { status: 401 });
+    }
     const res = await fetch(`${base}/admin/teams/${encodeURIComponent(teamId)}/force-logout`, {
       method: "POST",
       headers: {

@@ -6,12 +6,14 @@
  */
 
 export const getApiBase = (): string => {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
   if (typeof window !== "undefined") {
     const host = window.location.hostname || "localhost";
-    return `http://${host}:5000/api`;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return `http://${host}:5000/api`;
+    }
+  }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
   }
   return "http://localhost:5000/api";
 };
@@ -52,22 +54,30 @@ export interface LoginResponse {
     teamName: string;
     leaderName: string;
     role: "PLAYER" | "VECNA" | "ADMIN";
+    adminId?: string;
   };
   team?: any;
+  requiresPassword?: boolean;
+  adminLeader?: string;
   error?: string;
   message?: string;
 }
 
 export async function loginOnServer(
   teamName: string,
-  leaderName: string
+  leaderName: string,
+  password?: string
 ): Promise<LoginResponse> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1000);
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName, leaderName }),
+      body: JSON.stringify({ teamName, leaderName, password }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     if (res.ok) {
       return await res.json();
     }
@@ -78,7 +88,7 @@ export async function loginOnServer(
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName, leaderName }),
+      body: JSON.stringify({ teamName, leaderName, password }),
     });
     return await res.json();
   } catch (err) {
@@ -443,9 +453,12 @@ export async function resetAdminChapters(token: string): Promise<{ success: bool
   }
 }
 
-export async function fetchAdminLeaderboard(_token?: string): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
+export async function fetchAdminLeaderboard(token?: string): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
   try {
-    const res = await fetch(`/api/admin/teams?_t=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(`/api/admin/teams?_t=${Date.now()}`, {
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     const data = await res.json();
     if (data.success && Array.isArray(data.teams)) {
       const items: AdminLeaderboardItem[] = data.teams.map((t: any, idx: number) => ({
@@ -532,7 +545,8 @@ export async function createAdminTeam(
   teamName: string,
   leaderName: string,
   initialScore = 0,
-  token?: string
+  token?: string,
+  role: "PLAYER" | "VECNA" = "PLAYER"
 ): Promise<{ success: boolean; team?: any; error?: string; message?: string }> {
   try {
     const headers: Record<string, string> = {
@@ -545,7 +559,7 @@ export async function createAdminTeam(
     const res = await fetch(`${API_BASE}/admin/teams`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ teamName, leaderName, initialScore }),
+      body: JSON.stringify({ teamName, leaderName, initialScore, role }),
     });
     return await res.json();
   } catch (err) {
@@ -556,14 +570,14 @@ export async function createAdminTeam(
 export async function updateAdminTeamScore(
   teamId: string,
   score: number,
-  token: string = "HAWKINS_CHIEF_1983"
+  token: string = ""
 ): Promise<{ success: boolean; leaderboard?: AdminLeaderboardItem[]; error?: string }> {
   try {
     const res = await fetch(`${API_BASE}/admin/leaderboard/score`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ teamId, score: Number(score) }),
     });

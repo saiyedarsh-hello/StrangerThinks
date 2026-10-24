@@ -50,7 +50,10 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const base = getApiBase();
-    const token = req.headers.get("authorization") || "Bearer HAWKINS_CHIEF_1983";
+    const token = req.headers.get("authorization");
+    if (!token) {
+      return NextResponse.json({ success: false, error: "UNAUTHORIZED", message: "Admin authorization required." }, { status: 401 });
+    }
 
     if (body.status === "ended") {
       await fetch(`${base}/admin/event/end`, { method: "POST", headers: { Authorization: token } });

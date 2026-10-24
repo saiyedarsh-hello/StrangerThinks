@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
 import { authenticateTeamWithTiDB } from "@/lib/tidbService";
@@ -178,14 +177,15 @@ function StrangerThingsLogo({ flashLevel = 0 }: { flashLevel?: number }) {
   );
 }
 
-export default function LandingPage({ onEnterVecna }: LandingPageProps) {
-  const router = useRouter();
-  const { loginPlayer, setSoundOn } = useGame();
+export default function LandingPage(_props: LandingPageProps) {
+  const { loginPlayer, loginSession, setSoundOn } = useGame();
 
   const [flashLevel, setFlashLevel] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [leaderName, setLeaderName] = useState("");
+  const [password, setPassword] = useState("");
+  const [isPasswordRequired, setIsPasswordRequired] = useState(false);
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -211,6 +211,11 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
   const handleOpenAuth = () => {
     sfx("click");
     setSoundOn(true);
+    if (typeof document !== "undefined" && !document.fullscreenElement) {
+      try {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+      } catch {}
+    }
     setShowModal(true);
   };
 
@@ -224,23 +229,40 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
     e.preventDefault();
     if (!teamName.trim() || !leaderName.trim()) return;
 
+    const isAdminAttempt = teamName.trim().toLowerCase() === "admin bolte";
+    if (isAdminAttempt && isPasswordRequired && !password.trim()) {
+      setError(true);
+      setErrorMessage("SECURITY CLEARANCE PASSWORD REQUIRED");
+      return;
+    }
+
+    if (typeof document !== "undefined" && !document.fullscreenElement) {
+      try {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+      } catch {}
+    }
+
     setIsAuthenticating(true);
     setError(false);
 
     try {
-      const authResult = await authenticateTeamWithTiDB(teamName, leaderName);
+      const authResult = await authenticateTeamWithTiDB(teamName, leaderName, password);
 
-      if (authResult.success) {
+      if (authResult.requiresPassword) {
+        setIsPasswordRequired(true);
+        setError(false);
+        setIsAuthenticating(false);
+        return;
+      }
+
+      if (authResult.success && authResult.session) {
         setError(false);
         sfx("boom");
 
-        if (authResult.session.role === "VECNA") {
-          saveSession({ ...authResult.session, token: authResult.token });
-          if (onEnterVecna) {
-            onEnterVecna();
-          } else {
-            router.push("/vecna");
-          }
+        if (authResult.session.role === "ADMIN") {
+          loginSession({ ...authResult.session, token: authResult.token });
+        } else if (authResult.session.role === "VECNA") {
+          loginSession({ ...authResult.session, token: authResult.token });
         } else {
           loginPlayer({
             id: authResult.session.teamId || "T01",
@@ -538,6 +560,47 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
                   />
                 </div>
 
+                {(isPasswordRequired || teamName.trim().toLowerCase() === "admin bolte") && (
+                  <div style={{ marginBottom: "20px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "12px",
+                        letterSpacing: "0.2em",
+                        color: "#ff2d3a",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      CLEARANCE PASSWORD
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (error) setError(false);
+                      }}
+                      placeholder="ENTER CLEARANCE PASSWORD..."
+                      maxLength={64}
+                      autoFocus
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        background: "rgba(0, 0, 0, 0.6)",
+                        border: error
+                          ? "1.5px solid #ff2d3a"
+                          : "1px solid rgba(255, 45, 58, 0.6)",
+                        color: "#ffffff",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "16px",
+                        letterSpacing: "0.1em",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                )}
+
                 {error && (
                   <div
                     style={{
@@ -559,7 +622,10 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
                 <button
                   type="submit"
                   disabled={
-                    !teamName.trim() || !leaderName.trim() || isAuthenticating
+                    !teamName.trim() ||
+                    !leaderName.trim() ||
+                    ((isPasswordRequired || teamName.trim().toLowerCase() === "admin bolte") && !password.trim()) ||
+                    isAuthenticating
                   }
                   style={{
                     width: "100%",
@@ -581,64 +647,6 @@ export default function LandingPage({ onEnterVecna }: LandingPageProps) {
                     : "CONFIRM & ENTER"}
                 </button>
 
-                {/* Quick Autofill Chips */}
-                <div style={{ marginTop: "20px", textAlign: "center" }}>
-                  <div
-                    style={{
-                      fontSize: "11px",
-                      color: "rgba(255, 255, 255, 0.4)",
-                      letterSpacing: "0.15em",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    DEMO TEAMS / OPERATORS
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      justifyContent: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    {[
-                      { t: "Null Pointers", l: "Aarav Sharma" },
-                      { t: "Hellfire Club", l: "Eddie Munson" },
-                      { t: "Vecna", l: "Henry Creel" },
-                    ].map((chip) => (
-                      <button
-                        key={chip.t}
-                        type="button"
-                        onClick={() => {
-                          setTeamName(chip.t);
-                          setLeaderName(chip.l);
-                          setError(false);
-                        }}
-                        style={{
-                          fontSize: "11px",
-                          letterSpacing: "0.08em",
-                          padding: "4px 8px",
-                          border:
-                            chip.t === "Vecna"
-                              ? "1px solid #ff2d3a"
-                              : "1px solid rgba(255, 255, 255, 0.15)",
-                          color:
-                            chip.t === "Vecna"
-                              ? "#ff4d58"
-                              : "rgba(255, 255, 255, 0.7)",
-                          background:
-                            chip.t === "Vecna"
-                              ? "rgba(255, 45, 58, 0.15)"
-                              : "rgba(255, 255, 255, 0.05)",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {chip.t === "Vecna" ? "👁️ " : "⚡ "}
-                        {chip.t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </form>
             </motion.div>
           </div>

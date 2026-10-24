@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useGame } from "@/lib/store";
+import { sfx } from "@/lib/audio";
 import VecnaCutscene from "./VecnaCutscene";
 import ChapterManager, { ChapterId } from "./chapters/ChapterManager";
 import InvestigationBoard from "./InvestigationBoard";
 import EventStandby from "./EventStandby";
 
 export default function StageView() {
-  const { vecnaCutscene, dismissVecnaCutscene, setActiveChapterId, viewMode, setViewMode } = useGame();
+  const { vecnaCutscene, dismissVecnaCutscene, activeChapterId, setActiveChapterId, viewMode, setViewMode, isLocationLocked, say } = useGame();
   const [eventStatus, setEventStatus] = useState<string>("active");
 
   useEffect(() => {
@@ -28,6 +29,11 @@ export default function StageView() {
   }, []);
 
   const handleSelectChapter = (chapterId: number) => {
+    if (isLocationLocked && chapterId !== activeChapterId) {
+      sfx("err");
+      say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
+      return;
+    }
     if (chapterId >= 1 && chapterId <= 7) {
       setActiveChapterId(chapterId as ChapterId);
     }

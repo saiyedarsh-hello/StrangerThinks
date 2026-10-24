@@ -32,6 +32,7 @@ export interface PresencePayload {
   team: string;
   teamId?: string;
   location?: LocationId | string;
+  stageId?: number;
   viewMode?: string;
   storyProgress?: number;
   stage: StageId;
@@ -124,6 +125,42 @@ export interface EventStatePayload {
   ts?: number;
 }
 
+export interface SessionSupersededPayload {
+  type: "session_superseded";
+  teamId?: string;
+  message?: string;
+  ts?: number;
+}
+
+export interface SabotageClearPayload {
+  type: "sabotage:clear";
+  target?: string;
+  teamId?: string;
+  clearedBy?: string;
+  ts?: number;
+}
+
+export interface VecnaDispatchQuotaPayload {
+  type: "vecna:dispatch_quota";
+  remaining: number;
+  used: number;
+  max: number;
+  ts?: number;
+}
+
+export interface PresenceUpdatePayload {
+  type: "presence:update";
+  teamId?: string;
+  online?: boolean;
+  status?: string;
+  ts?: number;
+}
+
+export interface VecnaTacticalUpdatePayload {
+  type: "vecna:tactical_update";
+  ts?: number;
+}
+
 export type RealtimeMessage =
   | PresencePayload
   | SabotagePayload
@@ -132,11 +169,43 @@ export type RealtimeMessage =
   | AwardPayload
   | ForceLogoutPayload
   | ScoreUpdatePayload
-  | EventStatePayload;
+  | EventStatePayload
+  | SessionSupersededPayload
+  | SabotageClearPayload
+  | VecnaDispatchQuotaPayload
+  | PresenceUpdatePayload
+  | VecnaTacticalUpdatePayload;
 
 type Handler = (msg: RealtimeMessage) => void;
 
 const subscribers = new Set<Handler>();
+const connectionSubscribers = new Set<(connected: boolean) => void>();
+let isCurrentSocketConnected = false;
+
+function notifyConnectionSubscribers(connected: boolean) {
+  isCurrentSocketConnected = connected;
+  connectionSubscribers.forEach((fn) => {
+    try {
+      fn(connected);
+    } catch (e) {
+      console.error("[Realtime] Connection subscriber error:", e);
+    }
+  });
+}
+
+export function isSocketConnected(): boolean {
+  if (typeof window === "undefined") return false;
+  return socketInstance ? socketInstance.connected : false;
+}
+
+export function subscribeToConnectionStatus(cb: (connected: boolean) => void): () => void {
+  connectionSubscribers.add(cb);
+  cb(isSocketConnected());
+  initRealtime();
+  return () => {
+    connectionSubscribers.delete(cb);
+  };
+}
 
 let localBroadcastChannel: BroadcastChannel | null = null;
 
@@ -167,22 +236,28 @@ export function getSocket(): Socket | null {
   if (!socketInstance) {
     try {
       const host = window.location.hostname || "localhost";
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL ||
-        (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "") : "") ||
-        `http://${host}:5000`;
+      let backendUrl = `http://${host}:5000`;
+      if (host === "localhost" || host === "127.0.0.1") {
+        backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL ||
+          (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "") : "") ||
+          `http://${host}:5000`;
+      }
 
       const initialToken = resolveStoredToken();
 
       socketInstance = io(backendUrl, {
         auth: { token: initialToken },
         transports: ["websocket", "polling"],
-        reconnectionAttempts: 10,
+        reconnectionAttempts: Infinity,   // Never give up – critical for 7-hour events
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,       // Cap backoff at 5 s so reconnect stays snappy
+        timeout: 20000,
       });
 
       socketInstance.on("connect", () => {
         console.log(`[SOCKET.IO] Connected to Hawkins Security Mainframe at ${backendUrl}`);
+        notifyConnectionSubscribers(true);
         const currentToken = resolveStoredToken();
         if (currentToken) {
           if (socketInstance) socketInstance.auth = { token: currentToken };
@@ -190,12 +265,29 @@ export function getSocket(): Socket | null {
         }
       });
 
+      socketInstance.on("disconnect", () => {
+        notifyConnectionSubscribers(false);
+      });
+
+      socketInstance.on("connect_error", () => {
+        notifyConnectionSubscribers(false);
+      });
+
       socketInstance.on("reconnect", () => {
         console.log("[SOCKET.IO] Reconnected to Hawkins Security Mainframe");
+        notifyConnectionSubscribers(true);
         const currentToken = resolveStoredToken();
         if (currentToken) {
           if (socketInstance) socketInstance.auth = { token: currentToken };
           socketInstance?.emit("authenticate", { token: currentToken });
+        }
+      });
+
+      // Re-attach latest auth token before every reconnect attempt
+      socketInstance.on("reconnect_attempt", () => {
+        const currentToken = resolveStoredToken();
+        if (currentToken && socketInstance) {
+          (socketInstance as any).auth = { token: currentToken };
         }
       });
 
@@ -222,6 +314,15 @@ export function getSocket(): Socket | null {
           isPaused: Boolean(data?.isPaused ?? (data?.status === "paused")),
           submissionsOpen: Boolean(data?.submissionsOpen),
           loginOpen: Boolean(data?.loginOpen),
+          ts: Date.now(),
+        });
+      });
+
+      socketInstance.on("session:superseded", (data: any) => {
+        dispatchToSubscribers({
+          type: "session_superseded",
+          teamId: data?.teamId,
+          message: data?.message || "TERMINAL SUPERSEDED: This squad has logged in from another active device or window.",
           ts: Date.now(),
         });
       });
@@ -290,6 +391,34 @@ export function getSocket(): Socket | null {
           ts: data?.ts || Date.now(),
         });
       });
+
+      socketInstance.on("vecna:dispatch_quota", (data: any) => {
+        dispatchToSubscribers({
+          type: "vecna:dispatch_quota",
+          ...data,
+        } as any);
+      });
+
+      socketInstance.on("presence:update", (data: any) => {
+        dispatchToSubscribers({
+          type: "presence:update",
+          ...data,
+        } as any);
+      });
+
+      socketInstance.on("vecna:tactical_update", (data: any) => {
+        dispatchToSubscribers({
+          type: "vecna:tactical_update",
+          ...data,
+        } as any);
+      });
+
+      socketInstance.on("sabotage:clear", (data: any) => {
+        dispatchToSubscribers({
+          type: "sabotage:clear",
+          ...data,
+        } as any);
+      });
     } catch (e) {
       console.warn("[SOCKET.IO] Connection error:", e);
     }
@@ -301,7 +430,14 @@ export function authenticateSocket(token: string): void {
   if (!token || typeof window === "undefined") return;
   const sock = getSocket();
   if (sock) {
-    sock.auth = { token };
+    (sock as any).auth = { token };
+    // If the socket is not connected (e.g. gave up after reconnect exhaustion or
+    // the tab was backgrounded), explicitly re-initiate the connection so the team
+    // shows as ONLINE on the admin dashboard.
+    if (!sock.connected) {
+      sock.connect();
+    }
+    // Always (re-)authenticate so the server room membership is current
     sock.emit("authenticate", { token });
   }
 }
@@ -354,23 +490,32 @@ export function publish(msg: RealtimeMessage): void {
 
   // Dispatch via Socket.IO to Express Backend (Port 5000)
   const sock = getSocket();
-  if (sock && sock.connected) {
-    try {
-      if (msg.type === "presence") {
-        sock.emit("presence", msg);
-      } else if (msg.type === "sabotage") {
-        sock.emit("sabotage", msg);
-      } else if (msg.type === "story_event") {
-        sock.emit("story_event", msg);
-      } else if (msg.type === "challenge_lock") {
-        sock.emit("challenge_lock", msg);
-      } else if (msg.type === "award") {
-        sock.emit("award", msg);
-      } else if (msg.type === "force_logout") {
-        sock.emit("force_logout", msg);
+  if (sock) {
+    // If the socket dropped (tab backgrounded, brief network glitch) reconnect
+    // before trying to emit so the presence heartbeat keeps the team ONLINE.
+    if (!sock.connected) {
+      const currentToken = resolveStoredToken();
+      if (currentToken) (sock as any).auth = { token: currentToken };
+      sock.connect();
+    }
+    if (sock.connected) {
+      try {
+        if (msg.type === "presence") {
+          sock.emit("presence", msg);
+        } else if (msg.type === "sabotage") {
+          sock.emit("sabotage", msg);
+        } else if (msg.type === "story_event") {
+          sock.emit("story_event", msg);
+        } else if (msg.type === "challenge_lock") {
+          sock.emit("challenge_lock", msg);
+        } else if (msg.type === "award") {
+          sock.emit("award", msg);
+        } else if (msg.type === "force_logout") {
+          sock.emit("force_logout", msg);
+        }
+      } catch (e) {
+        console.warn("[SOCKET.IO] Emit error:", e);
       }
-    } catch (e) {
-      console.warn("[SOCKET.IO] Emit error:", e);
     }
   }
 

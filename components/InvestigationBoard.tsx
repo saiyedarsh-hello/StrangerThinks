@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
 import PushPin from "./PushPin";
+import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
 
 interface InvestigationBoardProps {
   onSelectChapter?: (chapterId: number) => void;
@@ -103,7 +104,7 @@ export default function InvestigationBoard({
   onSelectChapter,
   activeChapterId = 1,
 }: InvestigationBoardProps) {
-  const { s, score } = useGame();
+  const { s, score, isLocationLocked, say } = useGame();
   const [selectedCardId, setSelectedCardId] = useState<number>(activeChapterId);
 
   // Refs for measuring card positions for the red string overlay
@@ -154,8 +155,8 @@ export default function InvestigationBoard({
       ];
       if (taskIds.some((tid) => s.completedTasks.includes(tid) || !!s.solved[tid])) return true;
 
-      // 3. Check any task in completedTasks that begins with ch${chapterId}- or ch${chapterId}
-      if (s.completedTasks.some((tid) => tid === `ch${chapterId}` || tid.startsWith(`ch${chapterId}-`))) return true;
+      // 3. Check any task in completedTasks that begins with ch${chapterId}- (excluding individual sub-questions) or ch${chapterId}
+      if (s.completedTasks.some((tid) => tid === `ch${chapterId}` || (tid.startsWith(`ch${chapterId}-`) && !/[-_]q\d+/i.test(tid)))) return true;
 
       // 4. Specific milestone task aliases
       if (chapterId === 1 && (s.completedTasks.includes("town-1") || s.solved["town-1"])) return true;
@@ -164,9 +165,24 @@ export default function InvestigationBoard({
       if (chapterId === 6 && (s.completedTasks.includes("ch6-upsidedown") || s.solved["ch6-upsidedown"] || s.completedTasks.includes("gate-unlock") || s.solved["gate-unlock"])) return true;
       if (chapterId === 7 && (s.completedTasks.includes("gate-unlock") || s.solved["gate-unlock"])) return true;
 
+      // 5. If all questions in the chapter have been given answers
+      const cfg = STAGE_QUIZ_CONFIGS[chapterId];
+      if (cfg?.questions && cfg.questions.length > 0) {
+        try {
+          const raw = typeof window !== "undefined"
+            ? localStorage.getItem(`hawkins_quiz_answers_ch${chapterId}_${s.team?.id || "anon"}`)
+            : null;
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const givenCount = cfg.questions.filter((_, idx) => Boolean(parsed[idx]?.trim())).length;
+            if (givenCount === cfg.questions.length) return true;
+          }
+        } catch {}
+      }
+
       return false;
     },
-    [s.team?.solvedChapters, s.completedTasks, s.solved, s.radiometer]
+    [s.team?.solvedChapters, s.completedTasks, s.solved, s.radiometer, s.team?.id]
   );
 
   // Check if a chapter is unlocked:
@@ -180,6 +196,11 @@ export default function InvestigationBoard({
   );
 
   const handleCardClick = (card: CaseCardData) => {
+    if (isLocationLocked && card.id !== activeChapterId) {
+      sfx("err");
+      say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
+      return;
+    }
     sfx("click");
     setSelectedCardId(card.id);
     if (onSelectChapter) {

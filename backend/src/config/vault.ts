@@ -108,32 +108,6 @@ export const CHAPTER_METADATA = [
   {
     id: 5,
     label: "CHAPTER 5",
-    tag: "CARVED RUNES",
-    archiveSector: "ROANE COUNTY WOODS",
-    archiveTitle: "FOREST",
-    archiveSubtitle: "DEEP WOODS · TRAIL 7 COORDINATE RUNES",
-    archiveLines: [
-      "Deep woods near Trail 7. Autumn fog hangs thick among towering pines.",
-      "Flashlight beams reveal strange geometric runes carved into ancient tree trunks.",
-      "Extract the three glowing pine digits left-to-right to lock the vector coordinates.",
-    ],
-    completionLoreTitle: "FOREST COORDINATES LOCKED · VECTOR 4-1-7",
-    completionLoreText:
-      "Trail coordinates 4 · 1 · 7 verified! The harmonic vector points directly to the high-altitude East Hill Radio Tower. Pip is waiting on frequency 14.3 MHz.",
-    completionLines: [
-      "FOREST RUNES DECODED: VECTOR 4 · 1 · 7.",
-      "Coordinates align with East Hill Radio Tower sublevel.",
-      "Ascend to the Radio Tower to calibrate the scrambled 5-pin radiometer.",
-    ],
-    bgSrc: "/creel-bg.jpg",
-    taskId: "ch5-forest",
-    points: 50,
-    docketNumber: "FORM HPD-05-83 // CLASSIFIED FOREST RECON DOCKET",
-    sectionHeader: "SECTION 05 — FORMAL INQUIRY // DEEP WOODS RUNIC VECTORS",
-  },
-  {
-    id: 6,
-    label: "CHAPTER 6",
     tag: "5-PIN RADIOMETER",
     archiveSector: "EAST HILL",
     archiveTitle: "RADIO TOWER",
@@ -152,14 +126,14 @@ export const CHAPTER_METADATA = [
       "The threshold into the Upside Down is open. Prepare for Vecna.",
     ],
     bgSrc: "/hawkins-gate-bg.jpg",
-    taskId: "ch6-radio-tower",
+    taskId: "ch5-radio-tower",
     points: 50,
-    docketNumber: "FORM HPD-06-83 // CLASSIFIED RADIO TOWER DOCKET",
-    sectionHeader: "SECTION 06 — FORMAL INQUIRY // RADIO FREQUENCY CALIBRATION",
+    docketNumber: "FORM HPD-05-83 // CLASSIFIED RADIO TOWER DOCKET",
+    sectionHeader: "SECTION 05 — FORMAL INQUIRY // RADIO FREQUENCY CALIBRATION",
   },
   {
-    id: 7,
-    label: "CHAPTER 7",
+    id: 6,
+    label: "CHAPTER 6",
     tag: "THE GATE RIFT",
     archiveSector: "PARALLEL ABYSS",
     archiveTitle: "UPSIDE DOWN",
@@ -178,10 +152,10 @@ export const CHAPTER_METADATA = [
       "CONGRATULATIONS, RECON TEAM · TOURNAMENT VICTORY!",
     ],
     bgSrc: "/upsidedown-bg.jpg",
-    taskId: "ch7-upsidedown",
+    taskId: "ch6-upsidedown",
     points: 50,
-    docketNumber: "FORM HPD-07-83 // CLASSIFIED GATE RIFT DOCKET",
-    sectionHeader: "SECTION 07 — FORMAL INQUIRY // THE GATEWAY RIFT & VECNA CIPHER",
+    docketNumber: "FORM HPD-06-83 // CLASSIFIED GATE RIFT DOCKET",
+    sectionHeader: "SECTION 06 — FORMAL INQUIRY // THE GATEWAY RIFT & VECNA CIPHER",
   },
 ];
 
@@ -267,7 +241,7 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
           "text": "1,000 lb"
         }
       ],
-      "correctAnswerId": "B",
+      "correctAnswerId": "A",
       "hint": "Dustin called Mr. Clarke late at night while he was watching 'The Thing from Another World'.",
       "docketTag": "PHYSICS CALC"
     },
@@ -1319,288 +1293,6 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "id": "ch5-q1",
       "chapterId": 5,
       "itemNumber": 1,
-      "subHeader": "DEMO Q1 · ITEM 01: TREE PORTAL ANOMALY",
-      "question": "What tree landmark in Mirkwood concealed an organic portal into the Upside Down discovered by Nancy Wheeler?",
-      "options": [
-        {
-          "id": "A",
-          "text": "Hollowed Rotting Sycamore Trunk with Dripping Slime"
-        },
-        {
-          "id": "B",
-          "text": "Lightning-Struck Charred Pine Tree"
-        },
-        {
-          "id": "C",
-          "text": "Ancient Oak with Carved Coordinates"
-        },
-        {
-          "id": "D",
-          "text": "Overgrown Weeping Willow near Sattler Quarry"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "Nancy crawled through the pulsating fleshy opening inside the sycamore base.",
-      "docketTag": "PORTAL COORD"
-    },
-    {
-      "id": "ch5-q2",
-      "chapterId": 5,
-      "itemNumber": 2,
-      "subHeader": "DEMO Q2 · ITEM 02: PREDATOR SCENT VECTOR",
-      "question": "What behavioral vulnerability was observed when tracking Demogorgon scent signatures through the forest?",
-      "options": [
-        {
-          "id": "A",
-          "text": "Highly Attracted to the Scent of Fresh Blood"
-        },
-        {
-          "id": "B",
-          "text": "Triggered Exclusively by Ultrasonic Whistles"
-        },
-        {
-          "id": "C",
-          "text": "Drawn Exclusively to Bright Ultraviolet Light"
-        },
-        {
-          "id": "D",
-          "text": "Paralyzed by High-Frequency Radio Waves"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "A single drop of blood cuts through the dimensional barrier like a beacon.",
-      "docketTag": "BEHAVIORAL BIO"
-    },
-    {
-      "id": "ch5-q3",
-      "chapterId": 5,
-      "itemNumber": 3,
-      "subHeader": "DEMO Q3 · ITEM 03: RUNIC VECTOR TRIANGULATION",
-      "question": "What runic vector pattern was marked on the three perimeter surveillance trees along Trail 7?",
-      "options": [
-        {
-          "id": "A",
-          "text": "Vector 4 - 1 - 7 (North-East Triangulation)"
-        },
-        {
-          "id": "B",
-          "text": "Vector 9 - 2 - 5 (South-West Convergence)"
-        },
-        {
-          "id": "C",
-          "text": "Vector 1 - 1 - 0 (Azimuth Dead Reckoning)"
-        },
-        {
-          "id": "D",
-          "text": "Vector 8 - 3 - 4 (Radial Offset Quadrant)"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "Extract the glowing red pine runes left-to-right to find vector 4-1-7.",
-      "docketTag": "RUNIC VECTOR"
-    },
-    {
-      "id": "ch5-q4",
-      "chapterId": 5,
-      "itemNumber": 4,
-      "subHeader": "DEMO Q4 · ITEM 04: TRAP COUNTERMEASURES",
-      "question": "What makeshift countermeasures did Nancy Wheeler and Jonathan Byers prepare at the Byers house to trap the predator?",
-      "options": [
-        {
-          "id": "A",
-          "text": "Bear Trap, Gasoline Fire, and Nail-Studded Bat"
-        },
-        {
-          "id": "B",
-          "text": "High-Voltage Electrical Cattle Prod & Net"
-        },
-        {
-          "id": "C",
-          "text": "Liquid Nitrogen Aerosers"
-        },
-        {
-          "id": "D",
-          "text": "Magnesium Flares and Fireworks Battery"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "Steve Harrington joined with the nail-spiked Louisville Slugger bat.",
-      "docketTag": "TACTICAL DEFENSE"
-    },
-    {
-      "id": "ch5-q5",
-      "chapterId": 5,
-      "itemNumber": 5,
-      "subHeader": "DEMO Q5 · ITEM 05: D&D ANALOG BEAST",
-      "question": "In Mike Wheeler's Dungeons & Dragons campaign, which two-headed monster piece was knocked over by Will's failed fireball roll?",
-      "options": [
-        {
-          "id": "A",
-          "text": "The Demogorgon (Prince of Demons)"
-        },
-        {
-          "id": "B",
-          "text": "The Thessalhydra with Eight Maw Heads"
-        },
-        {
-          "id": "C",
-          "text": "The Beholder with Eye Rays"
-        },
-        {
-          "id": "D",
-          "text": "The Mind Flayer Illithid"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "Will rolled a 7 on his twenty-sided die, failing to cast fireball.",
-      "docketTag": "LORE ANALOG"
-    },
-    {
-      "id": "ch5-q6",
-      "chapterId": 5,
-      "itemNumber": 6,
-      "subHeader": "DEMO Q6 · ITEM 06: MIRKWOOD INTERSECTION ROAD SIGN",
-      "question": "What two rural roads cross at the infamous Mirkwood intersection near the lab fence line?",
-      "options": [
-        {
-          "id": "A",
-          "text": "Cornwallis Road & Kerley Lane"
-        },
-        {
-          "id": "B",
-          "text": "Maple Street & Elm Avenue"
-        },
-        {
-          "id": "C",
-          "text": "Cherry Lane & Sattler Way"
-        },
-        {
-          "id": "D",
-          "text": "Lover's Lake Road & Highway 27"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "The boys nicknamed the desolate dark corner 'Mirkwood' from Tolkien's books.",
-      "docketTag": "GEOGRAPHY"
-    },
-    {
-      "id": "ch5-q7",
-      "chapterId": 5,
-      "itemNumber": 7,
-      "subHeader": "DEMO Q7 · ITEM 07: FLASHLIGHT AMBER SPORE EFFECT",
-      "question": "What floating phenomenon was visible in flashlight beams near the forest portal site?",
-      "options": [
-        {
-          "id": "A",
-          "text": "Bioluminescent Amber Spores Drifting Slowly in Mid-Air"
-        },
-        {
-          "id": "B",
-          "text": "Black Ash Flakes Emitting Electrostatic Shocks"
-        },
-        {
-          "id": "C",
-          "text": "Green Iridescent Insects Swarming in Circles"
-        },
-        {
-          "id": "D",
-          "text": "Tiny Freezing Ice Needles Suspended Against Gravity"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "Particles suspended like underwater snow drifted outward through the portal opening.",
-      "docketTag": "AIR MONITORING"
-    },
-    {
-      "id": "ch5-q8",
-      "chapterId": 5,
-      "itemNumber": 8,
-      "subHeader": "DEMO Q8 · ITEM 08: STEVE'S MODIFIED WEAPON",
-      "question": "What weapon modification did Jonathan construct on the Louisville Slugger baseball bat?",
-      "options": [
-        {
-          "id": "A",
-          "text": "Hammered Rows of 2-Inch Steel Carpenter Nails"
-        },
-        {
-          "id": "B",
-          "text": "Wrapped Barbed Razor Wire Around the Barrel"
-        },
-        {
-          "id": "C",
-          "text": "Bolted Serrated Lawnmower Blades Along the Tip"
-        },
-        {
-          "id": "D",
-          "text": "Soaked Heavy Burlap in Gasoline for a Torch Bat"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "Steve swung the nail-studded bat in the living room to drive back the creature.",
-      "docketTag": "IMPROVISED WEAPON"
-    },
-    {
-      "id": "ch5-q9",
-      "chapterId": 5,
-      "itemNumber": 9,
-      "subHeader": "DEMO Q9 · ITEM 09: TRAIL 7 COMPASS ROTATION",
-      "question": "How did the boys recognize they were approaching the laboratory's perimeter fence on Trail 7?",
-      "options": [
-        {
-          "id": "A",
-          "text": "All Compass Needles Began Slowly Rotating Counter-Clockwise"
-        },
-        {
-          "id": "B",
-          "text": "Their Walkie-Talkies Emitted Static Morbid Whispers"
-        },
-        {
-          "id": "C",
-          "text": "The Pine Trees Lost All Needles and Turned Black"
-        },
-        {
-          "id": "D",
-          "text": "Ground Temperatures Dropped Below Zero Degrees"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "Dustin realized they were following a magnetic deviation towards the lab.",
-      "docketTag": "ANOMALOUS FLUX"
-    },
-    {
-      "id": "ch5-q10",
-      "chapterId": 5,
-      "itemNumber": 10,
-      "subHeader": "DEMO Q10 · ITEM 10: WOUNDED DEER TRACKING",
-      "question": "What prey animal was dragged into the Sycamore tree portal right before Nancy climbed in?",
-      "options": [
-        {
-          "id": "A",
-          "text": "A Wounded Forest Deer Shot by Local Hunters"
-        },
-        {
-          "id": "B",
-          "text": "A Stray Red Fox with a Injured Leg"
-        },
-        {
-          "id": "C",
-          "text": "A Raccoon from Benny's Dumpster"
-        },
-        {
-          "id": "D",
-          "text": "A Golden Retriever Hunting Dog"
-        }
-      ],
-      "correctAnswerId": "A",
-      "hint": "Nancy and Jonathan tracked blood droplets from a deer until it vanished inside the tree.",
-      "docketTag": "PREDATOR TRACKS"
-    }
-  ],
-  "6": [
-    {
-      "id": "ch6-q1",
-      "chapterId": 6,
-      "itemNumber": 1,
       "subHeader": "SIGNAL 01 · CAESAR CIPHER BROADCAST",
       "question": "A high-frequency radio signal pulses encrypted sequence 'UXQ'. Intelligence reports confirm a Caesar cipher with key +3. Decode the carrier message.",
       "options": [
@@ -1626,8 +1318,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "RADIO INTERCEPT"
     },
     {
-      "id": "ch6-q2",
-      "chapterId": 6,
+      "id": "ch5-q2",
+      "chapterId": 5,
       "itemNumber": 2,
       "subHeader": "SIGNAL 02 · 8-BIT BINARY TELEMETRY",
       "question": "Eleven taps a rhythmic electrical transmission into the Supercom microphone: binary code 01010010. Which ASCII character does this encode?",
@@ -1654,8 +1346,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "BINARY STREAM"
     },
     {
-      "id": "ch6-q3",
-      "chapterId": 6,
+      "id": "ch5-q3",
+      "chapterId": 5,
       "itemNumber": 3,
       "subHeader": "SIGNAL 03 · RUSSIAN ENCRYPTED BROADCAST",
       "question": "Dustin intercepts a looping Russian radio transmission beneath Starcourt Mall. What is the verified English translation of the cipher?",
@@ -1682,8 +1374,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "RUSSIAN CIPHER"
     },
     {
-      "id": "ch6-q4",
-      "chapterId": 6,
+      "id": "ch5-q4",
+      "chapterId": 5,
       "itemNumber": 4,
       "subHeader": "SIGNAL 04 · MORSE CODE DISTRESS BEACON",
       "question": "A high-frequency buzzer emits rhythmic Morse code pulses: `... --- ...`. What universal distress priority does this broadcast?",
@@ -1710,8 +1402,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "MORSE LOG"
     },
     {
-      "id": "ch6-q5",
-      "chapterId": 6,
+      "id": "ch5-q5",
+      "chapterId": 5,
       "itemNumber": 5,
       "subHeader": "SIGNAL 05 · REVERSE AUDIO PHONOGRAM",
       "question": "Joyce Byers tunes the radio receiver to an analog static channel, capturing a reversed audio whisper. What message is Will communicating?",
@@ -1738,8 +1430,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "AUDIO PHONOGRAM"
     },
     {
-      "id": "ch6-q6",
-      "chapterId": 6,
+      "id": "ch5-q6",
+      "chapterId": 5,
       "itemNumber": 6,
       "subHeader": "SIGNAL 06 · HEATHKIT HAM RADIO TRANSCEIVER",
       "question": "Which amateur radio frequency did the boys tune their Heathkit transceiver to when communicating with Mr. Clarke?",
@@ -1766,8 +1458,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "HAM RADIO"
     },
     {
-      "id": "ch6-q7",
-      "chapterId": 6,
+      "id": "ch5-q7",
+      "chapterId": 5,
       "itemNumber": 6,
       "subHeader": "SIGNAL 07 · CEREBRO REPEATER TELEMETRY",
       "question": "What radio communication device did Dustin Henderson assemble on Weathertop to reach his girlfriend Suzie in Utah?",
@@ -1794,8 +1486,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "CEREBRO LOG"
     },
     {
-      "id": "ch6-q8",
-      "chapterId": 6,
+      "id": "ch5-q8",
+      "chapterId": 5,
       "itemNumber": 8,
       "subHeader": "SIGNAL 08 · STARCOURT VAULT ACCESS CIPHER",
       "question": "Suzie transmits the mathematical constant needed as the cryptographic password for the Russian laser vault. What value does she broadcast?",
@@ -1822,8 +1514,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "VAULT CIPHER"
     },
     {
-      "id": "ch6-q9",
-      "chapterId": 6,
+      "id": "ch5-q9",
+      "chapterId": 5,
       "itemNumber": 9,
       "subHeader": "SIGNAL 09 · ELECTROMAGNETIC VECTOR ANOMALY",
       "question": "A compass placed near the radio tower deflects erratically. What physical force causes magnetic needles to stray from true North?",
@@ -1850,8 +1542,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "FLUX TELEMETRY"
     },
     {
-      "id": "ch6-q10",
-      "chapterId": 6,
+      "id": "ch5-q10",
+      "chapterId": 5,
       "itemNumber": 10,
       "subHeader": "SIGNAL 10 · SUB-BASIN GATE CONVERGENCE",
       "question": "At the end of Season 4, sub-audible seismic pulses broadcast across municipal radio channels. What catastrophic event do they announce?",
@@ -1877,11 +1569,11 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "hint": "Vecna's plan was four kills to open four gates that tear open Hawkins in a cross shape.",
       "docketTag": "SEISMIC SIGNAL"
     }
-  ],
-  "7": [
+    ],
+  "6": [
     {
-      "id": "ch7-q1",
-      "chapterId": 7,
+      "id": "ch6-q1",
+      "chapterId": 6,
       "itemNumber": 1,
       "subHeader": "LAB TASK 01 · LOGICAL SEQUENCE (EXPERIMENT IDS)",
       "question": "Hawkins Lab experiment subject IDs run in sequence: 2, 6, 12, 20, 30, ... What is the next experiment ID in this progression?",
@@ -1908,8 +1600,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "LAB SEQUENCE"
     },
     {
-      "id": "ch7-q2",
-      "chapterId": 7,
+      "id": "ch6-q2",
+      "chapterId": 6,
       "itemNumber": 2,
       "subHeader": "LAB TASK 02 · BOOLEAN LOGIC CIRCUIT EVALUATION",
       "question": "The Sublevel 04 security gate opens if `(Power = ON AND Key = INSERTED) OR Override = ON`. Power is ON, Key is NOT inserted, Override is ON. Does the gate open?",
@@ -1936,8 +1628,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "GATE LOGIC"
     },
     {
-      "id": "ch7-q3",
-      "chapterId": 7,
+      "id": "ch6-q3",
+      "chapterId": 6,
       "itemNumber": 3,
       "subHeader": "LAB TASK 03 · SYSTEM OPERATIONS (KILL ROGUE PID)",
       "question": "A rogue daemon process with PID 1983 is locking the Hawkins Lab security server. Which UNIX terminal command force-terminates it immediately?",
@@ -1964,8 +1656,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "UNIX TERMINAL"
     },
     {
-      "id": "ch7-q4",
-      "chapterId": 7,
+      "id": "ch6-q4",
+      "chapterId": 6,
       "itemNumber": 4,
       "subHeader": "LAB TASK 04 · SYSTEM OPERATIONS (POWER RESTORATION ORDER)",
       "question": "Place the Hawkins Lab power recovery protocol steps in correct operational sequence: (a) turn on lab lights, (b) start backup generator, (c) reset control panel, (d) close main breaker.",
@@ -1992,8 +1684,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "POWER SEQUENCE"
     },
     {
-      "id": "ch7-q5",
-      "chapterId": 7,
+      "id": "ch6-q5",
+      "chapterId": 6,
       "itemNumber": 5,
       "subHeader": "LAB TASK 05 · FUNCTION RESTORATION (BUGGY SIGHTING COUNTER)",
       "question": "This telemetry script gives an incorrect count for Demogorgon sightings. Diagnose the bug and select the proper repair.",
@@ -2020,8 +1712,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "PYTHON DEBUG"
     },
     {
-      "id": "ch7-q6",
-      "chapterId": 7,
+      "id": "ch6-q6",
+      "chapterId": 6,
       "itemNumber": 6,
       "subHeader": "LAB TASK 06 · FUNCTION RESTORATION (INFINITE RECURSION)",
       "question": "Why does this recursive function crash the Hawkins Lab simulation console with a RecursionError?",
@@ -2048,8 +1740,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "RECURSION BUG"
     },
     {
-      "id": "ch7-q7",
-      "chapterId": 7,
+      "id": "ch6-q7",
+      "chapterId": 6,
       "itemNumber": 7,
       "subHeader": "LAB TASK 07 · DATA ANALYSIS (LIGHT FLICKER METRICS)",
       "question": "Substation bulb flickers recorded Monday to Friday: 3, 5, 4, 12, 6. Compute the Mean, Median, and identify the statistical Outlier.",
@@ -2076,8 +1768,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "STATISTICS"
     },
     {
-      "id": "ch7-q8",
-      "chapterId": 7,
+      "id": "ch6-q8",
+      "chapterId": 6,
       "itemNumber": 8,
       "subHeader": "LAB TASK 08 · DATA ANALYSIS (ZONE PERCENTAGE CONCENTRATION)",
       "question": "Out of 50 total confirmed entity sightings: Forest 20, Lab 15, Mall 10, School 5. Which location has the highest concentration and what percentage?",
@@ -2104,8 +1796,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "ZONE ANALYSIS"
     },
     {
-      "id": "ch7-q9",
-      "chapterId": 7,
+      "id": "ch6-q9",
+      "chapterId": 6,
       "itemNumber": 9,
       "subHeader": "LAB TASK 09 · SIMULATED EXPERIMENT (TEMPERATURE CORRELATION)",
       "question": "Experimental data records ambient temperature vs. flickers per hour: (20°C: 0), (15°C: 2), (10°C: 5), (5°C: 9). Identify the independent variable, dependent variable, and scientific conclusion.",
@@ -2132,8 +1824,8 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "docketTag": "EXPERIMENT LOG"
     },
     {
-      "id": "ch7-q10",
-      "chapterId": 7,
+      "id": "ch6-q10",
+      "chapterId": 6,
       "itemNumber": 10,
       "subHeader": "LAB TASK 10 · SIMULATED EXPERIMENT (GATE EXPONENTIAL DOUBLING)",
       "question": "Gate energy starts at 2 units at 1:00 AM and doubles every hour (2, 4, 8, 16, 32, ...). At what time does it first exceed 100 energy units?",
@@ -2159,7 +1851,7 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
       "hint": "Sequence: 1:00=2, 2:00=4, 3:00=8, 4:00=16, 5:00=32, 6:00=64, 7:00=128. It first exceeds 100 at 7:00 AM.",
       "docketTag": "ENERGY GROWTH"
     }
-  ]
+    ]
 };
 
 // Interactive mini-game tasks secrets
@@ -2172,8 +1864,10 @@ export const STORY_TASK_SECRETS: Record<string, { answerPattern: RegExp; points:
   "lab-terminal": { answerPattern: /^30$/i, points: 50, category: "tech" },
   "ch5-forest": { answerPattern: /^(417|4-1-7|vector\s*4-1-7)$/i, points: 50, category: "clue" },
   "forest-marks": { answerPattern: /^(417|4-1-7)$/i, points: 50, category: "clue" },
+  "ch5-radio-tower": { answerPattern: /^83479$/i, points: 50, category: "puzzle" },
   "ch6-radio-tower": { answerPattern: /^83479$/i, points: 50, category: "puzzle" },
   "gate-unlock": { answerPattern: /^83479$/i, points: 50, category: "puzzle" },
+  "ch6-upsidedown": { answerPattern: /^(HENRY\s*CREEL|001|VECNA|PETER\s*BALLARD)$/i, points: 50, category: "story" },
   "ch7-upsidedown": { answerPattern: /^(HENRY\s*CREEL|001|VECNA|PETER\s*BALLARD)$/i, points: 50, category: "story" },
 };
 
