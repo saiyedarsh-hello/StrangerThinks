@@ -792,6 +792,7 @@ export default function AdminDashboard() {
     if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
       try {
         const arrayBuf = await file.arrayBuffer();
+        // @ts-ignore
         const XLSX = await import("xlsx");
         const workbook = XLSX.read(arrayBuf, { type: "array" });
         const firstSheetName = workbook.SheetNames[0];

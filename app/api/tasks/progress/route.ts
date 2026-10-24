@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getApiBase } from "@/lib/api";
+import { saveTeamProgress } from "@/lib/teamStore";
 
 export const dynamic = "force-dynamic";
 
@@ -9,9 +10,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const authHeader = req.headers.get("authorization") || "";
 
+    if (body.teamId) {
+      saveTeamProgress(body);
+    }
+
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const timeoutId = setTimeout(() => controller.abort(), 1000);
 
       const res = await fetch(`${base}/tasks/progress`, {
         method: "POST",

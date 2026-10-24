@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sfx } from "@/lib/audio";
 import { useGame } from "@/lib/store";
@@ -62,7 +62,7 @@ export default function HopperPoliceReportQuiz({
 
   const totalQuestions = questions.length;
   const [currentIdx, setCurrentIdx] = useState(0);
-  const { s, unlockHint, isHintUnlocked, score, isPaused, say, showAlert, showConfirm } = useGame();
+  const { s, unlockHint, isHintUnlocked, score, isPaused, say, showAlert, showConfirm, submitTask } = useGame();
   const teamId = s?.team?.id || "anon";
 
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>(() => {
@@ -110,6 +110,9 @@ export default function HopperPoliceReportQuiz({
 
   const handleExit = () => {
     sfx("click");
+    if (allQuestionsDone) {
+      handleFinalSubmit();
+    }
     if (onExitFullScreen) {
       onExitFullScreen();
     }
@@ -147,7 +150,7 @@ export default function HopperPoliceReportQuiz({
 
   const [isCheckingQuestion, setIsCheckingQuestion] = useState(false);
 
-  const handleOptionClick = (optId: string, silent = false) => {
+  const handleOptionClick = useCallback((optId: string, silent = false) => {
     if (isPaused || isCurrentLocked) return;
     if (!silent) sfx("type");
     setSelectedAnswers((prev) => ({
@@ -158,7 +161,27 @@ export default function HopperPoliceReportQuiz({
       legacyOnSelect(optId);
     }
     setUnansweredPrompt(false);
-  };
+  }, [isPaused, isCurrentLocked, currentIdx, legacyOnSelect]);
+
+  // Ensure verified questions are reflected in global score and navigation bar
+  useEffect(() => {
+    if (!submitTask) return;
+    Object.entries(questionResults).forEach(([idxStr, res]) => {
+      const idx = Number(idxStr);
+      if (res?.isCorrect) {
+        const qTaskId = `ch${chapterNumber}-q${idx + 1}`;
+        const earned = typeof res.pointsAwarded === "number" ? res.pointsAwarded : 10;
+        if (earned > 0 && (!s.taskScores || !s.taskScores[qTaskId])) {
+          submitTask(
+            qTaskId,
+            earned,
+            `Chapter ${chapterNumber} Item ${idx + 1} Telemetry Solved`,
+            false
+          );
+        }
+      }
+    });
+  }, [chapterNumber, questionResults, s.taskScores, submitTask]);
 
   const handleCheckCurrentQuestion = async () => {
     if (isPaused) {
@@ -220,10 +243,39 @@ export default function HopperPoliceReportQuiz({
           sfx("err");
         }
 
+        // Award and persist points immediately to navigation bar & backend
+        if (isCorrect && pts > 0 && submitTask) {
+          const questionTaskId = `ch${chapterNumber}-q${currentIdx + 1}`;
+          submitTask(
+            questionTaskId,
+            pts,
+            `Chapter ${chapterNumber} Item ${currentIdx + 1} Telemetry Solved`,
+            false
+          );
+        }
+
         setQuestionAttempts((prev) => ({
           ...prev,
           [currentIdx]: thisAttemptNumber,
         }));
+
+        // If all questions are now answered and verified, automatically submit report and close section
+        const willBeAllDone = questions.every((_, idx) => {
+          if (idx === currentIdx) return true;
+          return Boolean(selectedAnswers[idx]?.trim());
+        });
+        const willBeAllChecked = questions.every((_, idx) => {
+          if (idx === currentIdx) return isCorrect || isLocked || thisAttemptNumber >= 2;
+          const r = questionResults[idx];
+          const a = questionAttempts[idx] || 0;
+          return r?.isCorrect || r?.isLocked || a >= 2;
+        });
+
+        if (willBeAllDone && willBeAllChecked) {
+          setTimeout(() => {
+            handleFinalSubmit();
+          }, 600);
+        }
 
         setQuestionResults((prev) => {
           const updated = {
@@ -280,7 +332,7 @@ export default function HopperPoliceReportQuiz({
     }
   };
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = useCallback(() => {
     if (isPaused) {
       say?.("HAWKINS COMMAND: TOURNAMENT PAUSED BY ADMINISTRATOR");
       sfx("err");
@@ -305,7 +357,27 @@ export default function HopperPoliceReportQuiz({
     } else if (legacyOnSubmit) {
       legacyOnSubmit();
     }
-  };
+  }, [isPaused, allQuestionsDone, totalQuestions, selectedAnswers, onSubmitAll, legacyOnSubmit, say]);
+
+  // Once all questions in the section are given answers, close the section as completed
+  useEffect(() => {
+    if (!allQuestionsDone || totalQuestions === 0 || isPaused) return;
+
+    // Check if all questions are checked/verified
+    const allChecked = questions.every((_, idx) => {
+      const res = questionResults[idx];
+      const attempts = questionAttempts[idx] || 0;
+      return res?.isCorrect || res?.isLocked || attempts >= 2;
+    });
+
+    // Auto-close section as completed even without manually submitting the report
+    const delay = allChecked ? 600 : 1200;
+    const timer = setTimeout(() => {
+      handleFinalSubmit();
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [allQuestionsDone, questionResults, questionAttempts, totalQuestions, isPaused, handleFinalSubmit]);
 
   const activeDocket =
     formDocket ||
@@ -579,7 +651,7 @@ export default function HopperPoliceReportQuiz({
               key={currentQ.id || `q-${currentIdx}`}
               question={currentQ}
               selectedAnswer={currentSelectedOption}
-              onSelectOption={(optId, silent) => handleOptionClick(optId, silent)}
+              onSelectOption={handleOptionClick}
               isVecnaMode={false}
               disabled={isCurrentDone || isCurrentLocked}
               questionIndex={currentIdx}

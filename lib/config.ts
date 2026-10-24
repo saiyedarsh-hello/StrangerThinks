@@ -26,9 +26,16 @@ export interface PlayerTeamConfig {
  * REGISTERED PLAYER TEAMS
  * Only these exact (teamName, leaderName) pairs can log in as a player.
  */
-// Teams are authoritative in the backend database. This list is intentionally
-// empty so the client cannot authenticate demo squads on its own.
-export const PLAYER_TEAMS: PlayerTeamConfig[] = [];
+export const PLAYER_TEAMS: PlayerTeamConfig[] = [
+  { id: "T01", teamName: "Null Pointers", leaderName: "Aarav Sharma" },
+  { id: "T02", teamName: "Stack Smashers", leaderName: "Maya Lin" },
+  { id: "T03", teamName: "Rift Runners", leaderName: "Lucas Sinclair" },
+  { id: "T04", teamName: "Byte Byters", leaderName: "Dustin Henderson" },
+  { id: "T05", teamName: "Shadow Walkers", leaderName: "Mike Wheeler" },
+  { id: "T06", teamName: "Hellfire Club", leaderName: "Eddie Munson" },
+  { id: "T07", teamName: "Hawkins AV Club", leaderName: "Will Byers" },
+  { id: "T08", teamName: "Mind Flayers", leaderName: "Max Mayfield" },
+];
 
 /**
  * VECNA CREDENTIAL

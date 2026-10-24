@@ -55,7 +55,18 @@ export default function QuestionTypeRenderer({
   const [selectedTokenIdx, setSelectedTokenIdx] = useState<number | null>(null);
 
   // Connection state for Stage 2: leftId -> rightId
-  const [activeConnections, setActiveConnections] = useState<Record<string, string>>({});
+  const [activeConnections, setActiveConnections] = useState<Record<string, string>>(() => {
+    if (typeof window !== "undefined" && question.connectionData && question.id) {
+      try {
+        const saved = localStorage.getItem(`hawkins_connections_${question.id}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === "object") return parsed;
+        }
+      } catch {}
+    }
+    return {};
+  });
   const [selectedLeftId, setSelectedLeftId] = useState<string | null>(null);
 
   // Ghost tutorial state for Stage 2 & Stage 3
@@ -73,11 +84,26 @@ export default function QuestionTypeRenderer({
   const reorderContainerRef = useRef<HTMLDivElement | null>(null);
   const reorderTilesRef = useRef<Record<number, HTMLDivElement | null>>({});
 
+  // Stable ref for onSelectOption callback to prevent infinite re-render loops
+  const onSelectRef = useRef(onSelectOption);
+  useEffect(() => {
+    onSelectRef.current = onSelectOption;
+  });
+
   // Helper to persist rearrange order
   const saveTokensToStorage = useCallback((tokens: string[]) => {
     if (typeof window !== "undefined" && question.id) {
       try {
         localStorage.setItem(`hawkins_rearrange_${question.id}`, JSON.stringify(tokens));
+      } catch {}
+    }
+  }, [question.id]);
+
+  // Helper to persist connection pairs
+  const saveConnectionsToStorage = useCallback((conns: Record<string, string>) => {
+    if (typeof window !== "undefined" && question.id) {
+      try {
+        localStorage.setItem(`hawkins_connections_${question.id}`, JSON.stringify(conns));
       } catch {}
     }
   }, [question.id]);
@@ -98,22 +124,46 @@ export default function QuestionTypeRenderer({
         } catch {}
       }
       setReorderedTokens(initialTokens);
-      // Silently set option if sequence already matches correct order
       const isMatch =
         initialTokens.length === question.rearrangeData.correctOrder.length &&
         initialTokens.every((tok, idx) => tok === question.rearrangeData!.correctOrder[idx]);
-      if (isMatch) {
-        onSelectOption(question.correctAnswerId, true);
-      }
+      onSelectRef.current?.(isMatch ? question.correctAnswerId : JSON.stringify(initialTokens), true);
     }
-    setActiveConnections({});
+
+    if (stageType === "connection" && question.connectionData) {
+      let initialConns: Record<string, string> = {};
+      if (typeof window !== "undefined" && question.id) {
+        try {
+          const saved = localStorage.getItem(`hawkins_connections_${question.id}`);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed && typeof parsed === "object") initialConns = parsed;
+          }
+        } catch {}
+      }
+      setActiveConnections(initialConns);
+      const totalPairs = question.connectionData.pairs.length || 0;
+      if (Object.keys(initialConns).length > 0) {
+        if (Object.keys(initialConns).length === totalPairs && totalPairs > 0) {
+          const isAllCorrect = question.connectionData.pairs.every(
+            (p) => initialConns[p.leftId]?.toLowerCase() === p.rightId.toLowerCase()
+          );
+          onSelectRef.current?.(isAllCorrect ? question.correctAnswerId : "__WRONG_CONNECTION__", true);
+        } else {
+          onSelectRef.current?.(JSON.stringify(initialConns), true);
+        }
+      }
+    } else if (stageType !== "connection") {
+      setActiveConnections({});
+    }
+
     setSelectedLeftId(null);
     setHasInteracted(false);
     setDraggedTokenIdx(null);
     setDragOverTokenIdx(null);
     setSelectedTokenIdx(null);
     setReorderGhostCoords(null);
-  }, [question.id, question.correctAnswerId]);
+  }, [question.id, question.correctAnswerId, stageType]);
 
   // Recalculate ghost tutorial coordinates for Stage 2 (First question only)
   useEffect(() => {
@@ -219,6 +269,7 @@ export default function QuestionTypeRenderer({
     sfx("click");
     const updated = { ...activeConnections, [leftId]: rightId };
     setActiveConnections(updated);
+    saveConnectionsToStorage(updated);
     setSelectedLeftId(null);
 
     // Verify answers if all pairs connected
@@ -228,12 +279,12 @@ export default function QuestionTypeRenderer({
         (p) => updated[p.leftId]?.toLowerCase() === p.rightId.toLowerCase()
       );
       if (isAllCorrect) {
-        onSelectOption(question.correctAnswerId);
+        onSelectRef.current?.(question.correctAnswerId);
       } else {
-        onSelectOption("__WRONG_CONNECTION__");
+        onSelectRef.current?.("__WRONG_CONNECTION__");
       }
     } else {
-      onSelectOption("");
+      onSelectRef.current?.(JSON.stringify(updated), true);
     }
   };
 
@@ -242,8 +293,9 @@ export default function QuestionTypeRenderer({
     setHasInteracted(true);
     sfx("click");
     setActiveConnections({});
+    saveConnectionsToStorage({});
     setSelectedLeftId(null);
-    onSelectOption("");
+    onSelectRef.current?.("");
   };
 
   // Stage 3 Reorder Logic
@@ -253,13 +305,12 @@ export default function QuestionTypeRenderer({
         tokens.length === question.rearrangeData.correctOrder.length &&
         tokens.every((tok, idx) => tok === question.rearrangeData!.correctOrder[idx]);
       if (isMatch) {
-        // Do NOT play sfx("clue") - keep it silent so user must check their answer!
-        onSelectOption(question.correctAnswerId, true);
+        onSelectRef.current?.(question.correctAnswerId, true);
       } else {
-        onSelectOption("__WRONG_REARRANGE__", true);
+        onSelectRef.current?.(JSON.stringify(tokens), true);
       }
     }
-  }, [question.rearrangeData, question.correctAnswerId, onSelectOption]);
+  }, [question.rearrangeData, question.correctAnswerId]);
 
   const handleMoveToken = (index: number, direction: "up" | "down" | "left" | "right") => {
     if (disabled) return;
