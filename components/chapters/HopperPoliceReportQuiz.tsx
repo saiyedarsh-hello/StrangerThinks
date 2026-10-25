@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sfx } from "@/lib/audio";
 import { useGame } from "@/lib/store";
@@ -63,8 +63,19 @@ export default function HopperPoliceReportQuiz({
 
   const totalQuestions = questions.length;
   const [currentIdx, setCurrentIdx] = useState(0);
+  const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const latestResultsRef = useRef<Record<number, any>>({});
   const { s, unlockHint, isHintUnlocked, score, isPaused, say, showAlert, showConfirm, submitTask } = useGame();
   const teamId = s?.team?.id || "anon";
+
+  // Cleanup auto-advance timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimerRef.current) {
+        clearTimeout(autoAdvanceTimerRef.current);
+      }
+    };
+  }, []);
 
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>(() => {
     if (typeof window !== "undefined") {
@@ -246,6 +257,10 @@ export default function HopperPoliceReportQuiz({
 
   const currentResult = questionResults[currentIdx];
   const currentAttempts = questionAttempts[currentIdx] || 0;
+
+  useEffect(() => {
+    latestResultsRef.current = questionResults;
+  }, [questionResults]);
   const isCurrentVerified = Boolean(currentResult?.isCorrect);
   const isCurrentLocked = Boolean(
     currentResult?.isLocked ||
@@ -393,6 +408,7 @@ export default function HopperPoliceReportQuiz({
               attempts: thisAttemptNumber,
             },
           };
+          latestResultsRef.current = updated;
           try {
             localStorage.setItem(
               `hawkins_quiz_results_ch${chapterNumber}_${s?.team?.id || "anon"}`,
@@ -401,6 +417,36 @@ export default function HopperPoliceReportQuiz({
           } catch {}
           return updated;
         });
+
+        // Auto-advance to next question if answered correctly or attempts are exhausted
+        const isQuestionDone = isCorrect || isLocked || thisAttemptNumber >= 2;
+        if (isQuestionDone) {
+          if (autoAdvanceTimerRef.current) {
+            clearTimeout(autoAdvanceTimerRef.current);
+          }
+          autoAdvanceTimerRef.current = setTimeout(() => {
+            setCurrentIdx((prevIdx) => {
+              if (prevIdx < totalQuestions - 1) {
+                sfx("click");
+                return prevIdx + 1;
+              }
+              // If currently at the last question, look for any earlier skipped or unfinished question
+              const resultsSnapshot = latestResultsRef.current;
+              const firstUnfinished = questions.findIndex((_, idx) => {
+                if (idx === prevIdx) return false;
+                const r = resultsSnapshot[idx];
+                const a = (idx === currentIdx ? thisAttemptNumber : questionAttempts[idx]) || 0;
+                return !(r?.isCorrect || r?.isLocked || a >= 2);
+              });
+              if (firstUnfinished !== -1) {
+                sfx("click");
+                return firstUnfinished;
+              }
+              return prevIdx;
+            });
+            setUnansweredPrompt(false);
+          }, 1000);
+        }
       } else {
         sfx("err");
         say?.(data.message || "COMMUNICATION FAILURE: Central server rejected submission.");
@@ -416,6 +462,10 @@ export default function HopperPoliceReportQuiz({
   const isTabUnlocked = (_idx: number) => true;
 
   const handleNext = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     sfx("click");
     if (currentIdx < totalQuestions - 1) {
       setCurrentIdx((i) => i + 1);
@@ -424,6 +474,10 @@ export default function HopperPoliceReportQuiz({
   };
 
   const handlePrev = () => {
+    if (autoAdvanceTimerRef.current) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
     sfx("click");
     if (currentIdx > 0) {
       setCurrentIdx((i) => i - 1);
@@ -666,6 +720,10 @@ export default function HopperPoliceReportQuiz({
                     key={q.id || idx}
                     type="button"
                     onClick={() => {
+                      if (autoAdvanceTimerRef.current) {
+                        clearTimeout(autoAdvanceTimerRef.current);
+                        autoAdvanceTimerRef.current = null;
+                      }
                       sfx("click");
                       setCurrentIdx(idx);
                       setUnansweredPrompt(false);

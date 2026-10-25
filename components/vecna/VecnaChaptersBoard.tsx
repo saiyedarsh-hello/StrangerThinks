@@ -222,8 +222,13 @@ export default function VecnaChaptersBoard({
       return;
     }
 
-    sfx("click");
-    setInspectedChapter(ch);
+    sfx("boom");
+    setInspectedChapter(null);
+    if (onEnterTrial) {
+      onEnterTrial(ch.id);
+    } else {
+      onSelectTrial(ch.id);
+    }
   };
 
   const handleEnterSector = (chapterId: number) => {
@@ -279,7 +284,7 @@ export default function VecnaChaptersBoard({
               gap: "10px",
             }}
           >
-            <span>🔒</span>
+            <span style={{ color: "#ff2d3a", fontWeight: "bold" }}>[!]</span>
             <span>{lockAlertMessage}</span>
           </motion.div>
         )}
@@ -601,7 +606,7 @@ export default function VecnaChaptersBoard({
                           boxShadow: "0 2px 6px rgba(0,0,0,0.6)",
                         }}
                       >
-                        🔒 LOCKED
+                        LOCKED
                       </span>
                     )}
                   </div>
@@ -682,7 +687,7 @@ export default function VecnaChaptersBoard({
                     {isCleared
                       ? "[ ✓ CLEARED · REVISIT ]"
                       : isUnlocked
-                      ? "[ CLICK TO INSPECT → ]"
+                      ? "[ ENTER QUIZ → ]"
                       : "[ LOCKED ]"}
                   </div>
                 </div>
@@ -813,7 +818,7 @@ export default function VecnaChaptersBoard({
                   }}
                 >
                   <span>S{ch.id}</span>
-                  <span>{cleared ? "✓" : unlocked ? "●" : "🔒"}</span>
+                  <span>{cleared ? "✓" : unlocked ? "●" : "✕"}</span>
                 </button>
               );
             })}
@@ -1178,7 +1183,7 @@ export default function VecnaChaptersBoard({
                         boxShadow: "0 0 20px rgba(255, 45, 58, 0.5)",
                       }}
                     >
-                      ⚡ INITIATE SECTOR OVERRIDE · SOLVE SECTOR
+                      INITIATE SECTOR OVERRIDE · SOLVE SECTOR
                     </button>
                   ) : (
                     <button
@@ -1197,7 +1202,7 @@ export default function VecnaChaptersBoard({
                         cursor: "not-allowed",
                       }}
                     >
-                      🔒 ACCESS RESTRICTED · AUTHORIZATION REQUIRED
+                      ACCESS RESTRICTED · AUTHORIZATION REQUIRED
                     </button>
                   )}
                 </div>

@@ -137,6 +137,31 @@ export default function VecnaDashboard() {
   const [activeSideDrawer, setActiveSideDrawer] = useState<"none" | "powers" | "dispatch">("none");
   const [isStoryDialogOpen, setIsStoryDialogOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [seenBriefings, setSeenBriefings] = useState<number[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("vecna_seen_briefings");
+        if (stored) return JSON.parse(stored);
+      } catch {}
+    }
+    return [];
+  });
+
+  const openBriefingOnce = useCallback((trialId: number) => {
+    setSeenBriefings((prev) => {
+      if (!prev.includes(trialId)) {
+        setIsStoryDialogOpen(true);
+        const updated = [...prev, trialId];
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("vecna_seen_briefings", JSON.stringify(updated));
+          } catch {}
+        }
+        return updated;
+      }
+      return prev;
+    });
+  }, []);
 
   // Sync tournament stage access switchboard with Admin
   useEffect(() => {
@@ -175,6 +200,12 @@ export default function VecnaDashboard() {
         setActiveQuestionIdx(0);
         setShowStageSummary(false);
         setViewMode("board");
+        setSeenBriefings([]);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("vecna_seen_briefings");
+          } catch {}
+        }
       }
     });
 
@@ -494,13 +525,7 @@ export default function VecnaDashboard() {
   const isLevelAttempted = (trialId: number, idx: number) =>
     Boolean(solvedQuestions[`${trialId}-${idx}`] || failedQuestions[`${trialId}-${idx}`]);
 
-  const isLevelUnlocked = (trialId: number, idx: number) => {
-    if (idx === 0) return true;
-    for (let i = 0; i < idx; i++) {
-      if (!isLevelAttempted(trialId, i)) return false;
-    }
-    return true;
-  };
+  const isLevelUnlocked = (_trialId: number, _idx: number) => true;
 
   const isQuestionSolved = !!solvedQuestions[`${currentTrial.id}-${activeQuestionIdx}`];
   const isQuestionFailed = !!failedQuestions[`${currentTrial.id}-${activeQuestionIdx}`];
@@ -716,12 +741,6 @@ export default function VecnaDashboard() {
 
   const handleNextLevel = () => {
     sfx("click");
-    if (!isLevelAttempted(currentTrial.id, activeQuestionIdx)) {
-      setErrorMessage("COMPLETE CURRENT LEVEL BEFORE ADVANCING.");
-      sfx("err");
-      setTimeout(() => setErrorMessage(null), 2500);
-      return;
-    }
     if (activeQuestionIdx < totalQuestionsForTrial - 1) {
       setActiveQuestionIdx((i) => i + 1);
       setErrorMessage(null);
@@ -853,8 +872,7 @@ export default function VecnaDashboard() {
         position: "relative",
         height: "100vh",
         maxHeight: "100vh",
-        overflowY: viewMode === "stage" ? "auto" : "hidden",
-        overflowX: "hidden",
+        overflow: "hidden",
         background: "#080204",
         color: "#ffebee",
         fontFamily: '"Share Tech Mono", monospace',
@@ -864,15 +882,6 @@ export default function VecnaDashboard() {
         scrollbarColor: "#ff2d3a #120407",
       }}
     >
-      {viewMode === "stage" && (
-        <CinematicBackground
-          src="/upsidedown-bg.jpg"
-          particles="embers"
-          vignette="heavy"
-          overlayOpacity={0.82}
-        />
-      )}
-
       {/* ───────────────────────────────────────────────────────────────────
           TOP VECNA HEADER & CONTROLS
           ─────────────────────────────────────────────────────────────────── */}
@@ -1074,35 +1083,8 @@ export default function VecnaDashboard() {
           </button>
         </div>
 
-        {/* Right: Fullscreen + Exit Vecna */}
+        {/* Right: Logout */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <button
-            id="vecna-fullscreen-btn"
-            type="button"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
-            style={{
-              background: isFullscreen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
-              color: isFullscreen ? "#000000" : "#ffb3ba",
-              border: "1.5px solid #ff2d3a",
-              padding: "8px 14px",
-              borderRadius: "3px",
-              fontSize: "12px",
-              fontFamily: '"Share Tech Mono", monospace',
-              fontWeight: "bold",
-              letterSpacing: "0.15em",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <span style={{ fontSize: "12px" }}>{isFullscreen ? "✖" : "⛶"}</span>
-            <span>{isFullscreen ? "EXIT FS" : "FULLSCREEN"}</span>
-          </button>
-
           <button
             id="vecna-logout-btn"
             type="button"
@@ -1126,7 +1108,7 @@ export default function VecnaDashboard() {
             }}
           >
             <span style={{ fontSize: "11px", color: "#ff2d3a" }}>◆</span>
-            <span>EXIT VECNA</span>
+            <span>LOGOUT</span>
           </button>
         </div>
       </header>
@@ -1151,7 +1133,7 @@ export default function VecnaDashboard() {
               const cleared = isTrialCleared(trialId);
               setShowStageSummary(cleared);
               if (!cleared) {
-                setIsStoryDialogOpen(true);
+                openBriefingOnce(trialId);
               }
             }}
             onEnterTrial={(trialId) => {
@@ -1161,7 +1143,7 @@ export default function VecnaDashboard() {
               const cleared = isTrialCleared(trialId);
               setShowStageSummary(cleared);
               if (!cleared) {
-                setIsStoryDialogOpen(true);
+                openBriefingOnce(trialId);
               }
             }}
           />
@@ -1183,59 +1165,66 @@ export default function VecnaDashboard() {
           }}
         />
       ) : (
-        <main
+        <div
           style={{
             position: "relative",
             zIndex: 10,
-            maxWidth: "min(1600px, 98vw)",
             width: "100%",
-            margin: "0 auto",
-            padding: "20px 16px 140px 16px",
-            boxSizing: "border-box",
             flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            scrollbarWidth: "thin",
+            padding: 0,
+            margin: 0,
+            background: "#f4eedf",
+            backgroundImage:
+              "radial-gradient(#e4dac5 1px, transparent 1px), radial-gradient(#dcd0ba 1px, transparent 1px)",
+            backgroundSize: "20px 20px, 40px 40px",
+            backgroundPosition: "0 0, 20px 20px",
+            fontFamily: "'Courier New', Courier, monospace",
+            color: "#231e1a",
+            boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          {/* Minimal Sector Header & Level Pager Bar */}
-          <div
+          {/* THE PHYSICAL INCIDENT REPORT PAPER CONTAINER */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
             style={{
+              width: "100%",
+              maxWidth: "100%",
+              minHeight: "100%",
+              margin: 0,
+              background: "transparent",
+              border: "none",
+              borderRadius: 0,
+              boxShadow: "none",
+              padding: "clamp(10px, 1.6vw, 16px) clamp(14px, 3vw, 36px) 20px",
+              position: "relative",
+              boxSizing: "border-box",
+              flex: 1,
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "20px",
-              flexWrap: "wrap",
-              gap: "12px",
+              flexDirection: "column",
             }}
           >
-            {/* Active Sector Tag + Lore Replay Button */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => {
-                  sfx("click");
-                  setViewMode("board");
-                }}
-                style={{
-                  background: "rgba(20, 4, 8, 0.9)",
-                  border: "1.5px solid #ff2d3a",
-                  borderRadius: "3px",
-                  padding: "8px 16px",
-                  color: "#ff8a80",
-                  fontFamily: '"Share Tech Mono", monospace',
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  letterSpacing: "0.14em",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "7px",
-                  boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
-                }}
-              >
-                <span style={{ color: "#ff2d3a" }}>◈</span>
-                <span>TRIAL {currentTrial.id} // {currentTrial.shortName}</span>
-                <span style={{ fontSize: "10px", opacity: 0.8 }}>[◀ RETURN TO MAP]</span>
-              </button>
-
+            {/* BOX TOP CONTROLS: CASE BRIEFING & CROSS EXIT BUTTON */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+                paddingBottom: 10,
+                borderBottom: "1.5px dashed #c9bda4",
+                gap: 12,
+                position: "relative",
+                zIndex: 10,
+              }}
+            >
+              {/* Manila Case Briefing Button inside the box */}
               <button
                 type="button"
                 onClick={() => {
@@ -1243,23 +1232,465 @@ export default function VecnaDashboard() {
                   setIsStoryDialogOpen(true);
                 }}
                 style={{
-                  background: "transparent",
-                  border: "1px solid rgba(255, 45, 58, 0.4)",
-                  borderRadius: "3px",
-                  padding: "8px 14px",
-                  color: "rgba(255, 200, 200, 0.8)",
-                  fontFamily: '"Share Tech Mono", monospace',
-                  fontSize: "11.5px",
-                  letterSpacing: "0.12em",
+                  padding: "7px 14px",
+                  background: "#d4a759",
+                  color: "#1a0f05",
+                  border: "1.5px solid #946f29",
+                  borderRadius: 4,
+                  fontFamily: "'Benguiat Bold', serif",
+                  fontWeight: 800,
+                  fontSize: 11.5,
+                  letterSpacing: ".12em",
                   cursor: "pointer",
-                  display: "flex",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                  display: "inline-flex",
                   alignItems: "center",
-                  gap: "6px",
+                  gap: 6,
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#e5ba6a";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#d4a759";
+                }}
+                title="Open Sector Dossier & Briefing"
+              >
+                <span>CASE BRIEFING</span>
+              </button>
+
+              {/* Cross Exit Button inside the box */}
+              <button
+                type="button"
+                onClick={() => {
+                  sfx("click");
+                  setViewMode("board");
+                }}
+                style={{
+                  width: 32,
+                  height: 32,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "#24130d",
+                  color: "#ff945c",
+                  border: "1.5px solid #733c20",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
+                  transition: "all 0.15s ease",
+                }}
+                title="Return to Chapter Map"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#8f1218";
+                  e.currentTarget.style.color = "#ffffff";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#24130d";
+                  e.currentTarget.style.color = "#ff945c";
                 }}
               >
-                <span>👁</span>
-                <span>VECNA TRANSMISSION</span>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="2" y1="2" x2="12" y2="12" />
+                  <line x1="12" y1="2" x2="2" y2="12" />
+                </svg>
               </button>
+            </div>
+
+            {/* Coffee Mug Ring Stain Overlay */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: 24,
+                right: 32,
+                width: 80,
+                height: 80,
+                borderRadius: "50%",
+                border: "4px solid rgba(139, 90, 43, 0.12)",
+                boxShadow: "inset 0 0 10px rgba(139, 90, 43, 0.08)",
+                pointerEvents: "none",
+                transform: "rotate(24deg)",
+              }}
+            />
+
+            {/* MULTI-QUESTION PAGING INDEX TABS (DOCKET ITEMS) */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 18,
+                padding: "6px 12px",
+                background: "#e4dac5",
+                border: "1px solid #c9bda4",
+                borderRadius: 3,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flexWrap: "nowrap",
+                  overflowX: "auto",
+                  whiteSpace: "nowrap",
+                  paddingBottom: 4,
+                  scrollbarWidth: "thin",
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 900,
+                    color: "#544638",
+                    letterSpacing: ".1em",
+                    textTransform: "uppercase",
+                    marginRight: 6,
+                    flexShrink: 0,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  DOCKET ITEMS:
+                </span>
+                {Array.from({ length: totalQuestionsForTrial }).map((_, idx) => {
+                  const isCurrent = idx === activeQuestionIdx;
+                  const isSolved = !!solvedQuestions[`${currentTrial.id}-${idx}`];
+                  const isFailed = !!failedQuestions[`${currentTrial.id}-${idx}`];
+                  const isAttempt1Wrong = !!attemptedQuestions[`${currentTrial.id}-${idx}`] && !isSolved && !isFailed;
+                  const hasAnswer = Boolean(selectedAnswers[`${currentTrial.id}-${idx}`]);
+                  const isUnlocked = isLevelUnlocked(currentTrial.id, idx);
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        sfx("click");
+                        setActiveQuestionIdx(idx);
+                        setErrorMessage(null);
+                        setSuccessMessage(null);
+                      }}
+                      style={{
+                        padding: "4px 10px",
+                        background: isCurrent
+                          ? "#b81d24"
+                          : isSolved
+                          ? "#234d31"
+                          : isFailed
+                          ? "#3d1414"
+                          : isAttempt1Wrong
+                          ? "#4d3314"
+                          : hasAnswer
+                          ? "#2e2118"
+                          : "#ded6c4",
+                        color: isCurrent || isSolved || isFailed || isAttempt1Wrong || hasAnswer ? "#fff" : "#2a221a",
+                        border: isCurrent
+                          ? "1.5px solid #8f1218"
+                          : isSolved
+                          ? "1px solid #3d8053"
+                          : isFailed
+                          ? "1px solid #8f2d24"
+                          : isAttempt1Wrong
+                          ? "1px solid #d97706"
+                          : hasAnswer
+                          ? "1px solid #573a2e"
+                          : "1px solid #b5a48b",
+                        borderRadius: 2,
+                        fontSize: 11,
+                        fontWeight: 900,
+                        letterSpacing: ".08em",
+                        cursor: "pointer",
+                        opacity: 1,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        flexShrink: 0,
+                        whiteSpace: "nowrap",
+                        transition: "all 0.12s ease",
+                      }}
+                      title={`Item ${idx + 1}`}
+                    >
+                      <span>
+                        ITEM {idx + 1}
+                        {isSolved ? " [+20]" : isFailed ? " [0P]" : isAttempt1Wrong ? " [10P]" : ""}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* FORMAL INCIDENT DOCKET HEADER */}
+            <div style={{ marginBottom: 10, borderBottom: "1.5px solid #c9bda4", paddingBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: ".14em", color: "#8d6e63", textTransform: "uppercase" }}>
+                  FORM HPD-0{currentTrial.id}-83 // VECNA CONTROL PROTOCOL
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".12em", color: "#544638" }}>
+                  HAWKINS NATIONAL LABORATORY · STAGE {currentTrial.id}
+                </span>
+              </div>
+            </div>
+
+            {/* SPECIALIZED QUESTION FORMATION */}
+            <div key={`${currentTrial.id}-${activeQuestionIdx}`} style={{ marginBottom: 12 }}>
+              <QuestionTypeRenderer
+                key={`${currentTrial.id}-${activeQuestionIdx}`}
+                question={currentQuestion}
+                selectedAnswer={selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]}
+                onSelectOption={(optId) => handleSelectOption(currentTrial.id, activeQuestionIdx, optId)}
+                disabled={isQuestionSolved || isQuestionFailed || isSubmitting}
+                isVecnaMode={false}
+                questionIndex={activeQuestionIdx}
+                isVerified={isQuestionSolved}
+                isLocked={isQuestionFailed}
+              />
+
+              {/* IN-QUESTION SUBMIT & CHECK ACTION BAR */}
+              <div
+                style={{
+                  marginTop: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  padding: "8px 14px",
+                  background: isQuestionSolved
+                    ? "rgba(38, 166, 91, 0.12)"
+                    : isQuestionFailed
+                    ? "rgba(184, 29, 36, 0.15)"
+                    : attemptedQuestions[`${currentTrial.id}-${activeQuestionIdx}`] && !isQuestionSolved && !isQuestionFailed
+                    ? "rgba(217, 119, 6, 0.14)"
+                    : "rgba(0, 0, 0, 0.04)",
+                  border: isQuestionSolved
+                    ? "1.5px solid #27ae60"
+                    : isQuestionFailed
+                    ? "1.5px solid #b81d24"
+                    : attemptedQuestions[`${currentTrial.id}-${activeQuestionIdx}`] && !isQuestionSolved && !isQuestionFailed
+                    ? "1.5px solid #d97706"
+                    : "1.5px dashed #c9bda4",
+                  borderRadius: 3,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    style={{
+                      fontFamily: "'Courier New', Courier, monospace",
+                      fontSize: 12,
+                      fontWeight: 900,
+                      letterSpacing: ".08em",
+                      color: isQuestionSolved
+                        ? "#1b7a41"
+                        : isQuestionFailed
+                        ? "#9e151b"
+                        : attemptedQuestions[`${currentTrial.id}-${activeQuestionIdx}`] && !isQuestionSolved && !isQuestionFailed
+                        ? "#b45309"
+                        : "#544638",
+                    }}
+                  >
+                    {isQuestionSolved
+                      ? "VERIFIED [+20 PTS RECORDED]"
+                      : isQuestionFailed
+                      ? "TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS]"
+                      : attemptedQuestions[`${currentTrial.id}-${activeQuestionIdx}`] && !isQuestionSolved && !isQuestionFailed
+                      ? "INCORRECT · VALUE REDUCED TO 10 PTS (1 ATTEMPT REMAINING)"
+                      : selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]
+                      ? "ANSWER RECORDED [20 PTS]"
+                      : "SELECT ANSWER [20 PTS]"}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleVerifyCurrentQuestion}
+                  disabled={isSubmitting || !selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`] || isQuestionSolved || isQuestionFailed}
+                  style={{
+                    padding: "8px 20px",
+                    background: isSubmitting
+                      ? "#332219"
+                      : isQuestionSolved
+                      ? "#234d31"
+                      : isQuestionFailed
+                      ? "#2c1515"
+                      : attemptedQuestions[`${currentTrial.id}-${activeQuestionIdx}`] && !isQuestionSolved && !isQuestionFailed
+                      ? "#5c330a"
+                      : "#24130d",
+                    color: "#ffffff",
+                    border: isQuestionSolved
+                      ? "1.5px solid #3d8053"
+                      : isQuestionFailed
+                      ? "1.5px solid #7d2a2a"
+                      : attemptedQuestions[`${currentTrial.id}-${activeQuestionIdx}`] && !isQuestionSolved && !isQuestionFailed
+                      ? "1.5px solid #d97706"
+                      : "1.5px solid #8f2d24",
+                    borderRadius: 3,
+                    fontFamily: "'Benguiat Bold', serif",
+                    fontSize: 12,
+                    fontWeight: 900,
+                    letterSpacing: ".12em",
+                    cursor: isSubmitting || !selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`] || isQuestionSolved || isQuestionFailed ? "not-allowed" : "pointer",
+                    opacity: !selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`] || isQuestionSolved || isQuestionFailed ? 0.6 : 1,
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {isSubmitting
+                    ? "CHECKING..."
+                    : isQuestionSolved
+                    ? "VERIFIED"
+                    : isQuestionFailed
+                    ? "LOCKED"
+                    : attemptedQuestions[`${currentTrial.id}-${activeQuestionIdx}`] && !isQuestionSolved && !isQuestionFailed
+                    ? "CHECK ANSWER (10 PTS - RETRY)"
+                    : "CHECK ANSWER (20 PTS)"}
+                </button>
+              </div>
+            </div>
+
+            {/* FEEDBACK STATUS ALERTS */}
+            <AnimatePresence>
+              {errorMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  style={{
+                    marginBottom: 16,
+                    padding: "10px 14px",
+                    background: "rgba(184, 29, 36, 0.12)",
+                    border: "2px dashed #b81d24",
+                    color: "#9e151b",
+                    fontFamily: "'Benguiat Bold', serif",
+                    fontSize: "12px",
+                    fontWeight: "bold",
+                    letterSpacing: "0.1em",
+                    borderRadius: "3px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>[ALERT]</span>
+                  <span>{errorMessage}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {successMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  style={{
+                    marginBottom: 16,
+                    padding: "10px 14px",
+                    background: "rgba(38, 166, 91, 0.12)",
+                    border: "2px dashed #27ae60",
+                    color: "#1b7a41",
+                    fontFamily: "'Benguiat Bold', serif",
+                    fontSize: "12px",
+                    fontWeight: "bold",
+                    letterSpacing: "0.1em",
+                    borderRadius: "3px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>[VERIFIED]</span>
+                  <span>{successMessage}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* FOOTER NAVIGATION & SUBMIT BUTTONS */}
+            <div
+              style={{
+                borderTop: "2px solid #2a221a",
+                paddingTop: 12,
+                marginTop: "auto",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 10,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  disabled={activeQuestionIdx === 0}
+                  onClick={handlePrevLevel}
+                  style={{
+                    padding: "10px 16px",
+                    background: activeQuestionIdx === 0 ? "transparent" : "#e4dac4",
+                    color: activeQuestionIdx === 0 ? "#a89d8d" : "#2a221a",
+                    border: "1px solid #b5a48b",
+                    borderRadius: 3,
+                    fontFamily: "'Benguiat Bold', serif",
+                    fontSize: 12,
+                    letterSpacing: ".1em",
+                    cursor: activeQuestionIdx === 0 ? "not-allowed" : "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  PREVIOUS
+                </button>
+
+                {activeQuestionIdx < totalQuestionsForTrial - 1 ? (
+                  <button
+                    type="button"
+                    onClick={handleNextLevel}
+                    style={{
+                      padding: "10px 18px",
+                      background: "#2e2118",
+                      color: "#fff",
+                      border: "1px solid #573a2e",
+                      borderRadius: 3,
+                      fontFamily: "'Benguiat Bold', serif",
+                      fontSize: 12,
+                      letterSpacing: ".1em",
+                      cursor: "pointer",
+                      fontWeight: 800,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    NEXT
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx("boom");
+                      setShowStageSummary(true);
+                    }}
+                    style={{
+                      padding: "10px 18px",
+                      background: "#b81d24",
+                      color: "#fff",
+                      border: "1px solid #8f1218",
+                      borderRadius: 3,
+                      fontFamily: "'Benguiat Bold', serif",
+                      fontSize: 12,
+                      letterSpacing: ".1em",
+                      cursor: "pointer",
+                      fontWeight: 800,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    CHAPTER SUMMARY
+                  </button>
+                )}
+              </div>
 
               {isTrialCleared(currentTrial.id) && (
                 <button
@@ -1269,477 +1700,32 @@ export default function VecnaDashboard() {
                     setShowStageSummary(true);
                   }}
                   style={{
-                    background: "#b71c1c",
-                    border: "1.5px solid #ff3b30",
-                    borderRadius: "3px",
-                    padding: "8px 16px",
-                    color: "#ffffff",
-                    fontFamily: '"Share Tech Mono", monospace',
-                    fontSize: "12px",
+                    padding: "10px 24px",
+                    background: "#b81d24",
+                    color: "#fff",
+                    border: "1.5px solid #8f1218",
+                    borderRadius: 3,
+                    fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
                     fontWeight: 900,
-                    letterSpacing: "0.14em",
+                    fontSize: "clamp(13px, 1.4vw, 15px)",
+                    letterSpacing: ".14em",
+                    textTransform: "uppercase",
                     cursor: "pointer",
-                    display: "flex",
+                    boxShadow: "0 6px 16px rgba(184, 29, 36, 0.5), inset 0 0 10px rgba(0,0,0,0.25)",
+                    display: "inline-flex",
                     alignItems: "center",
-                    gap: "7px",
-                    boxShadow: "0 0 14px rgba(255, 45, 58, 0.5)",
+                    gap: 8,
                     transition: "all 0.15s ease",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#d32f2f")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "#b71c1c")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#941319")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#b81d24")}
                 >
-                  <span style={{ color: "#ffffff" }}>◈</span>
                   <span>SUBMIT STAGE DOSSIER</span>
                 </button>
               )}
             </div>
-
-            {/* Quick Level Navigator (Levels 1 to 10) */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                fontFamily: '"Share Tech Mono", monospace',
-                fontSize: "11.5px",
-                letterSpacing: "0.12em",
-              }}
-            >
-              <span style={{ color: "rgba(255, 180, 180, 0.7)", marginRight: "4px" }}>LEVEL:</span>
-              {Array.from({ length: 10 }).map((_, idx) => {
-                const isCurr = activeQuestionIdx === idx;
-                const isSolved = !!solvedQuestions[`${currentTrial.id}-${idx}`];
-                const isFailed = !!failedQuestions[`${currentTrial.id}-${idx}`];
-                const isUnlocked = isLevelUnlocked(currentTrial.id, idx);
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    disabled={!isUnlocked}
-                    onClick={() => {
-                      if (!isUnlocked) {
-                        sfx("err");
-                        setErrorMessage(`LEVEL ${idx + 1} LOCKED · COMPLETE PRECEDING LEVEL FIRST`);
-                        setTimeout(() => setErrorMessage(null), 2500);
-                        return;
-                      }
-                      sfx("click");
-                      setActiveQuestionIdx(idx);
-                      setErrorMessage(null);
-                      setSuccessMessage(null);
-                    }}
-                    style={{
-                      width: "28px",
-                      height: "28px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: "3px",
-                      border: isCurr
-                        ? "1.5px solid #ff2d3a"
-                        : isSolved
-                        ? "1px solid #81c784"
-                        : isFailed
-                        ? "1px solid #e57373"
-                        : isUnlocked
-                        ? "1px solid rgba(255, 45, 58, 0.35)"
-                        : "1px solid rgba(255, 45, 58, 0.15)",
-                      background: isCurr
-                        ? "#ff2d3a"
-                        : isSolved
-                        ? "rgba(129, 199, 132, 0.15)"
-                        : isFailed
-                        ? "rgba(229, 115, 115, 0.15)"
-                        : isUnlocked
-                        ? "rgba(15, 3, 6, 0.7)"
-                        : "rgba(10, 2, 4, 0.4)",
-                      color: isCurr ? "#000000" : isSolved ? "#81c784" : isFailed ? "#e57373" : isUnlocked ? "#ffb3ba" : "rgba(255, 179, 186, 0.3)",
-                      fontWeight: isCurr ? 900 : "normal",
-                      fontSize: "11px",
-                      cursor: isUnlocked ? "pointer" : "not-allowed",
-                      boxShadow: isCurr ? "0 0 10px #ff2d3a" : "none",
-                      opacity: isUnlocked ? 1 : 0.45,
-                      transition: "all 0.12s ease",
-                    }}
-                    title={!isUnlocked ? "Locked until preceding question is completed" : `Level ${idx + 1}`}
-                  >
-                    {isSolved ? "✔" : isFailed ? "✕" : idx + 1}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ─── MAIN CONSOLE CARD ─── */}
-          <motion.div
-            key={`${currentTrial.id}-${activeQuestionIdx}`}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            style={{
-              background: "#ece5d8",
-              color: "#1a1614",
-              border: "2px solid #3d352e",
-              borderRadius: "4px",
-              padding: "24px 28px",
-              boxShadow:
-                "0 20px 60px rgba(0, 0, 0, 0.9), inset 0 0 40px rgba(0, 0, 0, 0.08)",
-              position: "relative",
-              backgroundImage:
-                "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.4) 0%, rgba(220, 210, 195, 0.25) 100%)",
-            }}
-          >
-            {/* Top Red Classification Stripe */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                borderBottom: "2px solid #b71c1c",
-                paddingBottom: "8px",
-                marginBottom: "16px",
-                flexWrap: "wrap",
-                gap: "8px",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span
-                  style={{
-                    background: "#b71c1c",
-                    color: "#ffffff",
-                    fontSize: "10.5px",
-                    fontWeight: 900,
-                    letterSpacing: "0.18em",
-                    padding: "3px 8px",
-                    borderRadius: "2px",
-                    fontFamily: '"Share Tech Mono", monospace',
-                  }}
-                >
-                  CLASSIFIED // LEVEL {activeQuestionIdx + 1} OF {totalQuestionsForTrial}
-                </span>
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontFamily: '"Share Tech Mono", monospace',
-                    letterSpacing: "0.14em",
-                    color: "#5d4037",
-                    fontWeight: "bold",
-                  }}
-                >
-                  VECNA TELEMETRY NODE · STAGE {currentTrial.id}
-                </span>
-              </div>
-
-              {/* Solved / Locked Status Tag */}
-              <div>
-                {isQuestionSolved ? (
-                  <span
-                    style={{
-                      background: "rgba(46, 125, 50, 0.15)",
-                      border: "1.5px solid #2e7d32",
-                      color: "#1b5e20",
-                      padding: "3px 10px",
-                      borderRadius: "2px",
-                      fontSize: "11px",
-                      fontWeight: 900,
-                      letterSpacing: "0.14em",
-                    }}
-                  >
-                    ✔ SYSTEM OVERRIDDEN (+20 PTS)
-                  </span>
-                ) : isQuestionFailed ? (
-                  <span
-                    style={{
-                      background: "rgba(183, 28, 28, 0.15)",
-                      border: "1.5px solid #b71c1c",
-                      color: "#b71c1c",
-                      padding: "3px 10px",
-                      borderRadius: "2px",
-                      fontSize: "11px",
-                      fontWeight: 900,
-                      letterSpacing: "0.14em",
-                    }}
-                  >
-                    ✕ VECTOR COMPROMISED (0 PTS)
-                  </span>
-                ) : (
-                  <span
-                    style={{
-                      background: "rgba(230, 81, 0, 0.15)",
-                      border: "1.5px solid #e65100",
-                      color: "#bf360c",
-                      padding: "3px 10px",
-                      borderRadius: "2px",
-                      fontSize: "11px",
-                      fontWeight: "bold",
-                      letterSpacing: "0.14em",
-                    }}
-                  >
-                    ● READY FOR BREACH
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Dossier Header Info */}
-            <div style={{ marginBottom: "16px" }}>
-              <div
-                style={{
-                  fontSize: "11.5px",
-                  letterSpacing: "0.18em",
-                  color: "#8d6e63",
-                  fontFamily: '"Share Tech Mono", monospace',
-                  textTransform: "uppercase",
-                  fontWeight: "bold",
-                  marginBottom: "4px",
-                }}
-              >
-                {currentQuestion?.subHeader || currentTrial.subtitle}
-              </div>
-              <h2
-                style={{
-                  margin: "0 0 6px 0",
-                  fontFamily:
-                    '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", Georgia, serif',
-                  fontSize: "22px",
-                  fontWeight: 900,
-                  color: "#1a120b",
-                  letterSpacing: "0.06em",
-                  lineHeight: "1.3",
-                }}
-              >
-                {currentQuestion?.question}
-              </h2>
-            </div>
-
-            {/* Specialized Question Type Renderer */}
-            <div style={{ marginBottom: "20px" }}>
-              <QuestionTypeRenderer
-                question={currentQuestion}
-                selectedAnswer={selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]}
-                onSelectOption={(optId) => handleSelectOption(currentTrial.id, activeQuestionIdx, optId)}
-                disabled={isQuestionAttempted || isSubmitting}
-                isVecnaMode={true}
-              />
-            </div>
-
-            {/* Status / Feedback Alerts */}
-            {errorMessage && (
-              <div
-                style={{
-                  background: "rgba(183, 28, 28, 0.12)",
-                  border: "1.5px solid #b71c1c",
-                  color: "#b71c1c",
-                  padding: "10px 14px",
-                  borderRadius: "3px",
-                  fontFamily: '"Share Tech Mono", monospace',
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  letterSpacing: "0.1em",
-                  marginBottom: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <span>⚠</span>
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            {successMessage && (
-              <div
-                style={{
-                  background: "rgba(46, 125, 50, 0.12)",
-                  border: "1.5px solid #2e7d32",
-                  color: "#1b5e20",
-                  padding: "10px 14px",
-                  borderRadius: "3px",
-                  fontFamily: '"Share Tech Mono", monospace',
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  letterSpacing: "0.1em",
-                  marginBottom: "16px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <span>✔</span>
-                <span>{successMessage}</span>
-              </div>
-            )}
-
-            {/* Action Buttons Bar */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                borderTop: "1.5px solid rgba(61, 53, 46, 0.3)",
-                paddingTop: "16px",
-                flexWrap: "wrap",
-                gap: "12px",
-              }}
-            >
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  type="button"
-                  disabled={activeQuestionIdx === 0}
-                  onClick={handlePrevLevel}
-                  style={{
-                    background: activeQuestionIdx === 0 ? "rgba(0,0,0,0.06)" : "#2c221e",
-                    color: activeQuestionIdx === 0 ? "rgba(0,0,0,0.3)" : "#ffffff",
-                    border: "1px solid #2c221e",
-                    padding: "8px 16px",
-                    borderRadius: "3px",
-                    fontFamily: '"Share Tech Mono", monospace',
-                    fontSize: "11.5px",
-                    fontWeight: "bold",
-                    letterSpacing: "0.12em",
-                    cursor: activeQuestionIdx === 0 ? "not-allowed" : "pointer",
-                  }}
-                >
-                  ◀ PREV LEVEL
-                </button>
-
-                <button
-                  type="button"
-                  disabled={
-                    activeQuestionIdx >= totalQuestionsForTrial - 1 ||
-                    !isLevelAttempted(currentTrial.id, activeQuestionIdx)
-                  }
-                  onClick={handleNextLevel}
-                  style={{
-                    background:
-                      activeQuestionIdx >= totalQuestionsForTrial - 1 ||
-                      !isLevelAttempted(currentTrial.id, activeQuestionIdx)
-                        ? "rgba(0,0,0,0.06)"
-                        : "#2c221e",
-                    color:
-                      activeQuestionIdx >= totalQuestionsForTrial - 1 ||
-                      !isLevelAttempted(currentTrial.id, activeQuestionIdx)
-                        ? "rgba(0,0,0,0.3)"
-                        : "#ffffff",
-                    border: "1px solid #2c221e",
-                    padding: "8px 16px",
-                    borderRadius: "3px",
-                    fontFamily: '"Share Tech Mono", monospace',
-                    fontSize: "11.5px",
-                    fontWeight: "bold",
-                    letterSpacing: "0.12em",
-                    cursor:
-                      activeQuestionIdx >= totalQuestionsForTrial - 1 ||
-                      !isLevelAttempted(currentTrial.id, activeQuestionIdx)
-                        ? "not-allowed"
-                        : "pointer",
-                  }}
-                >
-                  NEXT LEVEL ▶
-                </button>
-              </div>
-
-              {/* Submit / Verification Button */}
-              <div>
-                {!isQuestionAttempted ? (
-                  <button
-                    type="button"
-                    disabled={isSubmitting || !selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]}
-                    onClick={handleVerifyCurrentQuestion}
-                    style={{
-                      background:
-                        isSubmitting || !selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]
-                          ? "rgba(183, 28, 28, 0.4)"
-                          : "#b71c1c",
-                      color: "#ffffff",
-                      border: "1.5px solid #b71c1c",
-                      padding: "10px 26px",
-                      borderRadius: "3px",
-                      fontFamily: '"Share Tech Mono", monospace',
-                      fontSize: "13px",
-                      fontWeight: 900,
-                      letterSpacing: "0.16em",
-                      cursor:
-                        isSubmitting || !selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]
-                          ? "not-allowed"
-                          : "pointer",
-                      boxShadow: "0 0 16px rgba(183, 28, 28, 0.45)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <span>{isSubmitting ? "CHECKING ANSWER..." : "CHECK ANSWER"}</span>
-                  </button>
-                ) : isQuestionSolved ? (
-                  <div
-                    style={{
-                      background: "#2e7d32",
-                      color: "#ffffff",
-                      padding: "8px 18px",
-                      borderRadius: "3px",
-                      fontFamily: '"Share Tech Mono", monospace',
-                      fontSize: "12px",
-                      fontWeight: 900,
-                      letterSpacing: "0.14em",
-                    }}
-                  >
-                    ✔ LEVEL SOLVED (+20 PTS RECORDED)
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      background: "#b71c1c",
-                      color: "#ffffff",
-                      padding: "8px 18px",
-                      borderRadius: "3px",
-                      fontFamily: '"Share Tech Mono", monospace',
-                      fontSize: "12px",
-                      fontWeight: 900,
-                      letterSpacing: "0.14em",
-                    }}
-                  >
-                    ✕ LEVEL RECORDED (0 PTS)
-                  </div>
-                )}
-
-                {isTrialCleared(currentTrial.id) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      sfx("boom");
-                      setShowStageSummary(true);
-                    }}
-                    style={{
-                      background: "#b71c1c",
-                      color: "#ffffff",
-                      border: "1.5px solid #ff3b30",
-                      padding: "9px 22px",
-                      borderRadius: "3px",
-                      fontFamily: '"Share Tech Mono", monospace',
-                      fontSize: "12px",
-                      fontWeight: 900,
-                      letterSpacing: "0.14em",
-                      cursor: "pointer",
-                      boxShadow: "0 0 16px rgba(255, 59, 48, 0.5)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      textTransform: "uppercase",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#d32f2f")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "#b71c1c")}
-                  >
-                    <span>◈</span>
-                    <span>SUBMIT STAGE DOSSIER · VIEW SUMMARY</span>
-                  </button>
-                )}
-              </div>
-            </div>
           </motion.div>
-        </main>
+        </div>
       )}
 
       {/* ───────────────────────────────────────────────────────────────────

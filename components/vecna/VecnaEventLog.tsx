@@ -73,7 +73,7 @@ export default function VecnaEventLog({ events }: VecnaEventLogProps) {
             color: "#ffffff",
           }}
         >
-          <span style={{ color: "#ff2d3a" }}>📄</span> RECENT EVENTS
+          <span style={{ color: "#ff2d3a", fontSize: "11px" }}>◆</span> RECENT EVENTS
         </div>
         <button
           onClick={() => {

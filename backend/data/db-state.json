@@ -2,8 +2,8 @@
   "teams": {
     "T01": {
       "id": "T01",
-      "teamName": "test team 1",
-      "leaderName": "apple",
+      "teamName": "Null Pointers",
+      "leaderName": "Aarav Sharma",
       "role": "PLAYER",
       "status": "ACTIVE",
       "totalScore": 0,
@@ -52,14 +52,14 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-21T13:54:05.095Z",
-      "updatedAt": "2026-10-25T08:59:34.289Z",
+      "updatedAt": "2026-10-25T10:54:22.638Z",
       "taskScores": {},
       "lastScoreAchievedAt": "2026-10-25T08:49:42.428Z"
     },
     "T02": {
       "id": "T02",
-      "teamName": "test team 2",
-      "leaderName": "mango",
+      "teamName": "Stack Smashers",
+      "leaderName": "Maya Lin",
       "role": "PLAYER",
       "status": "ACTIVE",
       "totalScore": 0,
@@ -113,13 +113,13 @@
     },
     "T03": {
       "id": "T03",
-      "teamName": "test team 3",
-      "leaderName": "peach",
-      "role": "VECNA",
+      "teamName": "Rift Runners",
+      "leaderName": "Lucas Sinclair",
+      "role": "PLAYER",
       "status": "ACTIVE",
-      "totalScore": 0,
+      "totalScore": 30,
       "breakdown": {
-        "tech": 0,
+        "tech": 30,
         "puzzle": 0,
         "speed": 0,
         "clue": 0,
@@ -129,7 +129,7 @@
       "penalty": 0,
       "startedAt": "2026-10-21T19:24:52.093Z",
       "finishedAt": null,
-      "lastSolvedAt": null,
+      "lastSolvedAt": "2026-10-25T10:50:45.659Z",
       "location": "town",
       "stage": "final",
       "storyProgress": 5,
@@ -163,14 +163,14 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-21T13:54:50.679Z",
-      "updatedAt": "2026-10-25T07:40:52.443Z",
+      "updatedAt": "2026-10-25T10:53:11.524Z",
       "taskScores": {},
-      "lastScoreAchievedAt": "2026-10-25T07:39:01.185Z"
+      "lastScoreAchievedAt": "2026-10-25T10:50:45.659Z"
     },
     "T04": {
       "id": "T04",
-      "teamName": "Test Squad 1792591287943",
-      "leaderName": "Test Captain",
+      "teamName": "Byte Byters",
+      "leaderName": "Dustin Henderson",
       "role": "PLAYER",
       "status": "ACTIVE",
       "totalScore": 0,
@@ -224,8 +224,8 @@
     },
     "T05": {
       "id": "T05",
-      "teamName": "Alpha Squad 1792591289197",
-      "leaderName": "Alice Cooper",
+      "teamName": "Shadow Walkers",
+      "leaderName": "Mike Wheeler",
       "role": "PLAYER",
       "status": "ACTIVE",
       "totalScore": 0,
@@ -279,8 +279,8 @@
     },
     "T06": {
       "id": "T06",
-      "teamName": "Beta Squad 1792591289197",
-      "leaderName": "Bob Dylan",
+      "teamName": "Hellfire Club",
+      "leaderName": "Eddie Munson",
       "role": "PLAYER",
       "status": "ACTIVE",
       "totalScore": 0,
@@ -389,8 +389,8 @@
     },
     "T08": {
       "id": "T08",
-      "teamName": "Test Squad 1792591484083",
-      "leaderName": "Test Captain",
+      "teamName": "Mind Flayers",
+      "leaderName": "Max Mayfield",
       "role": "PLAYER",
       "status": "ACTIVE",
       "totalScore": 0,
@@ -2929,6 +2929,529 @@
       "createdAt": "2026-10-25T06:08:24.893Z",
       "updatedAt": "2026-10-25T06:08:24.893Z",
       "taskScores": {}
+    },
+    "OLD-T01": {
+      "id": "OLD-T01",
+      "teamName": "test team 1",
+      "leaderName": "apple",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 70,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 70,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T19:24:06.457Z",
+      "finishedAt": null,
+      "lastSolvedAt": "2026-10-25T11:10:23.352Z",
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 100,
+      "completedTasks": [
+        "ch1-q1",
+        "ch1-q2",
+        "ch1-q3",
+        "ch1-q4",
+        "ch1-q5",
+        "ch1-q6",
+        "ch1-q7",
+        "ch1-q8",
+        "ch1-q9",
+        "ch1-q10",
+        "ch1-quiz"
+      ],
+      "solvedChapters": [
+        1
+      ],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T13:54:05.095Z",
+      "updatedAt": "2026-10-25T11:14:21.288Z",
+      "taskScores": {
+        "ch1-q1": 10,
+        "ch1-q2": 20,
+        "ch1-q3": 10,
+        "ch1-q4": 10,
+        "ch1-q5": 0,
+        "ch1-q6": 0,
+        "ch1-q7": 0,
+        "ch1-q8": 10,
+        "ch1-q9": 0,
+        "ch1-q10": 10,
+        "ch1-quiz": 0
+      },
+      "lastScoreAchievedAt": "2026-10-25T11:10:23.310Z"
+    },
+    "OLD-T02": {
+      "id": "OLD-T02",
+      "teamName": "test team 2",
+      "leaderName": "mango",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T19:24:34.623Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T13:54:33.235Z",
+      "updatedAt": "2026-10-24T18:15:44.815Z",
+      "taskScores": {}
+    },
+    "OLD-T03": {
+      "id": "OLD-T03",
+      "teamName": "test team 3",
+      "leaderName": "peach",
+      "role": "VECNA",
+      "status": "ACTIVE",
+      "totalScore": 260,
+      "breakdown": {
+        "tech": 260,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T19:24:52.093Z",
+      "finishedAt": null,
+      "lastSolvedAt": "2026-10-25T12:01:46.704Z",
+      "location": "town",
+      "stage": "final",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T13:54:50.679Z",
+      "updatedAt": "2026-10-25T12:16:34.747Z",
+      "taskScores": {},
+      "lastScoreAchievedAt": "2026-10-25T12:01:46.704Z"
+    },
+    "OLD-T04": {
+      "id": "OLD-T04",
+      "teamName": "Test Squad 1792591287943",
+      "leaderName": "Test Captain",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T19:31:27.957Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T14:01:26.542Z",
+      "updatedAt": "2026-10-21T14:35:57.676Z",
+      "taskScores": {}
+    },
+    "OLD-T05": {
+      "id": "OLD-T05",
+      "teamName": "Alpha Squad 1792591289197",
+      "leaderName": "Alice Cooper",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T19:31:29.561Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 11,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T14:01:28.148Z",
+      "updatedAt": "2026-10-22T05:29:57.556Z",
+      "taskScores": {}
+    },
+    "OLD-T06": {
+      "id": "OLD-T06",
+      "teamName": "Beta Squad 1792591289197",
+      "leaderName": "Bob Dylan",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T19:31:30.286Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T14:01:28.874Z",
+      "updatedAt": "2026-10-21T19:31:30.293Z",
+      "taskScores": {}
+    },
+    "T07": {
+      "id": "T07",
+      "teamName": "Hawkins AV Club",
+      "leaderName": "Will Byers",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": null,
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "town": true,
+        "policeStation": true,
+        "byersHouse": true,
+        "radioTower": true,
+        "lab": false,
+        "forest": false,
+        "gate": false,
+        "upsidedown": false,
+        "mind": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-25T10:55:06.859Z",
+      "updatedAt": "2026-10-25T10:55:06.860Z",
+      "taskScores": {}
+    },
+    "OLD-T08": {
+      "id": "OLD-T08",
+      "teamName": "Test Squad 1792591484083",
+      "leaderName": "Test Captain",
+      "role": "PLAYER",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": "2026-10-21T19:34:44.089Z",
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "byersHouse": true,
+        "forest": false,
+        "gate": false,
+        "lab": false,
+        "mind": false,
+        "policeStation": true,
+        "radioTower": true,
+        "town": true,
+        "upsidedown": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-21T14:04:42.686Z",
+      "updatedAt": "2026-10-21T14:35:57.676Z",
+      "taskScores": {}
+    },
+    "VECNA-001": {
+      "id": "VECNA-001",
+      "teamName": "Vecna",
+      "leaderName": "Henry Creel",
+      "role": "VECNA",
+      "status": "ACTIVE",
+      "totalScore": 0,
+      "breakdown": {
+        "tech": 0,
+        "puzzle": 0,
+        "speed": 0,
+        "clue": 0,
+        "story": 0,
+        "teamwork": 0
+      },
+      "penalty": 0,
+      "startedAt": null,
+      "finishedAt": null,
+      "lastSolvedAt": null,
+      "location": "town",
+      "stage": "hawkins",
+      "storyProgress": 5,
+      "completedTasks": [],
+      "solvedChapters": [],
+      "unlockedLocations": {
+        "town": true,
+        "policeStation": true,
+        "byersHouse": true,
+        "radioTower": true,
+        "lab": false,
+        "forest": false,
+        "gate": false,
+        "upsidedown": false,
+        "mind": false
+      },
+      "radiometerPins": [
+        "-",
+        "-",
+        "-",
+        "-",
+        "-"
+      ],
+      "radiometerSolved": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "radiometerCodeSolved": false,
+      "unlockedHints": {},
+      "createdAt": "2026-10-25T10:55:06.860Z",
+      "updatedAt": "2026-10-25T10:55:06.860Z",
+      "taskScores": {}
     }
   },
   "chapters": [
@@ -4776,8 +5299,270 @@
     }
   ],
   "activeSabotages": {},
-  "vecnaProgress": {},
-  "playerSubmissions": {},
+  "vecnaProgress": {
+    "T03": {
+      "1-0": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "submittedAt": "2026-10-25T10:50:28.876Z"
+      },
+      "1-1": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T10:50:45.655Z"
+      }
+    },
+    "OLD-T03": {
+      "1-0": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "B",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T11:30:32.430Z"
+      },
+      "1-1": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T11:30:36.720Z"
+      },
+      "1-2": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "D",
+        "attemptNumber": 2,
+        "submittedAt": "2026-10-25T11:30:45.051Z"
+      },
+      "1-3": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T11:30:48.876Z"
+      },
+      "1-4": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "C",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T11:30:53.068Z"
+      },
+      "1-5": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "submittedAt": "2026-10-25T11:30:59.448Z"
+      },
+      "1-6": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "submittedAt": "2026-10-25T11:31:05.993Z"
+      },
+      "1-7": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "submittedAt": "2026-10-25T11:31:20.796Z"
+      },
+      "1-8": {
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "C",
+        "attemptNumber": 2,
+        "submittedAt": "2026-10-25T11:31:29.518Z"
+      },
+      "1-9": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "B",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T11:31:35.138Z"
+      },
+      "2-0": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "__WRONG_CONNECTION__",
+        "attemptNumber": 2,
+        "submittedAt": "2026-10-25T11:58:22.504Z"
+      },
+      "2-1": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "__WRONG_CONNECTION__",
+        "attemptNumber": 2,
+        "submittedAt": "2026-10-25T12:01:02.654Z"
+      },
+      "2-2": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T12:01:09.058Z"
+      },
+      "2-3": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T12:01:14.837Z"
+      },
+      "2-4": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T12:01:21.390Z"
+      },
+      "2-5": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T12:01:25.845Z"
+      },
+      "2-6": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T12:01:35.495Z"
+      },
+      "2-7": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T12:01:39.683Z"
+      },
+      "2-8": {
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "submittedAt": "2026-10-25T12:01:46.702Z"
+      },
+      "2-9": {
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "{\"1\":\"c\",\"2\":\"e\",\"3\":\"a\",\"4\":\"b\",\"COLUMN B (MATCH TARGETS)\\r\\n\":\"e\"}",
+        "attemptNumber": 2,
+        "submittedAt": "2026-10-25T12:01:54.351Z"
+      }
+    }
+  },
+  "playerSubmissions": {
+    "OLD-T01": {
+      "ch1-q1": {
+        "roundId": 1,
+        "questionCode": "ch1-q1",
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:08:21.846Z"
+      },
+      "ch1-q2": {
+        "roundId": 1,
+        "questionCode": "ch1-q2",
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:08:32.282Z"
+      },
+      "ch1-q3": {
+        "roundId": 1,
+        "questionCode": "ch1-q3",
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:09:38.130Z"
+      },
+      "ch1-q4": {
+        "roundId": 1,
+        "questionCode": "ch1-q4",
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:09:43.147Z"
+      },
+      "ch1-q5": {
+        "roundId": 1,
+        "questionCode": "ch1-q5",
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:09:46.315Z"
+      },
+      "ch1-q6": {
+        "roundId": 1,
+        "questionCode": "ch1-q6",
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:09:51.972Z"
+      },
+      "ch1-q7": {
+        "roundId": 1,
+        "questionCode": "ch1-q7",
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:09:57.311Z"
+      },
+      "ch1-q8": {
+        "roundId": 1,
+        "questionCode": "ch1-q8",
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:10:04.984Z"
+      },
+      "ch1-q9": {
+        "roundId": 1,
+        "questionCode": "ch1-q9",
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:10:09.863Z"
+      },
+      "ch1-q10": {
+        "roundId": 1,
+        "questionCode": "ch1-q10",
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:10:15.709Z"
+      }
+    }
+  },
   "eventHistory": [
     {
       "eventId": 1,
@@ -17797,6 +18582,9 @@
     }
   ],
   "unlockedStages": [
-    1
+    1,
+    2,
+    3,
+    4
   ]
 }
