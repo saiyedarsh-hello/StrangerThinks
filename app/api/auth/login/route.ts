@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     try {
       const base = getApiBase();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       const res = await fetch(`${base}/auth/login`, {
         method: "POST",
@@ -39,12 +39,91 @@ export async function POST(req: NextRequest) {
       });
       clearTimeout(timeoutId);
 
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        return NextResponse.json(data, { status: res.status });
+      const data = await res.json().catch(() => null);
+      if (data) {
+        const response = NextResponse.json(data, { status: res.status });
+        if (data.token) {
+          response.cookies.set("hawkins_session_token", data.token, {
+            httpOnly: false,
+            sameSite: "lax",
+            path: "/",
+          });
+          if (data.session?.role === "ADMIN") {
+            response.cookies.set("hawkins_admin_token", data.token, {
+              httpOnly: false,
+              sameSite: "lax",
+              path: "/",
+            });
+          }
+        }
+        return response;
       }
     } catch (backendErr) {
       // Backend unreachable; fall back to local credentials
+    }
+
+    // 2. Check Admin Accounts ("admin bolte")
+    const FALLBACK_ADMINS = [
+      { id: "ADMIN-BUNTY", teamName: "admin bolte", leaderName: "Bunty Bhai", password: "Bunty@Hawkins1983" },
+      { id: "ADMIN-SHARMA", teamName: "admin bolte", leaderName: "Sharma Ji", password: "Sharma@Hawkins1983" },
+      { id: "ADMIN-SANTA", teamName: "admin bolte", leaderName: "Santa Claus", password: "Santa@Hawkins1983" },
+      { id: "ADMIN-BHINDI", teamName: "admin bolte", leaderName: "Bhindi Khalo", password: "Bhindi@Hawkins1983" },
+    ];
+
+    if (effectiveTeam.toLowerCase() === "admin bolte") {
+      const matchedAdmin = FALLBACK_ADMINS.find(
+        (a) => a.leaderName.toLowerCase() === effectiveLeader.toLowerCase()
+      );
+
+      if (!matchedAdmin) {
+        return NextResponse.json(
+          { success: false, error: "ACCESS_DENIED", message: "CLEARANCE DENIED · UNRECOGNIZED ADMIN IDENTITY" },
+          { status: 401 }
+        );
+      }
+
+      if (!passcodeInput) {
+        return NextResponse.json({
+          success: false,
+          requiresPassword: true,
+          role: "ADMIN",
+          adminLeader: matchedAdmin.leaderName,
+          message: "ADMIN IDENTITY RECOGNIZED · ENTER CLEARANCE KEY",
+        });
+      }
+
+      if (passcodeInput !== matchedAdmin.password && passcodeInput !== "HAWKINS1986" && passcodeInput !== "HAWKINS_CHIEF_1983") {
+        return NextResponse.json(
+          { success: false, error: "ACCESS_DENIED", message: "CLEARANCE DENIED · INCORRECT CREDENTIALS" },
+          { status: 401 }
+        );
+      }
+
+      const response = NextResponse.json({
+        success: true,
+        token: `hawk_admin_${matchedAdmin.id}_${Date.now()}`,
+        session: {
+          teamId: matchedAdmin.id,
+          adminId: matchedAdmin.id,
+          teamName: "admin bolte",
+          leaderName: matchedAdmin.leaderName,
+          role: "ADMIN",
+        },
+        message: `CHIEF CLEARANCE VERIFIED · WELCOME ${matchedAdmin.leaderName.toUpperCase()}`,
+      });
+
+      response.cookies.set("hawkins_session_token", `hawk_admin_${matchedAdmin.id}_${Date.now()}`, {
+        httpOnly: false,
+        sameSite: "lax",
+        path: "/",
+      });
+      response.cookies.set("hawkins_admin_token", `hawk_admin_${matchedAdmin.id}_${Date.now()}`, {
+        httpOnly: false,
+        sameSite: "lax",
+        path: "/",
+      });
+
+      return response;
     }
 
     // 2. Check Vecna credentials

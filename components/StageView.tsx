@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
+import { subscribe } from "@/lib/realtime";
 import VecnaCutscene from "./VecnaCutscene";
 import ChapterManager, { ChapterId } from "./chapters/ChapterManager";
 import InvestigationBoard from "./InvestigationBoard";
@@ -23,8 +24,22 @@ export default function StageView() {
       } catch {}
     };
     fetchStatus();
+
+    const unsub = subscribe((m: any) => {
+      if (m.type === "event_state" && m.status) {
+        setEventStatus(m.status);
+      }
+      if (m.type === "event_reset") {
+        setEventStatus("active");
+      }
+      if (m.type === "event_ended") {
+        setEventStatus("ended");
+      }
+    });
+
     return () => {
       active = false;
+      unsub();
     };
   }, []);
 
@@ -40,7 +55,7 @@ export default function StageView() {
     setViewMode("location");
   };
 
-  if (eventStatus === "not_started") {
+  if (eventStatus === "not_started" || eventStatus === "ended") {
     return <EventStandby onEventStarted={() => setEventStatus("active")} />;
   }
 

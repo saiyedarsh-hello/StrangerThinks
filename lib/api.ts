@@ -70,7 +70,7 @@ export async function loginOnServer(
 ): Promise<LoginResponse> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1000);
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -78,8 +78,9 @@ export async function loginOnServer(
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
-    if (res.ok) {
-      return await res.json();
+    const data = await res.json().catch(() => null);
+    if (data) {
+      return data;
     }
   } catch (err) {}
 
@@ -285,8 +286,9 @@ export async function validateMasterKeypadOnServer(code: string): Promise<Backen
  */
 export async function unlockHintOnServer(
   hintKey: string,
-  teamId?: string
-): Promise<{ success: boolean; hintKey?: string; cost?: number; error?: string; message?: string }> {
+  teamId?: string,
+  cost = 5
+): Promise<{ success: boolean; hintKey?: string; cost?: number; currentScore?: number; error?: string; message?: string }> {
   try {
     let token = "";
     try {
@@ -303,7 +305,7 @@ export async function unlockHintOnServer(
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ hintKey, teamId }),
+      body: JSON.stringify({ hintKey, teamId, cost }),
     });
 
     return await res.json();

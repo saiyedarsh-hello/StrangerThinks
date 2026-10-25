@@ -2111,6 +2111,25 @@ export default function QuestionTypeRenderer({
           >
             {question.options.map((opt) => {
               const isSelected = selectedAnswer === opt.id;
+              // Determine verified correct / wrong-locked states for coloring
+              const isThisCorrect = showVerifiedState && isSelected &&
+                opt.id.toUpperCase() === (question.correctAnswerId || "").toUpperCase();
+              const isThisWrongLocked = disabled && isSelected && !isThisCorrect;
+
+              // Border/bg/stamp based on outcome
+              const borderColor = isThisCorrect ? "#27ae60"
+                : isThisWrongLocked ? "#b71c1c"
+                : isSelected ? paperAccent : "#d4c4a8";
+              const bgColor = isThisCorrect ? "rgba(39,174,96,0.12)"
+                : isThisWrongLocked ? "rgba(183,28,28,0.12)"
+                : isSelected
+                  ? (isVecnaMode ? "rgba(184,29,36,0.15)" : "rgba(220,180,130,0.35)")
+                  : "rgba(255,255,255,0.75)";
+              const checkBg = isThisCorrect ? "#27ae60"
+                : isThisWrongLocked ? "#b71c1c"
+                : isSelected ? paperAccent : "#faf6ee";
+              const checkLabel = isThisCorrect ? "✔" : isThisWrongLocked ? "✖" : isSelected ? "◉" : opt.id;
+
               return (
                 <button
                   key={opt.id}
@@ -2126,21 +2145,19 @@ export default function QuestionTypeRenderer({
                     alignItems: "flex-start",
                     gap: "14px",
                     padding: "14px 18px",
-                    background: isSelected
-                      ? isVecnaMode
-                        ? "rgba(184, 29, 36, 0.15)"
-                        : "rgba(220, 180, 130, 0.35)"
-                      : "rgba(255, 255, 255, 0.75)",
-                    border: isSelected
-                      ? `2px solid ${paperAccent}`
-                      : "1.5px solid #d4c4a8",
+                    background: bgColor,
+                    border: `2px solid ${borderColor}`,
                     borderRadius: "4px",
                     cursor: disabled ? "not-allowed" : "pointer",
-                    opacity: disabled ? 0.8 : 1,
+                    opacity: disabled ? 0.85 : 1,
                     textAlign: "left",
                     width: "100%",
                     boxSizing: "border-box",
-                    boxShadow: isSelected
+                    boxShadow: isThisCorrect
+                      ? "0 0 12px rgba(39,174,96,0.25)"
+                      : isThisWrongLocked
+                      ? "0 0 8px rgba(183,28,28,0.2)"
+                      : isSelected
                       ? "0 4px 12px rgba(0,0,0,0.12)"
                       : "0 1px 4px rgba(0,0,0,0.04)",
                     transition: "all 0.15s ease",
@@ -2154,8 +2171,8 @@ export default function QuestionTypeRenderer({
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      background: isSelected ? paperAccent : "#faf6ee",
-                      border: `1.5px solid ${isSelected ? paperAccent : "#8c7b68"}`,
+                      background: checkBg,
+                      border: `1.5px solid ${isSelected ? borderColor : "#8c7b68"}`,
                       color: isSelected ? "#fff" : "#4a3c2c",
                       fontFamily: "'Courier New', monospace",
                       fontSize: "12px",
@@ -2165,7 +2182,7 @@ export default function QuestionTypeRenderer({
                       marginTop: "1px",
                     }}
                   >
-                    {isSelected ? "X" : opt.id}
+                    {checkLabel}
                   </span>
 
                   {/* Option Content */}
@@ -2174,7 +2191,7 @@ export default function QuestionTypeRenderer({
                       style={{
                         fontFamily: "'Courier New', Courier, monospace",
                         fontSize: "clamp(12.5px, 1.25vw, 14.5px)",
-                        color: isSelected ? "#000" : textColor,
+                        color: isThisCorrect ? "#1a5e36" : isThisWrongLocked ? "#7b1010" : isSelected ? "#000" : textColor,
                         fontWeight: isSelected ? 800 : 600,
                         lineHeight: 1.45,
                         wordBreak: "break-word",

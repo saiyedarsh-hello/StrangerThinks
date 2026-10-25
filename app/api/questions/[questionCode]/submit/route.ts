@@ -11,7 +11,7 @@ function evaluateLocally(questionCode: string, answer: string, attemptNumber: nu
       if (qId === normalizedCode || codeAlias === normalizedCode) {
         const isCorrect = (q.correctAnswerId || "").trim().toLowerCase() === answer.trim().toLowerCase();
         if (isCorrect) {
-          const pointsAwarded = attemptNumber <= 1 ? 10 : 5;
+          const pointsAwarded = attemptNumber <= 1 ? 20 : 10;
           return {
             success: true,
             isCorrect: true,
@@ -20,8 +20,8 @@ function evaluateLocally(questionCode: string, answer: string, attemptNumber: nu
             attempts: attemptNumber,
             message:
               attemptNumber <= 1
-                ? "TELEMETRY VERIFIED · DOCKET ITEM ACCURATE [+10 PTS]"
-                : "TELEMETRY VERIFIED ON SECOND ATTEMPT [+5 PTS]",
+                ? "TELEMETRY VERIFIED · DOCKET ITEM ACCURATE [+20 PTS]"
+                : "TELEMETRY VERIFIED ON SECOND ATTEMPT [+10 PTS]",
             questionId: q.id,
           };
         } else {
@@ -30,13 +30,13 @@ function evaluateLocally(questionCode: string, answer: string, attemptNumber: nu
             success: true,
             isCorrect: false,
             isLocked,
-            availablePoints: isLocked ? 0 : 5,
+            availablePoints: isLocked ? 0 : 10,
             pointsAwarded: 0,
             attempts: attemptNumber,
             attemptsRemaining: isLocked ? 0 : 1,
             message: isLocked
               ? "TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS]"
-              : "EVIDENCE DISCREPANCY DETECTED · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)",
+              : "EVIDENCE DISCREPANCY DETECTED · VALUE REDUCED TO 10 PTS (1 ATTEMPT REMAINING)",
             questionId: q.id,
           };
         }

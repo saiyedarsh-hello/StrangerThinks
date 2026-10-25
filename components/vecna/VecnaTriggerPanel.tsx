@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useMemo, useEffect } from "react";
 import { sfx } from "@/lib/audio";
-import { MAP_LOCATIONS } from "./VecnaTacticalMap";
 
 export type TriggerActionKind = "CORRUPT" | "LOCK";
 

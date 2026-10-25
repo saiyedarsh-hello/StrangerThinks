@@ -12,6 +12,8 @@ export interface SubmitAnswerResult {
   currentScore: number;
   isLocked: boolean;
   message: string;
+  attemptsRemaining?: number;
+  availablePoints?: number;
   error?: string;
   idempotentRecovery?: boolean;
 }
@@ -168,6 +170,34 @@ export class QuestionService {
       };
     }
 
+    // Stage Locking Enforcement (Condition A: prior stage cleared, Condition B: admin authorization)
+    const stageMatch = questionCode.match(/^(?:ch|stage)[\-_]?(\d+)/i);
+    if (stageMatch) {
+      const stageNumber = parseInt(stageMatch[1], 10);
+      if (!EventControlService.isStageUnlocked(stageNumber)) {
+        return {
+          success: false,
+          isCorrect: false,
+          pointsAwarded: 0,
+          currentScore: 0,
+          isLocked: false,
+          message: `Stage ${stageNumber} is locked pending command authorization.`,
+          error: "STAGE_LOCKED",
+        };
+      }
+      if (stageNumber > 1 && !db.isTeamStageCleared(teamId, stageNumber - 1)) {
+        return {
+          success: false,
+          isCorrect: false,
+          pointsAwarded: 0,
+          currentScore: 0,
+          isLocked: false,
+          message: `Stage ${stageNumber} is locked. You must clear Stage ${stageNumber - 1} first.`,
+          error: "STAGE_LOCKED",
+        };
+      }
+    }
+
     const pool = tidb.pool;
 
     if (pool) {
@@ -209,23 +239,36 @@ export class QuestionService {
           [teamId, questionId]
         );
 
-        if (Array.isArray(existingSubs) && existingSubs.length > 0) {
-          const sub = existingSubs[0];
-          const [scoreRows] = await pool.query<any[]>(
-            "SELECT COALESCE(SUM(points_delta), 0) AS total FROM score_ledger WHERE team_id = ?",
-            [teamId]
-          );
-          const currentScore = Number(scoreRows?.[0]?.total || 0);
+        let isSecondAttempt = attemptNumber >= 2;
+        let priorAttemptRow: any = null;
 
-          return {
-            success: true,
-            isCorrect: Boolean(sub.is_correct),
-            pointsAwarded: Number(sub.points_awarded),
-            currentScore,
-            isLocked: true,
-            idempotentRecovery: true,
-            message: "Question already attempted and locked.",
-          };
+        if (Array.isArray(existingSubs) && existingSubs.length > 0) {
+          priorAttemptRow = existingSubs[0];
+          const isPriorCorrect = Boolean(priorAttemptRow.is_correct);
+          const priorAttemptsCount = Number(priorAttemptRow.attempt_number || 1);
+
+          if (isPriorCorrect || priorAttemptsCount >= 2) {
+            const [scoreRows] = await pool.query<any[]>(
+              "SELECT COALESCE(SUM(points_delta), 0) AS total FROM score_ledger WHERE team_id = ?",
+              [teamId]
+            );
+            const currentScore = Number(scoreRows?.[0]?.total || 0);
+
+            return {
+              success: true,
+              isCorrect: isPriorCorrect,
+              pointsAwarded: Number(priorAttemptRow.points_awarded || 0),
+              currentScore,
+              isLocked: true,
+              idempotentRecovery: true,
+              message: isPriorCorrect
+                ? "Question already solved and locked."
+                : "Terminal locked: 2/2 attempts exhausted (0 PTS).",
+            };
+          }
+
+          // Prior attempt was attempt 1 and failed -> this submission is Attempt 2!
+          isSecondAttempt = true;
         }
 
         // Find fallback answer from vault if needed
@@ -246,11 +289,20 @@ export class QuestionService {
           submittedAnswer,
           expectedFallbackAnswer
         );
-        const pointsAwarded = isCorrect ? (attemptNumber <= 1 ? questionPoints : Math.round(questionPoints / 2)) : 0;
-        const isLocked = isCorrect || attemptNumber >= 2;
+        const pointsAwarded = isCorrect ? (isSecondAttempt ? 10 : 20) : 0;
+        const isLocked = isCorrect || isSecondAttempt;
 
         if (!isLocked) {
-          // First attempt failed: deduct value to 5 PTS, allow one more attempt
+          // Attempt 1 failed: record Attempt 1 in TiDB and memory, allow Attempt 2 for 10 PTS
+          await pool.query(
+            `INSERT INTO question_submissions (team_id, round_id, question_id, submitted_answer, is_correct, points_awarded, attempt_number, submitted_at)
+             VALUES (?, ?, ?, ?, 0, 0, 1, NOW(3))
+             ON DUPLICATE KEY UPDATE submitted_answer = VALUES(submitted_answer), is_correct = 0, points_awarded = 0, attempt_number = 1, submitted_at = NOW(3)`,
+            [teamId, roundId, questionId, submittedAnswer]
+          ).catch((e: any) => console.warn("[SUBMISSION ATT 1 WARN]", e.message));
+
+          db.recordPlayerAttempt(teamId, roundId, questionCode, "attempted", 0, submittedAnswer, 1);
+
           const [scoreRows] = await pool.query<any[]>(
             "SELECT COALESCE(SUM(points_delta), 0) AS total FROM score_ledger WHERE team_id = ?",
             [teamId]
@@ -262,22 +314,33 @@ export class QuestionService {
             pointsAwarded: 0,
             currentScore,
             isLocked: false,
-            message: "EVIDENCE DISCREPANCY DETECTED · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)",
+            message: "EVIDENCE DISCREPANCY DETECTED · VALUE REDUCED TO 10 PTS (1 ATTEMPT REMAINING)",
           };
         }
 
         // Use atomic transaction for submission and ledger
         const conn = await pool.getConnection();
+        let submissionId: any = priorAttemptRow?.submission_id || null;
         try {
           await conn.beginTransaction();
 
-          // 1. Insert immutable submission record (permanently locks question due to unique constraint)
-          const [subRes]: any = await conn.query(
-            `INSERT INTO question_submissions (team_id, round_id, question_id, submitted_answer, is_correct, points_awarded, submitted_at)
-             VALUES (?, ?, ?, ?, ?, ?, NOW(3))`,
-            [teamId, roundId, questionId, submittedAnswer, isCorrect ? 1 : 0, pointsAwarded]
-          );
-          const submissionId = subRes.insertId;
+          if (isSecondAttempt) {
+            await conn.query(
+              `UPDATE question_submissions 
+               SET submitted_answer = ?, is_correct = ?, points_awarded = ?, attempt_number = 2, submitted_at = NOW(3)
+               WHERE team_id = ? AND question_id = ?`,
+              [submittedAnswer, isCorrect ? 1 : 0, pointsAwarded, teamId, questionId]
+            );
+          } else {
+            const [subRes]: any = await conn.query(
+              `INSERT INTO question_submissions (team_id, round_id, question_id, submitted_answer, is_correct, points_awarded, attempt_number, submitted_at)
+               VALUES (?, ?, ?, ?, ?, ?, 1, NOW(3))
+               ON DUPLICATE KEY UPDATE submitted_answer = VALUES(submitted_answer), is_correct = VALUES(is_correct), points_awarded = VALUES(points_awarded), attempt_number = 1, submitted_at = NOW(3)`,
+              [teamId, roundId, questionId, submittedAnswer, isCorrect ? 1 : 0, pointsAwarded]
+            );
+            submissionId = subRes.insertId;
+          }
+          db.recordPlayerAttempt(teamId, roundId, questionCode, isCorrect ? "solved" : "failed", pointsAwarded, submittedAnswer, isSecondAttempt ? 2 : 1);
 
           // 2. If correct, insert immutable score ledger entry and update teams table
           if (isCorrect) {
@@ -449,22 +512,22 @@ export class QuestionService {
     }
 
     const completed = team.completedTasks || [];
-    const isAlreadyAttempted =
-      completed.includes(questionCode) ||
-      (team.taskScores && team.taskScores[questionCode] !== undefined);
+    const pastSubs = db.getPlayerSubmissions(teamId);
+    const existingSub = pastSubs.find((s) => s.questionCode.toLowerCase() === questionCode.toLowerCase());
 
-    if (isAlreadyAttempted) {
-      const alreadyAwarded = team.taskScores?.[questionCode] || 0;
+    if (existingSub && existingSub.isLocked) {
       return {
         success: true,
-        isCorrect: alreadyAwarded > 0,
-        pointsAwarded: 0,
+        isCorrect: existingSub.isCorrect,
+        pointsAwarded: existingSub.pointsAwarded,
         currentScore: team.totalScore || 0,
         isLocked: true,
         idempotentRecovery: true,
-        message: "Question already attempted and locked.",
+        message: existingSub.isCorrect ? "Question already solved and locked." : "Terminal locked: 2/2 attempts exhausted (0 PTS).",
       };
     }
+
+    const isSecondAttempt = Boolean(existingSub && existingSub.attempts >= 1) || attemptNumber >= 2;
 
     let expectedAnswer = "";
     for (const chList of Object.values(RAW_CHAPTER_QUESTIONS)) {
@@ -481,29 +544,43 @@ export class QuestionService {
       ? submittedAnswer.trim().toUpperCase() === expectedAnswer.trim().toUpperCase()
       : submittedAnswer.trim().toUpperCase() === "A";
 
-    const isLocked = isCorrect || attemptNumber >= 2;
+    const isLocked = isCorrect || isSecondAttempt;
+    const roundId = Number(questionCode.match(/ch(\d+)/i)?.[1] || 1);
+
     if (!isLocked) {
+      db.recordPlayerAttempt(teamId, roundId, questionCode, "attempted", 0, submittedAnswer, 1);
       return {
         success: true,
         isCorrect: false,
         pointsAwarded: 0,
         currentScore: team.totalScore || 0,
         isLocked: false,
-        message: "EVIDENCE DISCREPANCY DETECTED · VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)",
+        attemptsRemaining: 1,
+        availablePoints: 10,
+        message: "EVIDENCE DISCREPANCY DETECTED · VALUE REDUCED TO 10 PTS (1 ATTEMPT REMAINING)",
       };
     }
 
-    const pointsAwarded = isCorrect ? (attemptNumber <= 1 ? 10 : 5) : 0;
-    const newScore = (team.totalScore || 0) + pointsAwarded;
+    const pointsAwarded = isCorrect ? (isSecondAttempt ? 10 : 20) : 0;
     const nextCompleted = Array.from(new Set([...completed, questionCode]));
     const nextTaskScores = { ...(team.taskScores || {}), [questionCode]: pointsAwarded };
+    // Gross score = sum of all task scores; net score subtracts accumulated penalty
+    const grossScore = Object.values(nextTaskScores).reduce((acc: number, val: any) => acc + (Number(val) || 0), 0);
+    const currentPenalty = team.penalty || 0;
+    const newScore = Math.max(0, grossScore - currentPenalty);
 
     db.updateTeam(teamId, {
       totalScore: newScore,
       completedTasks: nextCompleted,
       taskScores: nextTaskScores,
+      breakdown: {
+        ...(team.breakdown || {}),
+        puzzle: grossScore,
+        tech: 0,
+      },
       lastSolvedAt: new Date().toISOString(),
     });
+    db.recordPlayerAttempt(teamId, roundId, questionCode, isCorrect ? "solved" : "failed", pointsAwarded, submittedAnswer, isSecondAttempt ? 2 : 1);
 
     const scorePayload = {
       type: "SCORE_UPDATE",

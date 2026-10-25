@@ -1,3 +1,25 @@
+function formatToIST(ts: string | number | Date | null | undefined): string {
+  if (!ts || ts === "Unavailable") return "Unavailable";
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return "Unavailable";
+    return (
+      new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }).format(d) + " IST"
+    );
+  } catch {
+    return "Unavailable";
+  }
+}
+
 import { Request, Response } from "express";
 import { db } from "../services/db.service";
 import { socketService } from "../services/socket.service";
@@ -659,6 +681,7 @@ export const AdminController = {
     }
 
     const isVecna = team.role === "VECNA";
+    const memPlayerSubs = !isVecna ? db.getPlayerSubmissions(teamId) : [];
     const STAGES_CONFIG = isVecna
       ? [
           { id: 1, key: "trial-1", name: "TRIAL 1: THE CREEL HOUSE" },
@@ -832,30 +855,86 @@ export const AdminController = {
           return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
         });
 
+        // Build 10 questions for this Vecna trial
+        const questions: any[] = [];
+        for (let qIdx = 0; qIdx < 10; qIdx++) {
+          const qNum = qIdx + 1;
+          const att = vecnaProg[qIdx];
+          if (att) {
+            const isSolved = att.status === "solved";
+            const isFailed = att.status === "failed";
+            const attempts = (att as any).attemptNumber || (isSolved || isFailed ? 1 : 0);
+            const pts = Number(att.earnedPoints) || 0;
+            let statusText = "Solved (+20 PTS)";
+            if (isSolved) {
+              statusText = attempts === 2 ? "Solved on Retry (+10 PTS)" : "Solved (+20 PTS)";
+            } else if (isFailed) {
+              statusText = "Locked (0 PTS)";
+            } else if (att.status === "attempted") {
+              statusText = "Attempt 1 Failed (Retry Available)";
+            }
+
+            questions.push({
+              questionNumber: qNum,
+              questionCode: `trial-${stageNum}-q${qNum}`,
+              submittedAnswer: att.chosenAnswer || "—",
+              attemptNumber: attempts,
+              isCorrect: isSolved,
+              pointsAwarded: pts,
+              status: statusText,
+              isLocked: isSolved || isFailed || attempts >= 2,
+              submittedAt: att.submittedAt || null,
+              submittedAtIST: formatToIST(att.submittedAt),
+            });
+          } else {
+            questions.push({
+              questionNumber: qNum,
+              questionCode: `trial-${stageNum}-q${qNum}`,
+              submittedAnswer: "—",
+              attemptNumber: 0,
+              isCorrect: null,
+              pointsAwarded: 0,
+              status: "Unattempted",
+              isLocked: false,
+              submittedAt: null,
+              submittedAtIST: "—",
+            });
+          }
+        }
+
         return {
           stageId: stageNum,
           stageKey: cfg.key,
           stageName: cfg.name,
           status,
           startedAt,
+          startedAtIST: formatToIST(startedAt),
           completedAt,
+          completedAtIST: formatToIST(completedAt),
           duration,
           pointsEarned,
           pointsLost,
           netStageScore: pointsEarned + pointsLost,
-          events: stageEvents,
+          questions,
+          events: stageEvents.map((ev: any) => ({
+            ...ev,
+            timestampIST: formatToIST(ev.timestamp),
+          })),
         };
       }
 
       // Default Hawkins Squad Logic
-      // isCompleted: 10 actual TiDB submissions exist for this round
-      const isCompleted = solvedStages.has(stageNum);
-      // isInProgress: this stage has at least 1 real submission but is not yet completed,
-      // OR it is the next stage after the last completed stage (so it is genuinely unlocked and active).
-      // Map browsing / location clicks NEVER affect this – only real TiDB submissions count.
-      const stageSubCount = hawkinsSubsByRound.get(stageNum) || 0;
-      const prevStageCompleted = stageNum === 1 || solvedStages.has(stageNum - 1);
-      const isInProgress = !isCompleted && stageSubCount > 0 && prevStageCompleted;
+      // Use in-memory submissions as fallback when TiDB is offline
+      const stagePlayerSubs = memPlayerSubs.filter((s: any) => s.roundId === stageNum);
+      const tidbOffline = submissionRows.length === 0 && ledgerRows.length === 0;
+
+      // isCompleted: all 10 stage questions locked, from TiDB or memory fallback
+      const memStageCompleted = stagePlayerSubs.length >= 10 && stagePlayerSubs.every((s: any) => s.isLocked);
+      const isCompleted = tidbOffline ? memStageCompleted : solvedStages.has(stageNum);
+
+      // stageSubCount: real TiDB count OR in-memory count fallback
+      const stageSubCount = tidbOffline ? stagePlayerSubs.length : (hawkinsSubsByRound.get(stageNum) || 0);
+      const isInProgress = !isCompleted && stageSubCount > 0;
       const status: "Completed" | "In Progress" | "Locked" = isCompleted
         ? "Completed"
         : isInProgress
@@ -867,11 +946,23 @@ export const AdminController = {
 
       let pointsEarned = 0;
       let pointsLost = 0;
-      stageLedger.forEach((r) => {
-        const delta = Number(r.points_delta) || 0;
-        if (delta > 0) pointsEarned += delta;
-        else if (delta < 0) pointsLost += delta;
-      });
+      if (tidbOffline) {
+        stagePlayerSubs.forEach((s: any) => {
+          const pts = Number(s.pointsAwarded || 0);
+          if (s.isCorrect && pts > 0) pointsEarned += pts;
+        });
+        const unlockedHints = team.unlockedHints || {};
+        const stageCluesCount = Object.keys(unlockedHints).filter((k) => k.startsWith(`ch${stageNum}-`)).length;
+        if (stageCluesCount > 0) {
+          pointsLost = -(stageCluesCount * 10);
+        }
+      } else {
+        stageLedger.forEach((r) => {
+          const delta = Number(r.points_delta) || 0;
+          if (delta > 0) pointsEarned += delta;
+          else if (delta < 0) pointsLost += delta;
+        });
+      }
 
       let startedAt: string = "Unavailable";
       let completedAt: string = "Unavailable";
@@ -879,18 +970,27 @@ export const AdminController = {
 
       if (status === "Completed" || status === "In Progress") {
         const allTimestamps: number[] = [];
-        stageSubs.forEach((s) => {
-          if (s.submitted_at) {
-            const t = new Date(s.submitted_at).getTime();
-            if (!isNaN(t)) allTimestamps.push(t);
-          }
-        });
-        stageLedger.forEach((l) => {
-          if (l.created_at) {
-            const t = new Date(l.created_at).getTime();
-            if (!isNaN(t)) allTimestamps.push(t);
-          }
-        });
+        if (tidbOffline) {
+          stagePlayerSubs.forEach((s: any) => {
+            if (s.submittedAt) {
+              const t = new Date(s.submittedAt).getTime();
+              if (!isNaN(t)) allTimestamps.push(t);
+            }
+          });
+        } else {
+          stageSubs.forEach((s) => {
+            if (s.submitted_at) {
+              const t = new Date(s.submitted_at).getTime();
+              if (!isNaN(t)) allTimestamps.push(t);
+            }
+          });
+          stageLedger.forEach((l) => {
+            if (l.created_at) {
+              const t = new Date(l.created_at).getTime();
+              if (!isNaN(t)) allTimestamps.push(t);
+            }
+          });
+        }
 
         if (allTimestamps.length > 0) {
           allTimestamps.sort((a, b) => a - b);
@@ -902,40 +1002,82 @@ export const AdminController = {
             const mins = Math.floor(totalSec / 60);
             const secs = totalSec % 60;
             duration = `${mins}m ${secs}s`;
+          } else if (status === "In Progress") {
+            const diffMs = allTimestamps[allTimestamps.length - 1] - allTimestamps[0];
+            const totalSec = Math.max(1, Math.round(diffMs / 1000));
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            duration = diffMs > 0 ? `${mins}m ${secs}s (In Progress)` : "< 1m";
           }
         }
       }
 
       const stageEvents: any[] = [];
-      stageLedger.forEach((r) => {
-        let type = "Question Solved";
-        const delta = Number(r.points_delta) || 0;
-        if (r.source_type === "INTEL_CLUE" || delta < 0) {
-          type = "Intel Clue Used";
-        } else if (r.source_type === "VECNA_POWER") {
-          type = "Vecna Power Received";
-        } else if (r.source_type === "ADMIN_ADJUST") {
-          type = "Admin Adjustment";
-        }
-
-        stageEvents.push({
-          timestamp: r.created_at ? new Date(r.created_at).toISOString() : "Unavailable",
-          type,
-          detail: r.source_id || r.question_id || `Stage ${stageNum} Challenge`,
-          pointDelta: delta,
+      if (tidbOffline) {
+        stagePlayerSubs.forEach((s: any) => {
+          const isCorr = Boolean(s.isCorrect);
+          const pts = Number(s.pointsAwarded || 0);
+          const attempts = Number(s.attempts || 1);
+          const ts = s.submittedAt ? new Date(s.submittedAt).toISOString() : "Unavailable";
+          if (isCorr) {
+            stageEvents.push({
+              timestamp: ts,
+              type: "Question Solved",
+              detail: `${s.questionCode.toUpperCase()} Solved${attempts === 2 ? " on Retry" : ""} (+${pts} PTS)`,
+              pointDelta: pts,
+            });
+          } else {
+            stageEvents.push({
+              timestamp: ts,
+              type: "Incorrect Submission",
+              detail: `${s.questionCode.toUpperCase()} Attempt: ${String(s.submittedAnswer || "").slice(0, 30)}`,
+              pointDelta: 0,
+            });
+          }
         });
-      });
 
-      stageSubs.forEach((s) => {
-        if (!s.is_correct) {
+        const unlockedHints = team.unlockedHints || {};
+        Object.keys(unlockedHints).forEach((hintKey) => {
+          if (hintKey.startsWith(`ch${stageNum}-`)) {
+            stageEvents.push({
+              timestamp: team.lastSolvedAt ? new Date(team.lastSolvedAt).toISOString() : "Unavailable",
+              type: "Intel Clue Used",
+              detail: `Intel Clue Decrypted: ${hintKey.toUpperCase()}`,
+              pointDelta: -10,
+            });
+          }
+        });
+      } else {
+        stageLedger.forEach((r) => {
+          let type = "Question Solved";
+          const delta = Number(r.points_delta) || 0;
+          if (r.source_type === "INTEL_CLUE" || delta < 0) {
+            type = "Intel Clue Used";
+          } else if (r.source_type === "VECNA_POWER") {
+            type = "Vecna Power Received";
+          } else if (r.source_type === "ADMIN_ADJUST") {
+            type = "Admin Adjustment";
+          }
+
           stageEvents.push({
-            timestamp: s.submitted_at ? new Date(s.submitted_at).toISOString() : "Unavailable",
-            type: "Incorrect Submission",
-            detail: `Attempt: ${String(s.submitted_answer || "").slice(0, 30)}`,
-            pointDelta: 0,
+            timestamp: r.created_at ? new Date(r.created_at).toISOString() : "Unavailable",
+            type,
+            detail: r.source_id || r.question_id || `Stage ${stageNum} Challenge`,
+            pointDelta: delta,
           });
-        }
-      });
+        });
+
+        stageSubs.forEach((s) => {
+          if (!s.is_correct) {
+            stageEvents.push({
+              timestamp: s.submitted_at ? new Date(s.submitted_at).toISOString() : "Unavailable",
+              type: "Incorrect Submission",
+              detail: `Attempt: ${String(s.submitted_answer || "").slice(0, 30)}`,
+              pointDelta: 0,
+            });
+          }
+        });
+      }
 
       stageEvents.sort((a, b) => {
         if (a.timestamp === "Unavailable") return 1;
@@ -943,18 +1085,80 @@ export const AdminController = {
         return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
       });
 
+      // Build 10 questions for this Hawkins stage
+      const questions: any[] = [];
+      for (let qNum = 1; qNum <= 10; qNum++) {
+        const qCode = `ch${stageNum}-q${qNum}`;
+        const tidbMatch = submissionRows.find(
+          (r: any) => Number(r.round_id) === stageNum && (r.question_code === qCode || Number(r.question_order) === qNum)
+        );
+        const memMatch = stagePlayerSubs.find(
+          (s: any) => s.questionCode.toLowerCase() === qCode.toLowerCase()
+        );
+
+        const sub = tidbMatch || memMatch;
+        if (sub) {
+          const isCorrect = Boolean(sub.is_correct ?? sub.isCorrect);
+          const attempts = Number(sub.attempt_number ?? sub.attempts ?? 1);
+          const pts = Number(sub.points_awarded ?? sub.pointsAwarded ?? 0);
+          const answer = String(sub.submitted_answer ?? sub.submittedAnswer ?? "—");
+          const ts = sub.submitted_at ?? sub.submittedAt;
+
+          let statusText = "Solved (+20 PTS)";
+          if (isCorrect) {
+            statusText = attempts === 2 ? "Solved on Retry (+10 PTS)" : "Solved (+20 PTS)";
+          } else if (attempts >= 2) {
+            statusText = "Locked (0 PTS)";
+          } else {
+            statusText = "Attempt 1 Failed (Retry Available)";
+          }
+
+          questions.push({
+            questionNumber: qNum,
+            questionCode: qCode,
+            submittedAnswer: answer,
+            attemptNumber: attempts,
+            isCorrect,
+            pointsAwarded: pts,
+            status: statusText,
+            isLocked: isCorrect || attempts >= 2,
+            submittedAt: ts ? new Date(ts).toISOString() : null,
+            submittedAtIST: formatToIST(ts),
+          });
+        } else {
+          questions.push({
+            questionNumber: qNum,
+            questionCode: qCode,
+            submittedAnswer: "—",
+            attemptNumber: 0,
+            isCorrect: null,
+            pointsAwarded: 0,
+            status: "Unattempted",
+            isLocked: false,
+            submittedAt: null,
+            submittedAtIST: "—",
+          });
+        }
+      }
+
       return {
         stageId: stageNum,
         stageKey: cfg.key,
         stageName: cfg.name,
         status,
         startedAt,
+        startedAtIST: formatToIST(startedAt),
         completedAt,
+        completedAtIST: formatToIST(completedAt),
         duration,
         pointsEarned,
         pointsLost,
         netStageScore: pointsEarned + pointsLost,
-        events: stageEvents,
+        questions,
+        events: stageEvents.map((ev: any) => ({
+          ...ev,
+          timestampIST: formatToIST(ev.timestamp),
+        })),
       };
     });
 
@@ -1079,6 +1283,25 @@ export const AdminController = {
   /**
    * Event Lifecycle Controls
    */
+  async getStages(_req: Request, res: Response) {
+    const stages = EventControlService.getUnlockedStages();
+    return res.json({ success: true, unlockedStages: stages });
+  },
+
+  async toggleStage(req: Request, res: Response) {
+    const { stageNumber, unlocked } = req.body || {};
+    if (stageNumber === undefined || stageNumber === null) {
+      return res.status(400).json({ success: false, message: "stageNumber is required." });
+    }
+    const num = Number(stageNumber);
+    if (isNaN(num) || num < 1 || num > 6) {
+      return res.status(400).json({ success: false, message: "stageNumber must be between 1 and 6." });
+    }
+    const adminId = (req as any).adminUser?.adminId || 1;
+    const stages = await EventControlService.toggleStage(num, Boolean(unlocked), adminId);
+    return res.json({ success: true, unlockedStages: stages, message: `Stage ${num} is now ${unlocked ? "UNLOCKED" : "LOCKED"}` });
+  },
+
   async startEvent(_req: Request, res: Response) {
     const event = await EventControlService.startEvent();
     return res.json({ success: true, event });

@@ -8,7 +8,9 @@ import Radiometer from "../Radiometer";
 import { validateChapterOnServer } from "@/lib/api";
 import { getCharacterForChapter } from "@/lib/characters";
 import HopperPoliceReportQuiz from "./HopperPoliceReportQuiz";
+import ChapterSummaryView from "./ChapterSummaryView";
 import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
+import { getSocket, subscribe } from "@/lib/realtime";
 import PushPin from "../PushPin";
 
 export type ChapterId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -52,7 +54,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-town-bg.jpg",
     taskId: "ch1-quiz",
-    points: 50,
+    points: 200,
   },
   {
     id: 2,
@@ -76,7 +78,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-police-bg.jpg",
     taskId: "ch2-police",
-    points: 50,
+    points: 200,
   },
   {
     id: 3,
@@ -100,7 +102,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-bg.jpg",
     taskId: "ch3-byers",
-    points: 50,
+    points: 200,
   },
   {
     id: 4,
@@ -124,7 +126,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-lab-bg.jpg",
     taskId: "ch4-lab",
-    points: 50,
+    points: 200,
   },
   {
     id: 5,
@@ -148,7 +150,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/hawkins-gate-bg.jpg",
     taskId: "ch5-radio-tower",
-    points: 50,
+    points: 200,
   },
   {
     id: 6,
@@ -172,7 +174,7 @@ export const CHAPTERS: ChapterDef[] = [
     ],
     bgSrc: "/upsidedown-bg.jpg",
     taskId: "ch6-upsidedown",
-    points: 50,
+    points: 200,
   },
 ];
 
@@ -925,6 +927,45 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
     setViewMode,
   } = useGame();
 
+  const [unlockedStages, setUnlockedStages] = useState<number[]>([1]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchStages = async () => {
+      try {
+        const res = await fetch("/api/admin/stages");
+        const data = await res.json();
+        if (active && data.success && Array.isArray(data.unlockedStages)) {
+          setUnlockedStages(data.unlockedStages);
+        }
+      } catch {}
+    };
+    fetchStages();
+
+    const sock = getSocket();
+    const handleStageUnlocked = (d: any) => {
+      if (d?.unlockedStages && Array.isArray(d.unlockedStages)) {
+        setUnlockedStages(d.unlockedStages);
+      }
+    };
+    sock?.on("stage:unlocked", handleStageUnlocked);
+
+    const unsubRealtime = subscribe((m: any) => {
+      if (m.type === "stage_unlocked" && Array.isArray(m.unlockedStages)) {
+        setUnlockedStages(m.unlockedStages);
+      }
+      if (m.type === "event_reset") {
+        setUnlockedStages([1]);
+      }
+    });
+
+    return () => {
+      active = false;
+      sock?.off("stage:unlocked", handleStageUnlocked);
+      unsubRealtime();
+    };
+  }, []);
+
   const isLocationLocked = Boolean(
     sabotage &&
     sabotage.kind === "LOCK" &&
@@ -961,13 +1002,13 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
     return false;
   }, [s.team?.id]);
 
-  // Solved states for all 6 chapters (Marked solved if submitted OR if all questions in section are given)
-  const ch1Solved = !!s.completedTasks?.includes("ch1-quiz") || !!s.solved?.["ch1-quiz"] || !!s.team?.solvedChapters?.includes(1) || isChapterAllQuestionsGiven(1);
-  const ch2Solved = !!s.completedTasks?.includes("ch2-police") || !!s.solved?.["ch2-police"] || !!s.completedTasks?.includes("ch3-case-study") || !!s.team?.solvedChapters?.includes(2) || isChapterAllQuestionsGiven(2);
-  const ch3Solved = !!s.completedTasks?.includes("ch3-byers") || !!s.solved?.["ch3-byers"] || !!s.team?.solvedChapters?.includes(3) || isChapterAllQuestionsGiven(3);
-  const ch4Solved = !!s.completedTasks?.includes("ch4-lab") || !!s.solved?.["ch4-lab"] || !!s.completedTasks?.includes("ch2-coding") || !!s.team?.solvedChapters?.includes(4) || isChapterAllQuestionsGiven(4);
-  const ch5Solved = radiometerPinCount === 5 || s.radiometer.codeSolved || !!s.completedTasks?.includes("ch5-radio-tower") || !!s.solved?.["ch5-radio-tower"] || !!s.completedTasks?.includes("ch6-radio-tower") || !!s.team?.solvedChapters?.includes(5) || isChapterAllQuestionsGiven(5);
-  const ch6Solved = !!s.completedTasks?.includes("ch6-upsidedown") || !!s.solved?.["ch6-upsidedown"] || !!s.completedTasks?.includes("ch7-upsidedown") || !!s.team?.solvedChapters?.includes(6) || isChapterAllQuestionsGiven(6);
+  // Solved states for all 6 chapters (Marked solved strictly if authoritative backend records solved chapter or completion task)
+  const ch1Solved = !!s.completedTasks?.includes("ch1-quiz") || !!s.solved?.["ch1-quiz"] || !!s.team?.solvedChapters?.includes(1);
+  const ch2Solved = !!s.completedTasks?.includes("ch2-police") || !!s.solved?.["ch2-police"] || !!s.completedTasks?.includes("ch3-case-study") || !!s.team?.solvedChapters?.includes(2);
+  const ch3Solved = !!s.completedTasks?.includes("ch3-byers") || !!s.solved?.["ch3-byers"] || !!s.team?.solvedChapters?.includes(3);
+  const ch4Solved = !!s.completedTasks?.includes("ch4-lab") || !!s.solved?.["ch4-lab"] || !!s.completedTasks?.includes("ch2-coding") || !!s.team?.solvedChapters?.includes(4);
+  const ch5Solved = radiometerPinCount === 5 || s.radiometer.codeSolved || !!s.completedTasks?.includes("ch5-radio-tower") || !!s.solved?.["ch5-radio-tower"] || !!s.completedTasks?.includes("ch6-radio-tower") || !!s.team?.solvedChapters?.includes(5);
+  const ch6Solved = !!s.completedTasks?.includes("ch6-upsidedown") || !!s.solved?.["ch6-upsidedown"] || !!s.completedTasks?.includes("ch7-upsidedown") || !!s.team?.solvedChapters?.includes(6);
 
   // Track chapters whose intro case briefing has already been shown once
   const [seenBriefings, setSeenBriefings] = useState<number[]>(() => {
@@ -1091,7 +1132,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
         const parsed = JSON.parse(stored);
         questions.forEach((_, idx) => {
           if (parsed[idx]?.isCorrect) {
-            sectionPointsEarned += typeof parsed[idx].pointsAwarded === "number" ? parsed[idx].pointsAwarded : 10;
+            sectionPointsEarned += typeof parsed[idx].pointsAwarded === "number" ? parsed[idx].pointsAwarded : 20;
           }
         });
       }
@@ -1101,7 +1142,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
       questions.forEach((q, idx) => {
         const ans = answers[idx];
         if (ans && q.correctAnswerId && String(ans).trim().toLowerCase() === String(q.correctAnswerId).trim().toLowerCase()) {
-          sectionPointsEarned += 10;
+          sectionPointsEarned += 20;
         }
       });
     }
@@ -1111,29 +1152,12 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
     sfx("ok");
     submitTask(
       taskId,
-      finalPoints,
+      0, // Points already awarded individually per verified docket item
       `Chapter ${chapterId} Docket Verified (${correctCount}/${questions.length} Solved)`,
       true
     );
     // Stay on chapter without abruptly going back
   };
-
-  // Automatically submit report to server and store when all questions in the active section are given
-  useEffect(() => {
-    if (isChapterAllQuestionsGiven(currentChapter.id)) {
-      const isAlreadySubmitted =
-        Boolean(s.team?.solvedChapters?.includes(currentChapter.id)) ||
-        Boolean(s.completedTasks?.includes(`ch${currentChapter.id}-quiz`)) ||
-        Boolean(s.completedTasks?.includes(currentChapter.taskId));
-      if (!isAlreadySubmitted) {
-        try {
-          const raw = localStorage.getItem(`hawkins_quiz_answers_ch${currentChapter.id}_${s.team?.id || "anon"}`);
-          const answers = raw ? JSON.parse(raw) : {};
-          handleQuizSubmitAll(currentChapter.id, answers);
-        } catch {}
-      }
-    }
-  }, [currentChapter.id, currentChapter.taskId, isChapterAllQuestionsGiven, s.team?.solvedChapters, s.completedTasks, s.team?.id]);
 
   return (
     <div
@@ -1195,6 +1219,13 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
                     }
                     const nextId = (completionStoryChapterId + 1) as ChapterId;
                     setCompletionStoryChapterId(null);
+                    const isAdminUnlocked = unlockedStages.includes(nextId);
+                    if (!isAdminUnlocked) {
+                      sfx("err");
+                      say(`STAGE ${nextId} IS LOCKED: Awaiting broadcast authorization from Command.`);
+                      handleBackToBoard();
+                      return;
+                    }
                     setActiveChapterId(nextId);
                   }
                 : () => {
@@ -1224,23 +1255,10 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
         }}
       >
         {isCurrentSolved ? (
-          <ChapterCompletionView
+          <ChapterSummaryView
             chapter={currentChapter}
-            isLastEpisode={currentChapter.id === 7}
-            onNextEpisode={() => {
-              if (isLocationLocked) {
-                sfx("err");
-                say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
-                return;
-              }
-              sfx("ok");
-              if (currentChapter.id < 7) {
-                setActiveChapterId((currentChapter.id + 1) as ChapterId);
-              } else {
-                handleBackToBoard();
-              }
-            }}
-            onViewDossier={handleBackToBoard}
+            questions={STAGE_QUIZ_CONFIGS[currentChapter.id]?.questions || []}
+            onBackToBoard={handleBackToBoard}
           />
         ) : (
           <HopperPoliceReportQuiz

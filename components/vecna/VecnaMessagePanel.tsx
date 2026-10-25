@@ -328,7 +328,7 @@ export default function VecnaMessagePanel({
             fontWeight: "bold",
           }}
         >
-          🚫 Dispatch limit reached for this event. (0/5 REMAINING)
+          Dispatch limit reached for this event. (0/5 REMAINING)
         </div>
       )}
 
@@ -411,7 +411,7 @@ export default function VecnaMessagePanel({
                 borderRadius: "2px",
               }}
             >
-              💬 {msg.slice(0, 20)}...
+              {msg.slice(0, 20)}...
             </button>
           ))}
         </div>

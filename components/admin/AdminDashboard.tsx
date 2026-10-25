@@ -1,6 +1,28 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+
+const formatToIST = (ts: string | number | Date | null | undefined): string => {
+  if (!ts || ts === "Unavailable" || ts === "—") return "—";
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return "—";
+    return (
+      new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      }).format(d) + " IST"
+    );
+  } catch {
+    return "—";
+  }
+};
 import {
   adminLogin,
   fetchAdminChapters,
@@ -103,6 +125,8 @@ export default function AdminDashboard() {
     current_round_max: 7,
   });
   const [isUpdatingEvent, setIsUpdatingEvent] = useState(false);
+  const [unlockedStages, setUnlockedStages] = useState<number[]>([1]);
+  const [isUpdatingStage, setIsUpdatingStage] = useState<boolean>(false);
 
   // Auto-refresh timer state (user configurable: ON/OFF and 5s/10s/30s)
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true);
@@ -311,6 +335,9 @@ export default function AdminDashboard() {
       ]);
       if (evRes.success && evRes.eventState) {
         setEventState(evRes.eventState);
+        if (Array.isArray(evRes.eventState.unlockedStages)) {
+          setUnlockedStages(evRes.eventState.unlockedStages);
+        }
       }
       if (tdLogs && tdLogs.length > 0) {
         setLogs(tdLogs);
@@ -657,6 +684,43 @@ export default function AdminDashboard() {
     }
   };
 
+  // Stage Switchboard Toggle
+  const handleToggleStage = async (stageNum: number, currentUnlocked: boolean) => {
+    setIsUpdatingStage(true);
+    try {
+      const stored = getStoredSession();
+      const activeTok =
+        token ||
+        (stored && (stored as any).token ? (stored as any).token : "") ||
+        localStorage.getItem("hawkins_admin_token") ||
+        sessionStorage.getItem("hawkins_admin_token") ||
+        "";
+      const bearerTok = activeTok ? (activeTok.startsWith("Bearer ") ? activeTok : `Bearer ${activeTok}`) : "";
+      const res = await fetch("/api/admin/stages/toggle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: bearerTok,
+        },
+        body: JSON.stringify({ stageNumber: stageNum, unlocked: !currentUnlocked }),
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.unlockedStages)) {
+        setUnlockedStages(data.unlockedStages);
+        setStatusMessage(`Stage ${stageNum} access updated: ${!currentUnlocked ? "UNLOCKED / AUTHORIZED" : "LOCKED / RESTRICTED"}`);
+        sfx("ok");
+      } else {
+        sfx("err");
+        alert(data.message || data.error || "Failed to toggle stage.");
+      }
+    } catch (err: any) {
+      sfx("err");
+      alert("Error toggling stage: " + err.message);
+    } finally {
+      setIsUpdatingStage(false);
+    }
+  };
+
   // Update Global Event Lifecycle
   const updateEventStateAction = async (updates: Partial<{ status: string; loginOpen: boolean; submissionsOpen: boolean; currentRoundMax: number }>) => {
     setIsUpdatingEvent(true);
@@ -700,6 +764,10 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         sfx("ok");
+        try {
+          localStorage.removeItem("hawkins_persisted_leaderboard");
+          localStorage.removeItem("hawkins_live_score_sync");
+        } catch {}
         setStatusMessage("Fresh tournament event successfully initiated: All squad scores initialized to 0 PTS. Historical results preserved.");
         setEventState({
           status: "active",
@@ -707,6 +775,16 @@ export default function AdminDashboard() {
           submissions_open: true,
           current_round_max: 7,
         });
+        setUnlockedStages([1]);
+        setLeaderboard((prev) =>
+          prev.map((item) => ({
+            ...item,
+            score: 0,
+            solvedCount: 0,
+            completedTasks: [],
+            lastSubmissionTime: undefined,
+          }))
+        );
         loadData(true);
       } else {
         sfx("err");
@@ -1703,9 +1781,34 @@ export default function AdminDashboard() {
                 <button
                   type="button"
                   disabled={isUpdatingEvent || eventState.status === "ended"}
-                  onClick={() => {
-                    if (confirm("End this event? All active Hawkins and Vecna teams will be logged out. Final scores and history will be preserved.")) {
-                      updateEventStateAction({ status: "ended", submissionsOpen: false, loginOpen: false });
+                  onClick={async () => {
+                    if (!confirm("End this event? All active Hawkins and Vecna teams will be logged out. Final scores and history will be preserved.")) return;
+                    setIsUpdatingEvent(true);
+                    try {
+                      const res = await fetch("/api/admin/event/end", {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token || ""}` },
+                      });
+                      const d = await res.json();
+                      if (d.success) {
+                        sfx("ok");
+                        setStatusMessage("Tournament event successfully ended: All active sessions terminated. Final results archived into history.");
+                        setEventState((prev) => ({
+                          ...prev,
+                          status: "ended",
+                          submissions_open: false,
+                          login_open: false,
+                        }));
+                        loadData(true);
+                      } else {
+                        sfx("err");
+                        alert("Failed to end event: " + (d.message || d.error));
+                      }
+                    } catch (err: any) {
+                      sfx("err");
+                      alert("Error ending event: " + err.message);
+                    } finally {
+                      setIsUpdatingEvent(false);
                     }
                   }}
                   style={{
@@ -1722,6 +1825,153 @@ export default function AdminDashboard() {
                 >
                   {eventState.status === "ended" ? "⏹ EVENT ENDED" : "⏹ END EVENT"}
                 </button>
+              </div>
+            </div>
+
+            {/* TOURNAMENT STAGE ACCESS SWITCHBOARD (STAGES 1 - 6) */}
+            <div
+              style={{
+                marginBottom: 24,
+                padding: "16px 20px",
+                background: "rgba(10, 10, 18, 0.9)",
+                border: "1px solid rgba(54, 224, 196, 0.3)",
+                borderRadius: 6,
+                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.45)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 12,
+                  flexWrap: "wrap",
+                  gap: 10,
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor: "#36e0c4",
+                        boxShadow: "0 0 8px #36e0c4",
+                      }}
+                    />
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        fontWeight: "bold",
+                        letterSpacing: "0.12em",
+                        color: "#36e0c4",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Tournament Stage Access Switchboard (Dual-Condition Locking)
+                    </h3>
+                  </div>
+                  <p style={{ margin: "4px 0 0 0", fontSize: 11, color: "#888899", letterSpacing: "0.04em" }}>
+                    Stages unlock for participant squads only when <strong>Condition A</strong> (prior stage cleared) AND <strong>Condition B</strong> (authorized below by Admin) are both TRUE.
+                  </p>
+                </div>
+                <div style={{ fontSize: 11, color: "#aaaabb", fontFamily: '"Share Tech Mono", monospace' }}>
+                  AUTHORIZED STAGES:{" "}
+                  <span style={{ color: "#36e0c4", fontWeight: "bold" }}>
+                    {unlockedStages.slice().sort((a, b) => a - b).join(", ") || "NONE"}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                  gap: 10,
+                }}
+              >
+                {[
+                  { num: 1, title: "STAGE 1", name: "Hawkins Lab Breach", type: "Quiz Questions" },
+                  { num: 2, title: "STAGE 2", name: "The Void & Upside Down", type: "Connection Questions" },
+                  { num: 3, title: "STAGE 3", name: "Creel House Finale", type: "Rearrange Questions" },
+                  { num: 4, title: "STAGE 4", name: "Forensic Dossier", type: "Case Study Questions" },
+                  { num: 5, title: "STAGE 5", name: "Radio Transmission", type: "Signal Decryption" },
+                  { num: 6, title: "STAGE 6", name: "System Override", type: "Lab-Type Tasks" },
+                ].map((stg) => {
+                  const isUnlocked = unlockedStages.includes(stg.num);
+                  return (
+                    <div
+                      key={stg.num}
+                      style={{
+                        background: isUnlocked ? "rgba(54, 224, 196, 0.06)" : "rgba(255, 45, 58, 0.05)",
+                        border: isUnlocked ? "1px solid rgba(54, 224, 196, 0.35)" : "1px solid rgba(255, 45, 58, 0.3)",
+                        borderRadius: 4,
+                        padding: "10px 12px",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: "bold",
+                              color: isUnlocked ? "#36e0c4" : "#ff4d58",
+                              letterSpacing: "0.08em",
+                            }}
+                          >
+                            {stg.title}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              fontWeight: "bold",
+                              padding: "2px 6px",
+                              borderRadius: 2,
+                              background: isUnlocked ? "rgba(54, 224, 196, 0.2)" : "rgba(255, 45, 58, 0.2)",
+                              color: isUnlocked ? "#36e0c4" : "#ff6b72",
+                              letterSpacing: "0.08em",
+                            }}
+                          >
+                            {isUnlocked ? "OPEN" : "LOCKED"}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#ffffff", marginTop: 4 }}>
+                          {stg.name}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#777788", marginTop: 2 }}>
+                          {stg.type}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isUpdatingStage}
+                        onClick={() => handleToggleStage(stg.num, isUnlocked)}
+                        style={{
+                          width: "100%",
+                          padding: "6px 8px",
+                          fontSize: 10,
+                          fontWeight: "bold",
+                          letterSpacing: "0.08em",
+                          borderRadius: 3,
+                          cursor: isUpdatingStage ? "not-allowed" : "pointer",
+                          background: isUnlocked ? "rgba(255, 45, 58, 0.15)" : "rgba(54, 224, 196, 0.15)",
+                          border: isUnlocked ? "1px solid #ff2d3a" : "1px solid #36e0c4",
+                          color: isUnlocked ? "#ff6b72" : "#36e0c4",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {isUnlocked ? "🔒 LOCK STAGE" : "🔓 UNLOCK STAGE"}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -4049,8 +4299,8 @@ export default function AdminDashboard() {
                             {performanceData.teamOverview.role === "VECNA" ? "TRIAL" : "STAGE"}
                           </th>
                           <th style={{ padding: "10px 12px" }}>STATUS</th>
-                          <th style={{ padding: "10px 12px" }}>STARTED AT</th>
-                          <th style={{ padding: "10px 12px" }}>COMPLETED AT</th>
+                          <th style={{ padding: "10px 12px" }}>STARTED (IST)</th>
+                          <th style={{ padding: "10px 12px" }}>COMPLETED (IST)</th>
                           <th style={{ padding: "10px 12px" }}>DURATION</th>
                           <th style={{ padding: "10px 12px", textAlign: "right" }}>EARNED</th>
                           <th style={{ padding: "10px 12px", textAlign: "right" }}>LOST</th>
@@ -4094,10 +4344,10 @@ export default function AdminDashboard() {
                                   </span>
                                 </td>
                                 <td style={{ padding: "12px", color: stg.startedAt === "Unavailable" ? "#555566" : "#d0d0d8" }}>
-                                  {formatTime(stg.startedAt)}
+                                  {stg.startedAt === "Unavailable" ? "—" : formatToIST(stg.startedAt)}
                                 </td>
                                 <td style={{ padding: "12px", color: stg.completedAt === "Unavailable" ? "#555566" : "#d0d0d8" }}>
-                                  {formatTime(stg.completedAt)}
+                                  {stg.completedAt === "Unavailable" ? "—" : formatToIST(stg.completedAt)}
                                 </td>
                                 <td style={{ padding: "12px", color: stg.duration === "Unavailable" ? "#555566" : "#ffb454", fontWeight: stg.duration !== "Unavailable" ? 600 : 400 }}>
                                   {stg.duration}
@@ -4126,7 +4376,7 @@ export default function AdminDashboard() {
                                       fontWeight: "bold",
                                     }}
                                   >
-                                    {isExpanded ? "Hide" : `Events (${stg.events?.length || 0})`}
+                                    {isExpanded ? "Hide Details" : "Questions & Audit (10 Qs)"}
                                   </button>
                                 </td>
                               </tr>
@@ -4205,7 +4455,7 @@ export default function AdminDashboard() {
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
                         <thead>
                           <tr style={{ backgroundColor: "#12121c", color: "#888899", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                            <th style={{ padding: "8px 12px" }}>TIMESTAMP</th>
+                            <th style={{ padding: "8px 12px" }}>TIMESTAMP (IST)</th>
                             <th style={{ padding: "8px 12px" }}>ACTION TYPE</th>
                             <th style={{ padding: "8px 12px" }}>DETAIL</th>
                             <th style={{ padding: "8px 12px", textAlign: "right" }}>POINT DELTA</th>

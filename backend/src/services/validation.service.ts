@@ -102,7 +102,7 @@ export const ValidationService = {
         }
       });
 
-      const chapterPoints = correctCount * 10;
+      const chapterPoints = correctCount * 20;
       let totalAwarded = chapterPoints;
 
       if (team) {

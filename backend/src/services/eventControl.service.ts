@@ -1,6 +1,7 @@
 import { tidb } from "../config/tidb";
 import { EventRecord } from "../types";
 import { socketService } from "./socket.service";
+import { db } from "./db.service";
 
 export class EventControlService {
   private static localEvent: EventRecord = {
@@ -36,11 +37,12 @@ export class EventControlService {
             endedAt: r.ended_at ? new Date(r.ended_at).toISOString() : null,
             createdAt: new Date(r.created_at).toISOString(),
             updatedAt: new Date(r.updated_at).toISOString(),
+            unlockedStages: db.getUnlockedStages(),
           };
         }
       } catch (err) {}
     }
-    return this.localEvent;
+    return { ...this.localEvent, unlockedStages: db.getUnlockedStages() };
   }
 
   public static async logAudit(
@@ -103,11 +105,44 @@ export class EventControlService {
     this.localEvent.isPaused = false;
     this.localEvent.startedAt = new Date().toISOString();
     this.localEvent.endedAt = null;
+    db.resetUnlockedStages();
     await this.logAudit(adminId, "event_start");
 
     socketService.broadcast("event:state_changed", this.localEvent);
+    socketService.broadcast("event:reset", {
+      status: "active",
+      startedAt: this.localEvent.startedAt,
+      unlockedStages: db.getUnlockedStages(),
+      message: "A fresh tournament has commenced. All squad scores and stages have been reset.",
+      ts: Date.now(),
+    });
     socketService.broadcastLeaderboard();
+    socketService.broadcast("stage:unlocked", { unlockedStages: db.getUnlockedStages() });
     return this.getEventState();
+  }
+
+
+  public static getUnlockedStages(): number[] {
+    return db.getUnlockedStages();
+  }
+
+  public static isStageUnlocked(stageNumber: number): boolean {
+    return db.isStageUnlocked(stageNumber);
+  }
+
+  public static async toggleStage(stageNumber: number, unlocked: boolean, adminId: number = 1): Promise<number[]> {
+    const pool = tidb.pool;
+    if (pool) {
+      try {
+        await pool.query("UPDATE rounds SET is_active = ? WHERE round_number = ?", [unlocked ? 1 : 0, stageNumber]);
+      } catch {}
+    }
+    const stages = db.toggleStage(stageNumber, unlocked);
+    await this.logAudit(adminId, unlocked ? "stage_unlock" : "stage_lock", "stage", String(stageNumber), { stageNumber, unlocked });
+    const state = await this.getEventState();
+    socketService.broadcast("stage:unlocked", { unlockedStages: stages });
+    socketService.broadcast("event:state_changed", state);
+    return stages;
   }
 
   public static async isGameplayAllowed(): Promise<boolean> {

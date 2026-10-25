@@ -498,23 +498,29 @@ export function subscribeToLiveScoreChanges(onScoreUpdate: (payload: LiveScorePa
 
   const socket = getSocket();
   const socketHandler = (data: any) => {
-    if (data?.teamId && data?.score !== undefined) {
+    if (data?.teamId && (data?.score !== undefined || data?.newScore !== undefined || data?.totalScore !== undefined)) {
       onScoreUpdate({
         teamId: data.teamId,
-        newScore: data.score,
+        teamName: data.teamName,
+        newScore: data.newScore !== undefined ? data.newScore : data.score !== undefined ? data.score : data.totalScore,
         delta: data.delta,
+        chapterId: data.chapterId || data.roundId,
         source: "SOCKET",
       });
     }
   };
   if (socket) {
     socket.on("leaderboard:update", socketHandler);
+    socket.on("score:update", socketHandler);
+    socket.on("team:score_updated", socketHandler);
   }
 
   return () => {
     telemetryBus?.removeEventListener("message", telemetryHandler);
     if (socket) {
       socket.off("leaderboard:update", socketHandler);
+      socket.off("score:update", socketHandler);
+      socket.off("team:score_updated", socketHandler);
     }
   };
 }

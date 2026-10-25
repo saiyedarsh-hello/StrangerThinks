@@ -182,7 +182,7 @@ export default function VecnaTeamModal({
             }}
           >
             <div style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "#ffb454", marginBottom: "6px" }}>
-              🔍 DISCOVERED CLUES
+              DISCOVERED CLUES
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {team.clues && team.clues.length > 0 ? (
@@ -234,7 +234,7 @@ export default function VecnaTeamModal({
                 borderRadius: "2px",
               }}
             >
-              🖥️ CORRUPT
+              CORRUPT
             </button>
             <button
               onClick={() => {
@@ -253,7 +253,7 @@ export default function VecnaTeamModal({
                 borderRadius: "2px",
               }}
             >
-              🔒 LOCK
+              LOCK
             </button>
             <button
               onClick={() => {
@@ -272,7 +272,7 @@ export default function VecnaTeamModal({
                 borderRadius: "2px",
               }}
             >
-              🏆 +50 TEAMWORK
+              +50 TEAMWORK
             </button>
             <button
               onClick={() => {
@@ -291,7 +291,7 @@ export default function VecnaTeamModal({
                 borderRadius: "2px",
               }}
             >
-              🏆 +100 TEAMWORK
+              +100 TEAMWORK
             </button>
           </div>
         </div>

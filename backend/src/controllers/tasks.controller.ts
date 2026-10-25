@@ -42,7 +42,7 @@ export const TasksController = {
     }
 
     const targetTeamId = req.user?.teamId || teamId;
-    const penaltyCost = 5;
+    const penaltyCost = Number(cost) > 0 ? Number(cost) : 5;
 
     if (targetTeamId) {
       const team = db.getTeamById(targetTeamId);
@@ -63,7 +63,7 @@ export const TasksController = {
             success: false,
             error: "INSUFFICIENT_BALANCE",
             currentScore,
-            message: "Insufficient score balance. You need at least 5 points to unlock an Intel Clue.",
+            message: `Insufficient score balance. You need at least ${penaltyCost} points to unlock an Intel Clue.`,
           });
         }
 
@@ -71,7 +71,7 @@ export const TasksController = {
         const newScore = Math.max(0, currentScore - penaltyCost);
         const updated = db.updateTeam(team.id, {
           unlockedHints: nextHints,
-          penalty: team.penalty + penaltyCost,
+          penalty: (team.penalty || 0) + penaltyCost,
           totalScore: newScore,
         });
 
@@ -164,10 +164,23 @@ export const TasksController = {
     if (typeof penalty === "number") {
       updates.penalty = penalty;
     }
-    // Authoritatively calculate totalScore from breakdown and penalty
-    const effectiveBreakdown = updates.breakdown || team.breakdown;
-    const effectivePenalty = updates.penalty !== undefined ? updates.penalty : team.penalty;
-    updates.totalScore = ScoreService.calculateTotalScore(effectiveBreakdown, effectivePenalty);
+    // Authoritatively calculate totalScore: taskScores sum minus penalty is authoritative!
+    const effectiveTaskScores = updates.taskScores || team.taskScores;
+    const taskSum = effectiveTaskScores && Object.keys(effectiveTaskScores).length > 0
+      ? Object.values(effectiveTaskScores).reduce((acc: number, val: any) => acc + (Number(val) || 0), 0)
+      : 0;
+
+    // Always subtract penalty so score = gross - penalty (never count penalty separately)
+    const effectivePenalty = updates.penalty !== undefined ? updates.penalty : (team.penalty || 0);
+
+    if (taskSum > 0) {
+      updates.totalScore = Math.max(0, taskSum - effectivePenalty);
+      updates.breakdown = { ...(updates.breakdown || team.breakdown || {}), puzzle: taskSum, tech: 0 };
+    } else {
+      const effectiveBreakdown = updates.breakdown || team.breakdown;
+      const effectivePenalty = updates.penalty !== undefined ? updates.penalty : team.penalty;
+      updates.totalScore = ScoreService.calculateTotalScore(effectiveBreakdown, effectivePenalty);
+    }
     updates.lastSolvedAt = new Date().toISOString();
 
     const updated = db.updateTeam(team.id, updates);

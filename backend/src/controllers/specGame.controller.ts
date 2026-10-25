@@ -187,22 +187,42 @@ export const SpecGameController = {
   async getMySubmissions(req: Request, res: Response) {
     const teamId = resolveTeamId(req);
     const pool = tidb.pool;
+    let submissions: any[] = [];
 
     if (pool) {
       try {
         const [rows] = await pool.query<any[]>(
-          `SELECT s.submission_id, s.round_id, s.question_id, q.question_code, s.is_correct, s.points_awarded, s.submitted_at
+          `SELECT s.submission_id, s.round_id, s.question_id, q.question_code, s.submitted_answer, s.is_correct, s.points_awarded, s.attempt_number, s.submitted_at
            FROM question_submissions s
-           JOIN questions q ON s.question_id = q.question_id
+           LEFT JOIN questions q ON s.question_id = q.question_id
            WHERE s.team_id = ?
            ORDER BY s.submitted_at ASC`,
           [teamId]
         );
-        return res.json({ success: true, submissions: rows });
-      } catch {}
+        if (Array.isArray(rows) && rows.length > 0) {
+          submissions = rows.map((r) => ({
+            submissionId: r.submission_id,
+            roundId: Number(r.round_id),
+            questionId: r.question_id,
+            questionCode: r.question_code || `ch${r.round_id}-q${r.question_id}`,
+            submittedAnswer: r.submitted_answer || "",
+            isCorrect: Boolean(r.is_correct),
+            pointsAwarded: Number(r.points_awarded) || 0,
+            attempts: Number(r.attempt_number || 1),
+            isLocked: Boolean(r.is_correct) || Number(r.attempt_number || 1) >= 2,
+            submittedAt: r.submitted_at,
+          }));
+        }
+      } catch (err) {
+        console.warn("[SPEC GAME] TiDB getMySubmissions warn:", err);
+      }
     }
 
-    return res.json({ success: true, submissions: [] });
+    if (submissions.length === 0) {
+      submissions = db.getPlayerSubmissions(teamId);
+    }
+
+    return res.json({ success: true, submissions });
   },
 
   /**

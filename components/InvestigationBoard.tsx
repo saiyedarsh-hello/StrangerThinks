@@ -4,6 +4,7 @@ import { useGame } from "@/lib/store";
 import { sfx } from "@/lib/audio";
 import PushPin from "./PushPin";
 import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
+import { getSocket, subscribe } from "@/lib/realtime";
 
 interface InvestigationBoardProps {
   onSelectChapter?: (chapterId: number) => void;
@@ -106,6 +107,44 @@ export default function InvestigationBoard({
 }: InvestigationBoardProps) {
   const { s, score, isLocationLocked, say } = useGame();
   const [selectedCardId, setSelectedCardId] = useState<number>(activeChapterId);
+  const [unlockedStages, setUnlockedStages] = useState<number[]>([1]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchStages = async () => {
+      try {
+        const res = await fetch("/api/admin/stages");
+        const data = await res.json();
+        if (active && data.success && Array.isArray(data.unlockedStages)) {
+          setUnlockedStages(data.unlockedStages);
+        }
+      } catch {}
+    };
+    fetchStages();
+
+    const sock = getSocket();
+    const handleStageUnlocked = (d: any) => {
+      if (d?.unlockedStages && Array.isArray(d.unlockedStages)) {
+        setUnlockedStages(d.unlockedStages);
+      }
+    };
+    sock?.on("stage:unlocked", handleStageUnlocked);
+
+    const unsubRealtime = subscribe((m: any) => {
+      if (m.type === "stage_unlocked" && Array.isArray(m.unlockedStages)) {
+        setUnlockedStages(m.unlockedStages);
+      }
+      if (m.type === "event_reset") {
+        setUnlockedStages([1]);
+      }
+    });
+
+    return () => {
+      active = false;
+      sock?.off("stage:unlocked", handleStageUnlocked);
+      unsubRealtime();
+    };
+  }, []);
 
   // Refs for measuring card positions for the red string overlay
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -165,37 +204,36 @@ export default function InvestigationBoard({
       if (chapterId === 6 && (s.completedTasks.includes("ch6-upsidedown") || s.solved["ch6-upsidedown"] || s.completedTasks.includes("gate-unlock") || s.solved["gate-unlock"])) return true;
       if (chapterId === 7 && (s.completedTasks.includes("gate-unlock") || s.solved["gate-unlock"])) return true;
 
-      // 5. If all questions in the chapter have been given answers
-      const cfg = STAGE_QUIZ_CONFIGS[chapterId];
-      if (cfg?.questions && cfg.questions.length > 0) {
-        try {
-          const raw = typeof window !== "undefined"
-            ? localStorage.getItem(`hawkins_quiz_answers_ch${chapterId}_${s.team?.id || "anon"}`)
-            : null;
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            const givenCount = cfg.questions.filter((_, idx) => Boolean(parsed[idx]?.trim())).length;
-            if (givenCount === cfg.questions.length) return true;
-          }
-        } catch {}
-      }
-
       return false;
     },
     [s.team?.solvedChapters, s.completedTasks, s.solved, s.radiometer, s.team?.id]
   );
 
-  // Check if a chapter is unlocked:
-  // First, only Stage 1 is unlocked. Subsequent stages (2..7) only unlock when the previous stage is cleared.
+  // Dual-Condition Chapter Unlock Engine:
+  // Condition A: Prior chapter cleared (Chapter 1 has no prior chapter)
+  // Condition B: Admin has authorized stage (unlockedStages.includes(chapterId))
   const isChapterUnlocked = useCallback(
     (chapterId: number) => {
-      if (chapterId === 1) return true;
-      return isChapterCleared(chapterId - 1);
+      const adminUnlocked = unlockedStages.includes(chapterId);
+      if (chapterId === 1) return adminUnlocked;
+      const priorCleared = isChapterCleared(chapterId - 1);
+      return adminUnlocked && priorCleared;
     },
-    [isChapterCleared]
+    [unlockedStages, isChapterCleared]
   );
 
   const handleCardClick = (card: CaseCardData) => {
+    const unlocked = isChapterUnlocked(card.id);
+    if (!unlocked) {
+      sfx("err");
+      const adminUnlocked = unlockedStages.includes(card.id);
+      if (!adminUnlocked) {
+        say(`SECTOR ${card.id} RESTRICTED: Awaiting broadcast authorization from Command.`);
+      } else {
+        say(`SECTOR ${card.id} RESTRICTED: Must clear Sector ${card.id - 1} first.`);
+      }
+      return;
+    }
     if (isLocationLocked && card.id !== activeChapterId) {
       sfx("err");
       say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
@@ -575,8 +613,9 @@ export default function InvestigationBoard({
                     boxShadow: isSelected
                       ? "0 0 0 2px #d91e2b, 4px 8px 22px rgba(0,0,0,0.65)"
                       : "3px 6px 16px rgba(0,0,0,0.5)",
-                    border: "1px solid #c9beae",
-                    cursor: "pointer",
+                    border: !unlocked && !isChapterCleared(card.id) ? "1.5px dashed #8a7e72" : "1px solid #c9beae",
+                    cursor: unlocked || isChapterCleared(card.id) ? "pointer" : "not-allowed",
+                    opacity: unlocked || isChapterCleared(card.id) ? 1 : 0.75,
                     transform: `rotate(${idx % 2 === 0 ? "-0.8deg" : "0.8deg"})`,
                     transition: "box-shadow 0.2s ease, transform 0.2s ease",
                     display: "flex",
@@ -656,9 +695,38 @@ export default function InvestigationBoard({
                         width: "100%",
                         height: "100%",
                         objectFit: "cover",
-                        filter: "brightness(0.9) contrast(1.1)",
+                        filter: !unlocked && !isChapterCleared(card.id) ? "grayscale(0.8) brightness(0.6)" : "brightness(0.9) contrast(1.1)",
                       }}
                     />
+                    {!unlocked && !isChapterCleared(card.id) && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          backgroundColor: "rgba(18, 12, 10, 0.82)",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "6px",
+                          zIndex: 5,
+                        }}
+                      >
+                        <span style={{ fontSize: "24px" }}>🔒</span>
+                        <span
+                          style={{
+                            fontFamily: '"Share Tech Mono", monospace',
+                            fontSize: "11px",
+                            fontWeight: 900,
+                            letterSpacing: "0.14em",
+                            color: "#ff5964",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {!unlockedStages.includes(card.id) ? "COMMAND LOCKED" : `REQUIRES SECTOR ${card.id - 1}`}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Checkpoints / Evidence List */}
@@ -703,31 +771,54 @@ export default function InvestigationBoard({
                     </div>
                   )}
 
-                  {/* Action Button: [ ENTER CHAPTER → ] or [ REVISIT (CLEARED) ] */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCardClick(card);
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      background: isChapterCleared(card.id) ? "#2e7d32" : "#d91e2b",
-                      color: "#ffffff",
-                      fontFamily: '"Share Tech Mono", monospace',
-                      fontSize: "13px",
-                      fontWeight: "bold",
-                      letterSpacing: "0.15em",
-                      border: "none",
-                      borderRadius: "2px",
-                      cursor: "pointer",
-                      boxShadow: "0 2px 8px rgba(217, 30, 43, 0.45)",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    {isChapterCleared(card.id) ? "✓ REVISIT (CLEARED)" : "ENTER CHAPTER"}
-                  </button>
+                  {/* Action Button: [ ENTER CHAPTER → ] or [ REVISIT (CLEARED) ] or [ 🔒 LOCKED ] */}
+                  {(() => {
+                    const cleared = isChapterCleared(card.id);
+                    const isUnlocked = isChapterUnlocked(card.id);
+                    const adminUnlocked = unlockedStages.includes(card.id);
+
+                    return (
+                      <button
+                        type="button"
+                        disabled={!isUnlocked && !cleared}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCardClick(card);
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          background: cleared
+                            ? "#2e7d32"
+                            : isUnlocked
+                            ? "#d91e2b"
+                            : "#3b342e",
+                          color: !isUnlocked && !cleared ? "#8a7e72" : "#ffffff",
+                          fontFamily: '"Share Tech Mono", monospace',
+                          fontSize: "12px",
+                          fontWeight: "bold",
+                          letterSpacing: "0.12em",
+                          border: !isUnlocked && !cleared ? "1px dashed #665b50" : "none",
+                          borderRadius: "2px",
+                          cursor: !isUnlocked && !cleared ? "not-allowed" : "pointer",
+                          boxShadow: cleared
+                            ? "0 2px 8px rgba(46, 125, 50, 0.45)"
+                            : isUnlocked
+                            ? "0 2px 8px rgba(217, 30, 43, 0.45)"
+                            : "none",
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        {cleared
+                          ? "✓ REVISIT (CLEARED)"
+                          : isUnlocked
+                          ? "ENTER CHAPTER"
+                          : !adminUnlocked
+                          ? "🔒 PENDING COMMAND"
+                          : `🔒 REQUIRE SECTOR ${card.id - 1}`}
+                      </button>
+                    );
+                  })()}
                 </motion.div>
               );
             })}
@@ -841,7 +932,9 @@ export default function InvestigationBoard({
                           ? "✓ CLEARED"
                           : unlocked
                           ? "READY TO ACCESS"
-                          : `LOCKED [STAGE ${card.id - 1} REQ]`}
+                          : !unlockedStages.includes(card.id)
+                          ? "LOCKED [AWAITING COMMAND]"
+                          : `LOCKED [SECTOR ${card.id - 1} REQ]`}
                       </div>
                     </div>
                   </div>

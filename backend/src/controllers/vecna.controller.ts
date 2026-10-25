@@ -494,7 +494,23 @@ export const VecnaController = {
       return res.status(403).json({ success: false, error: "SUBMISSIONS_CLOSED", message: "Submissions are closed." });
     }
 
+    if (!EventControlService.isStageUnlocked(trialId)) {
+      return res.status(403).json({
+        success: false,
+        error: "STAGE_LOCKED",
+        message: `Stage ${trialId} is locked pending command authorization.`,
+      });
+    }
+
     const teamId = (req.user as any)?.teamId || "VECNA-001";
+
+    if (trialId > 1 && !db.isTeamStageCleared(teamId, trialId - 1)) {
+      return res.status(403).json({
+        success: false,
+        error: "STAGE_LOCKED",
+        message: `Stage ${trialId} is locked. You must clear Stage ${trialId - 1} first.`,
+      });
+    }
     const progress = db.getVecnaProgress(teamId, trialId);
 
     // Enforce sequential progression: all prior questions 0..(questionIdx - 1) MUST be attempted
@@ -538,20 +554,32 @@ export const VecnaController = {
       return res.status(404).json({ success: false, error: "QUESTION_NOT_FOUND" });
     }
 
+    const isSecondAttempt = Boolean(existing && existing.status === "attempted");
     const isCorrect = answer.trim().toUpperCase() === q.correctAnswerId.trim().toUpperCase();
-    const pointsAwarded = isCorrect ? 10 : 0;
-    const status = isCorrect ? "solved" : "failed";
+    const pointsAwarded = isCorrect ? (isSecondAttempt ? 10 : 20) : 0;
+    const status = isCorrect ? "solved" : (isSecondAttempt ? "failed" : "attempted");
+    const isLocked = isCorrect || isSecondAttempt;
 
     // Record authoritative attempt in backend
-    db.recordVecnaAttempt(teamId, trialId, questionIdx, status, pointsAwarded, answer);
+    db.recordVecnaAttempt(teamId, trialId, questionIdx, status, pointsAwarded, answer, isSecondAttempt ? 2 : 1);
 
     // Persist to TiDB question_submissions and score_ledger for Admin Telemetry
     if (tidb.pool) {
-      tidb.pool.query(
-        `INSERT INTO question_submissions (team_id, round_id, question_id, submitted_answer, is_correct, submitted_at)
-         VALUES (?, ?, ?, ?, ?, NOW(3))`,
-        [teamId, trialId, questionIdx + 1, answer, isCorrect ? 1 : 0]
-      ).catch((err: any) => console.warn("[VECNA TIDB SUBMISSION WARN]", err.message));
+      if (isSecondAttempt) {
+        tidb.pool.query(
+          `UPDATE question_submissions
+           SET submitted_answer = ?, is_correct = ?, points_awarded = ?, attempt_number = 2, submitted_at = NOW(3)
+           WHERE team_id = ? AND round_id = ? AND question_id = ?`,
+          [answer, isCorrect ? 1 : 0, pointsAwarded, teamId, trialId, questionIdx + 1]
+        ).catch((err: any) => console.warn("[VECNA TIDB SUBMISSION UPDATE WARN]", err.message));
+      } else {
+        tidb.pool.query(
+          `INSERT INTO question_submissions (team_id, round_id, question_id, submitted_answer, is_correct, points_awarded, attempt_number, submitted_at)
+           VALUES (?, ?, ?, ?, ?, ?, 1, NOW(3))
+           ON DUPLICATE KEY UPDATE submitted_answer = VALUES(submitted_answer), is_correct = VALUES(is_correct), points_awarded = VALUES(points_awarded), attempt_number = 1, submitted_at = NOW(3)`,
+          [teamId, trialId, questionIdx + 1, answer, isCorrect ? 1 : 0, pointsAwarded]
+        ).catch((err: any) => console.warn("[VECNA TIDB SUBMISSION INSERT WARN]", err.message));
+      }
 
       if (pointsAwarded > 0) {
         tidb.pool.query(
@@ -567,6 +595,21 @@ export const VecnaController = {
       }
     }
 
+    if (!isLocked) {
+      return res.json({
+        success: true,
+        isCorrect: false,
+        pointsAwarded: 0,
+        status: "attempted",
+        isLocked: false,
+        attemptsRemaining: 1,
+        availablePoints: 10,
+        totalScore: existingScore,
+        newScore: existingScore,
+        message: "OVERRIDE COMPROMISED · RETRY ATTEMPT 2 (+10 PTS)",
+      });
+    }
+
     let updatedScore: number | undefined = existingScore;
     if (pointsAwarded > 0) {
       let activeTeam = team;
@@ -579,31 +622,37 @@ export const VecnaController = {
         );
         db.updateTeam(activeTeam.id, { role: "VECNA" });
       }
+      const allVecnaAttempts = db.getAllVecnaProgress(teamId);
+      const totalEarned = Object.values(allVecnaAttempts).reduce(
+        (sum: number, att: any) => sum + (Number(att.earnedPoints) || 0),
+        0
+      );
+      const finalScore = totalEarned > 0 ? totalEarned : activeTeam.totalScore + pointsAwarded;
       db.updateTeam(activeTeam.id, {
-        totalScore: activeTeam.totalScore + pointsAwarded,
+        totalScore: finalScore,
         breakdown: {
           ...activeTeam.breakdown,
-          tech: activeTeam.breakdown.tech + pointsAwarded,
+          tech: finalScore,
         },
       });
-      updatedScore = activeTeam.totalScore;
+      updatedScore = finalScore;
       socketService.broadcastLeaderboard();
-      socketService.emitToTeam(activeTeam.id, "score:update", {
+      const scorePayload = {
+        type: "score:update",
         teamId: activeTeam.id,
+        teamName: activeTeam.teamName || "Vecna",
         score: updatedScore,
         totalScore: updatedScore,
         newScore: updatedScore,
         delta: pointsAwarded,
+        chapterId: trialId,
+        source: "vecna_trial_submission",
         ts: Date.now(),
-      });
-      socketService.broadcastToVecna("score:update", {
-        teamId: activeTeam.id,
-        score: updatedScore,
-        totalScore: updatedScore,
-        newScore: updatedScore,
-        delta: pointsAwarded,
-        ts: Date.now(),
-      });
+      };
+      socketService.emitToTeam(activeTeam.id, "score:update", scorePayload);
+      socketService.broadcastToVecna("score:update", scorePayload);
+      socketService.broadcastToAdmins("score:update", scorePayload);
+      socketService.broadcast("score:update", scorePayload);
     }
 
     return res.json({

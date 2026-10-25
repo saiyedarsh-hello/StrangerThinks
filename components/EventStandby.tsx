@@ -6,9 +6,10 @@ import { useGame } from "@/lib/store";
 
 interface EventStandbyProps {
   onEventStarted: () => void;
+  isEnded?: boolean;
 }
 
-export default function EventStandby({ onEventStarted }: EventStandbyProps) {
+export default function EventStandby({ onEventStarted, isEnded = false }: EventStandbyProps) {
   const { s } = useGame();
   const [pulse, setPulse] = useState(0);
 
@@ -124,7 +125,7 @@ export default function EventStandby({ onEventStarted }: EventStandbyProps) {
               "0 0 20px rgba(255, 34, 48, 0.8), 0 0 40px rgba(184, 29, 36, 0.6)",
           }}
         >
-          EVENT ON STANDBY
+          {isEnded ? "TOURNAMENT CONCLUDED" : "EVENT ON STANDBY"}
         </h1>
 
         <p
@@ -136,8 +137,9 @@ export default function EventStandby({ onEventStarted }: EventStandbyProps) {
             fontFamily: "'Courier New', Courier, monospace",
           }}
         >
-          Chief Hopper and the Command Bridge have not yet authorized the tournament start signal.
-          Until the event is officially initiated by the Admin, investigation files remain classified and locked.
+          {isEnded
+            ? "The Hawkins Invitational Tournament has officially ended. All final team standings and investigation files have been archived into Department of Energy historical records."
+            : "Chief Hopper and the Command Bridge have not yet authorized the tournament start signal. Until the event is officially initiated by the Admin, investigation files remain classified and locked."}
         </p>
 
         {/* Squad Status Box */}

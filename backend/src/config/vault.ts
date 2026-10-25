@@ -1856,19 +1856,19 @@ export const RAW_CHAPTER_QUESTIONS: Record<number, ChapterQuestion[]> = {
 
 // Interactive mini-game tasks secrets
 export const STORY_TASK_SECRETS: Record<string, { answerPattern: RegExp; points: number; category: string }> = {
-  "ch1-quiz": { answerPattern: /^A$/i, points: 50, category: "tech" },
-  "town-1": { answerPattern: /^(A|86-04|mkultra|1983)$/i, points: 50, category: "tech" },
-  "ch2-police": { answerPattern: /^(A|radio-tower|east-hill)$/i, points: 50, category: "clue" },
-  "ch3-byers": { answerPattern: /^DO\s*NOT\s*OPEN\s*THE\s*GATE$/i, points: 50, category: "puzzle" },
-  "ch4-lab": { answerPattern: /^30$/i, points: 50, category: "tech" },
-  "lab-terminal": { answerPattern: /^30$/i, points: 50, category: "tech" },
-  "ch5-forest": { answerPattern: /^(417|4-1-7|vector\s*4-1-7)$/i, points: 50, category: "clue" },
-  "forest-marks": { answerPattern: /^(417|4-1-7)$/i, points: 50, category: "clue" },
-  "ch5-radio-tower": { answerPattern: /^83479$/i, points: 50, category: "puzzle" },
-  "ch6-radio-tower": { answerPattern: /^83479$/i, points: 50, category: "puzzle" },
-  "gate-unlock": { answerPattern: /^83479$/i, points: 50, category: "puzzle" },
-  "ch6-upsidedown": { answerPattern: /^(HENRY\s*CREEL|001|VECNA|PETER\s*BALLARD)$/i, points: 50, category: "story" },
-  "ch7-upsidedown": { answerPattern: /^(HENRY\s*CREEL|001|VECNA|PETER\s*BALLARD)$/i, points: 50, category: "story" },
+  "ch1-quiz": { answerPattern: /^A$/i, points: 200, category: "tech" },
+  "town-1": { answerPattern: /^(A|86-04|mkultra|1983)$/i, points: 200, category: "tech" },
+  "ch2-police": { answerPattern: /^(A|radio-tower|east-hill)$/i, points: 200, category: "clue" },
+  "ch3-byers": { answerPattern: /^DO\s*NOT\s*OPEN\s*THE\s*GATE$/i, points: 200, category: "puzzle" },
+  "ch4-lab": { answerPattern: /^30$/i, points: 200, category: "tech" },
+  "lab-terminal": { answerPattern: /^30$/i, points: 200, category: "tech" },
+  "ch5-forest": { answerPattern: /^(417|4-1-7|vector\s*4-1-7)$/i, points: 200, category: "clue" },
+  "forest-marks": { answerPattern: /^(417|4-1-7)$/i, points: 200, category: "clue" },
+  "ch5-radio-tower": { answerPattern: /^83479$/i, points: 200, category: "puzzle" },
+  "ch6-radio-tower": { answerPattern: /^83479$/i, points: 200, category: "puzzle" },
+  "gate-unlock": { answerPattern: /^83479$/i, points: 200, category: "puzzle" },
+  "ch6-upsidedown": { answerPattern: /^(HENRY\s*CREEL|001|VECNA|PETER\s*BALLARD)$/i, points: 200, category: "story" },
+  "ch7-upsidedown": { answerPattern: /^(HENRY\s*CREEL|001|VECNA|PETER\s*BALLARD)$/i, points: 200, category: "story" },
 };
 
 export const RADIOMETER_PIN_SECRETS: Record<number, { digit: string; points: number }> = {

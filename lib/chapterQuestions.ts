@@ -91,7 +91,7 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
     stageSubtitle: "SERIES LORE & TECHNICAL FOUNDATIONS",
     docketNumber: "FORM HPD-01-83 // CLASSIFIED TELEMETRY DOCKET",
     sectionHeader: "STAGE 01 — QUIZ-TYPE INQUIRY // HAWKINS CHRONICLES",
-    points: 50,
+    points: 200,
     questions: [
       {
         id: "ch1-q1",
@@ -266,7 +266,7 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
     stageSubtitle: "MATCHING TELEMETRY & RELATIONSHIP MATRICES",
     docketNumber: "FORM HPD-02-83 // CLASSIFIED LAB CONNECTION DOCKET",
     sectionHeader: "STAGE 02 — CONNECTION MATRICES // CORRELATE RELATIONSHIPS",
-    points: 50,
+    points: 200,
     questions: [
       {
         id: "ch2-q1",
@@ -521,7 +521,7 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
     stageSubtitle: "SEQUENCE RECONSTRUCTION & SCRAMBLED DATA",
     docketNumber: "FORM HPD-03-83 // CLASSIFIED REARRANGE DOCKET",
     sectionHeader: "STAGE 03 — REARRANGE TOKENS // RECONSTRUCT SCRAMBLED ARTIFACTS",
-    points: 50,
+    points: 200,
     questions: [
       {
         id: "ch3-q1",
@@ -814,7 +814,7 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
     stageSubtitle: "INVESTIGATIVE INCIDENT REPORTS & EVIDENCE DOSSIERS",
     docketNumber: "FORM HPD-04-83 // CLASSIFIED CASE STUDY DOCKET",
     sectionHeader: "STAGE 04 — CASE STUDY INQUIRY // EVALUATE PHYSICAL EVIDENCE",
-    points: 50,
+    points: 200,
     questions: [
       {
         id: "ch4-q1",
@@ -1092,7 +1092,7 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
     stageSubtitle: "RADIO TRANSMISSION INTERCEPTS & CIPHER DECODING",
     docketNumber: "FORM HPD-05-83 // CLASSIFIED RADIO INTERCEPT DOCKET",
     sectionHeader: "STAGE 05 — RADIO TRANSMISSION // DECODE AIRWAVE CIPHERS",
-    points: 50,
+    points: 200,
     questions: [
       {
         id: "ch5-q1",
@@ -1337,7 +1337,7 @@ export const STAGE_QUIZ_CONFIGS: Record<number, StageQuizConfig> = {
     stageSubtitle: "TECHNICAL SIMULATIONS & LAB OPERATIONS",
     docketNumber: "FORM HPD-06-83 // CLASSIFIED LAB TASK DOCKET",
     sectionHeader: "STAGE 06 — LAB-TYPE TASKS // SYSTEM REPAIR & SIMULATION",
-    points: 50,
+    points: 200,
     questions: [
       {
         id: "ch6-q1",

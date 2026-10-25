@@ -122,6 +122,30 @@ export interface EventStatePayload {
   isPaused: boolean;
   submissionsOpen: boolean;
   loginOpen?: boolean;
+  unlockedStages?: number[];
+  ts?: number;
+}
+
+export interface StageUnlockedPayload {
+  type: "stage_unlocked";
+  unlockedStages: number[];
+  ts?: number;
+}
+
+export interface EventResetPayload {
+  type: "event_reset";
+  status?: string;
+  startedAt?: string | null;
+  unlockedStages?: number[];
+  message?: string;
+  ts?: number;
+}
+
+export interface EventEndedPayload {
+  type: "event_ended";
+  status?: string;
+  endedAt?: string | null;
+  message?: string;
   ts?: number;
 }
 
@@ -170,6 +194,9 @@ export type RealtimeMessage =
   | ForceLogoutPayload
   | ScoreUpdatePayload
   | EventStatePayload
+  | StageUnlockedPayload
+  | EventResetPayload
+  | EventEndedPayload
   | SessionSupersededPayload
   | SabotageClearPayload
   | VecnaDispatchQuotaPayload
@@ -327,7 +354,29 @@ export function getSocket(): Socket | null {
         });
       });
 
+      socketInstance.on("stage:unlocked", (data: any) => {
+        dispatchToSubscribers({
+          type: "stage_unlocked",
+          unlockedStages: Array.isArray(data?.unlockedStages) ? data.unlockedStages : [1],
+          ts: Date.now(),
+        });
+      });
+
+      socketInstance.on("event:reset", (data: any) => {
+        dispatchToSubscribers({
+          type: "event_reset",
+          ...data,
+          ts: Date.now(),
+        });
+      });
+
       socketInstance.on("event:ended", (data: any) => {
+        dispatchToSubscribers({
+          type: "event_ended",
+          message: data?.message || "The tournament has ended.",
+          endedAt: data?.endedAt,
+          ts: Date.now(),
+        });
         dispatchToSubscribers({
           type: "force_logout",
           target: "all",

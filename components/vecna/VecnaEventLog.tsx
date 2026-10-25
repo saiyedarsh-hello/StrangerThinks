@@ -20,23 +20,23 @@ export default function VecnaEventLog({ events }: VecnaEventLogProps) {
   const getIcon = (type: LogEventItem["type"]) => {
     switch (type) {
       case "RADIO":
-        return "📡";
+        return "[SIG]";
       case "LOCK":
-        return "🔒";
+        return "[LCK]";
       case "MESSAGE":
-        return "✉️";
+        return "[MSG]";
       case "SHADOWS":
-        return "👥";
+        return "[SHD]";
       case "ENV":
-        return "⚠️";
+        return "[ENV]";
       case "CORRUPT":
-        return "🖥️";
+        return "[CRP]";
       case "GLITCH":
-        return "👁️";
+        return "[GLT]";
       case "AWARD":
-        return "🏆";
+        return "[AWD]";
       case "STORY":
-        return "⚡";
+        return "[STR]";
       default:
         return "●";
     }

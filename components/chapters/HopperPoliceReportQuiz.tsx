@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { sfx } from "@/lib/audio";
 import { useGame } from "@/lib/store";
 import { QuizQuestion, STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
+import { subscribe } from "@/lib/realtime";
 import QuestionTypeRenderer from "./QuestionTypeRenderer";
 
 interface HopperPoliceReportQuizProps {
@@ -36,7 +37,7 @@ export default function HopperPoliceReportQuiz({
   onSubmitAll,
   error = false,
   onOpenLore,
-  points = 50,
+  points = 200,
   onExitFullScreen,
 }: HopperPoliceReportQuizProps) {
   const stageConfig = STAGE_QUIZ_CONFIGS[chapterNumber] || STAGE_QUIZ_CONFIGS[1];
@@ -104,6 +105,110 @@ export default function HopperPoliceReportQuiz({
       } catch {}
     }
   }, [questionAttempts, chapterNumber, s?.team?.id]);
+
+  // Authoritatively restore submissions & locked states from server
+  useEffect(() => {
+    let active = true;
+    const fetchSubmissions = async () => {
+      try {
+        let token = "";
+        try {
+          const stored = localStorage.getItem("hawkins-protocol:session");
+          if (stored) token = JSON.parse(stored).token || "";
+        } catch {}
+
+        const res = await fetch("/api/me/submissions", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json();
+        if (active && data.success && Array.isArray(data.submissions)) {
+          const sAnswers: Record<number, string> = {};
+          const sAttempts: Record<number, number> = {};
+          const sResults: Record<number, any> = {};
+
+          data.submissions.forEach((sub: any) => {
+            const subRound = Number(sub.roundId);
+            if (subRound === chapterNumber) {
+              const qCode = String(sub.questionCode || "").toLowerCase();
+              let matchedIdx = -1;
+              questions.forEach((q, qIdx) => {
+                const alias1 = `ch${chapterNumber}-q${qIdx + 1}`.toLowerCase();
+                const alias2 = (q.id || "").toLowerCase();
+                if (qCode === alias1 || qCode === alias2 || qCode === String(q.itemNumber)) {
+                  matchedIdx = qIdx;
+                }
+              });
+
+              if (matchedIdx !== -1) {
+                if (sub.submittedAnswer) {
+                  sAnswers[matchedIdx] = sub.submittedAnswer;
+                }
+                const attCount = Number(sub.attempts || 1);
+                sAttempts[matchedIdx] = attCount;
+                const isCorrect = Boolean(sub.isCorrect);
+                const isLocked = Boolean(sub.isLocked ?? (isCorrect || attCount >= 2));
+                sResults[matchedIdx] = {
+                  isCorrect,
+                  isLocked,
+                  pointsAwarded: Number(sub.pointsAwarded) || 0,
+                  attempts: attCount,
+                  message: isCorrect
+                    ? (attCount <= 1 ? "TELEMETRY VERIFIED · DOCKET ITEM ACCURATE [+20 PTS]" : "TELEMETRY VERIFIED ON SECOND ATTEMPT [+10 PTS]")
+                    : (isLocked ? "TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS]" : "EVIDENCE DISCREPANCY DETECTED · VALUE REDUCED TO 10 PTS (1 ATTEMPT REMAINING)"),
+                };
+              }
+            }
+          });
+
+          if (Object.keys(sAnswers).length > 0) {
+            setSelectedAnswers((prev) => ({ ...prev, ...sAnswers }));
+          } else {
+            setSelectedAnswers({});
+            try {
+              localStorage.removeItem(`hawkins_quiz_answers_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+            } catch {}
+          }
+          if (Object.keys(sAttempts).length > 0) {
+            setQuestionAttempts((prev) => ({ ...prev, ...sAttempts }));
+          } else {
+            setQuestionAttempts({});
+            try {
+              localStorage.removeItem(`hawkins_quiz_attempts_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+            } catch {}
+          }
+          if (Object.keys(sResults).length > 0) {
+            setQuestionResults((prev) => ({ ...prev, ...sResults }));
+          } else {
+            setQuestionResults({});
+            try {
+              localStorage.removeItem(`hawkins_quiz_results_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+            } catch {}
+          }
+        }
+      } catch (err) {
+        console.warn("[SUBMISSIONS RESTORE ERROR]", err);
+      }
+    };
+
+    fetchSubmissions();
+    const unsub = subscribe((m: any) => {
+      if (m.type === "event_reset") {
+        setSelectedAnswers({});
+        setQuestionAttempts({});
+        setQuestionResults({});
+        setCurrentIdx(0);
+        try {
+          localStorage.removeItem(`hawkins_quiz_answers_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+          localStorage.removeItem(`hawkins_quiz_attempts_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+          localStorage.removeItem(`hawkins_quiz_results_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+        } catch {}
+      }
+    });
+    return () => {
+      active = false;
+      unsub();
+    };
+  }, [chapterNumber, questions, s?.team?.id]);
   const [unlockingHintKey, setUnlockingHintKey] = useState<string | null>(null);
 
   const [unansweredPrompt, setUnansweredPrompt] = useState(false);
@@ -145,7 +250,7 @@ export default function HopperPoliceReportQuiz({
   const isCurrentLocked = Boolean(
     currentResult?.isLocked ||
     isCurrentVerified ||
-    (currentAttempts >= 2 && currentResult && !currentResult.isCorrect)
+    currentAttempts >= 2
   );
 
   const [isCheckingQuestion, setIsCheckingQuestion] = useState(false);
@@ -176,7 +281,7 @@ export default function HopperPoliceReportQuiz({
             qTaskId,
             earned,
             `Chapter ${chapterNumber} Item ${idx + 1} Telemetry Solved`,
-            false
+            true
           );
         }
       }
@@ -234,7 +339,7 @@ export default function HopperPoliceReportQuiz({
         const pts = typeof data.pointsAwarded === "number"
           ? data.pointsAwarded
           : isCorrect
-          ? (thisAttemptNumber === 1 ? 10 : 5)
+          ? (thisAttemptNumber === 1 ? 20 : 10)
           : 0;
 
         if (isCorrect) {
@@ -250,7 +355,7 @@ export default function HopperPoliceReportQuiz({
             questionTaskId,
             pts,
             `Chapter ${chapterNumber} Item ${currentIdx + 1} Telemetry Solved`,
-            false
+            true
           );
         }
 
@@ -271,12 +376,6 @@ export default function HopperPoliceReportQuiz({
           return r?.isCorrect || r?.isLocked || a >= 2;
         });
 
-        if (willBeAllDone && willBeAllChecked) {
-          setTimeout(() => {
-            handleFinalSubmit();
-          }, 600);
-        }
-
         setQuestionResults((prev) => {
           const updated = {
             ...prev,
@@ -285,10 +384,10 @@ export default function HopperPoliceReportQuiz({
               isLocked,
               message: data.message || (
                 isCorrect
-                  ? (thisAttemptNumber === 1 ? "VERIFIED [+10 PTS]" : "VERIFIED [+5 PTS]")
+                  ? (thisAttemptNumber === 1 ? "VERIFIED [+20 PTS]" : "VERIFIED [+10 PTS]")
                   : isLocked
-                  ? "TERMINAL LOCKED ┬À 2/2 ATTEMPTS EXHAUSTED [0 PTS]"
-                  : "INCORRECT ┬À VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)"
+                  ? "TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS]"
+                  : "INCORRECT · VALUE REDUCED TO 10 PTS (1 ATTEMPT REMAINING)"
               ),
               pointsAwarded: pts,
               attempts: thisAttemptNumber,
@@ -358,26 +457,6 @@ export default function HopperPoliceReportQuiz({
       legacyOnSubmit();
     }
   }, [isPaused, allQuestionsDone, totalQuestions, selectedAnswers, onSubmitAll, legacyOnSubmit, say]);
-
-  // Once all questions in the section are given answers, close the section as completed
-  useEffect(() => {
-    if (!allQuestionsDone || totalQuestions === 0 || isPaused) return;
-
-    // Check if all questions are checked/verified
-    const allChecked = questions.every((_, idx) => {
-      const res = questionResults[idx];
-      const attempts = questionAttempts[idx] || 0;
-      return res?.isCorrect || res?.isLocked || attempts >= 2;
-    });
-
-    // Auto-close section as completed even without manually submitting the report
-    const delay = allChecked ? 600 : 1200;
-    const timer = setTimeout(() => {
-      handleFinalSubmit();
-    }, delay);
-
-    return () => clearTimeout(timer);
-  }, [allQuestionsDone, questionResults, questionAttempts, totalQuestions, isPaused, handleFinalSubmit]);
 
   const activeDocket =
     formDocket ||
@@ -703,14 +782,14 @@ export default function HopperPoliceReportQuiz({
                   }}
                 >
                   {isCurrentVerified
-                    ? `VERIFIED [+${currentResult?.pointsAwarded || (currentAttempts === 2 ? 5 : 10)} PTS]`
+                    ? `VERIFIED [+${currentResult?.pointsAwarded || (currentAttempts === 2 ? 10 : 20)} PTS]`
                     : isCurrentLocked
-                    ? "TERMINAL LOCKED ┬À 2/2 ATTEMPTS EXHAUSTED [0 PTS]"
+                    ? "TERMINAL LOCKED · 2/2 ATTEMPTS EXHAUSTED [0 PTS]"
                     : currentAttempts === 1 && currentResult && !currentResult.isCorrect
-                    ? "INCORRECT ┬À VALUE REDUCED TO 5 PTS (1 ATTEMPT REMAINING)"
+                    ? "INCORRECT · VALUE REDUCED TO 10 PTS (1 ATTEMPT REMAINING)"
                     : selectedAnswers[currentIdx]
-                    ? (currentAttempts === 1 ? "ANSWER RECORDED [5 PTS]" : "ANSWER RECORDED [10 PTS]")
-                    : (currentAttempts === 1 ? "SELECT ANSWER [5 PTS]" : "SELECT ANSWER [10 PTS]")}
+                    ? (currentAttempts === 1 ? "ANSWER RECORDED [10 PTS]" : "ANSWER RECORDED [20 PTS]")
+                    : (currentAttempts === 1 ? "SELECT ANSWER [10 PTS]" : "SELECT ANSWER [20 PTS]")}
                 </span>
               </div>
 
@@ -755,8 +834,8 @@ export default function HopperPoliceReportQuiz({
                   : isCurrentLocked
                   ? "LOCKED"
                   : currentAttempts === 1 && currentResult && !currentResult.isCorrect
-                  ? "CHECK ANSWER (5 PTS)"
-                  : "CHECK ANSWER"}
+                  ? "CHECK ANSWER (10 PTS - RETRY)"
+                  : "CHECK ANSWER (20 PTS)"}
               </button>
             </div>
 
@@ -768,9 +847,9 @@ export default function HopperPoliceReportQuiz({
               const handleUnlockHint = (e: React.MouseEvent) => {
                 e.stopPropagation();
                 if (isUnlocking) return;
-                if (score < 5) {
+                if (score < 10) {
                   showAlert(
-                    "You need at least 5 squad points to decrypt this classified Intel Clue. Complete tasks or submit accurate answers to earn points.",
+                    "You need at least 10 squad points to decrypt this classified Intel Clue. Complete tasks or submit accurate answers to earn points.",
                     {
                       title: "CLEARANCE RESTRICTED // INSUFFICIENT SCORE",
                       confirmLabel: "ACKNOWLEDGE",
@@ -780,17 +859,17 @@ export default function HopperPoliceReportQuiz({
                   return;
                 }
                 showConfirm(
-                  "Decrypt classified surveillance dossier? This action will deduct 5 points from your current squad score.",
+                  "Decrypt classified surveillance dossier? This action will deduct 10 points from your current squad score.",
                   () => {
                     setUnlockingHintKey(currentHintKey);
-                    unlockHint(currentHintKey, 5);
+                    unlockHint(currentHintKey, 10);
                     setTimeout(() => {
                       setUnlockingHintKey(null);
                     }, 400);
                   },
                   {
                     title: "CLASSIFIED INTEL DOSSIER DECRYPTION",
-                    confirmLabel: "DECRYPT CLUE (-5 PTS)",
+                    confirmLabel: "DECRYPT CLUE (-10 PTS)",
                     cancelLabel: "ABORT",
                     type: "warning",
                   }
@@ -949,7 +1028,7 @@ export default function HopperPoliceReportQuiz({
                           e.currentTarget.style.background = "#24130d";
                           e.currentTarget.style.color = "#ffd54f";
                         }}
-                        title="Unlock classified dossier clue for 5 points (-5 PTS)"
+                        title="Unlock classified dossier clue for 10 points (-10 PTS)"
                       >
                         <span>{isUnlocking ? "DECRYPTING..." : "UNLOCK CLUE"}</span>
                       </button>

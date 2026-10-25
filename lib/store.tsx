@@ -64,6 +64,8 @@ export interface TeamInfo {
   vecnaStatus: "INACTIVE" | "ACTIVE";
   unlocked: Record<string, boolean>;
   solvedChapters?: number[];
+  penalty?: number;
+  unlockedHints?: Record<string, boolean>;
 }
 
 export interface GameState {
@@ -95,6 +97,7 @@ export interface GameState {
   unlockedHints: Record<string, boolean>;
   taskScores?: Record<string, number>;
   isPaused?: boolean;
+  unlockedStages?: number[];
 }
 
 const EMPTY_BREAKDOWN: Breakdown = { tech: 0, puzzle: 0, clue: 0, speed: 0, story: 0, teamwork: 0 };
@@ -148,6 +151,7 @@ const INITIAL: GameState = {
   unlockedHints: {},
   taskScores: {},
   isPaused: false,
+  unlockedStages: [1],
 };
 
 const KEY = CONFIG.STORAGE_KEY;
@@ -291,6 +295,40 @@ interface Ctx {
 }
 
 const GameCtx = createContext<Ctx | null>(null);
+export function purgeTeamGameplayCache(teamId?: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (
+        k.startsWith("hawkins_quiz_answers_") ||
+        k.startsWith("hawkins_quiz_attempts_") ||
+        k.startsWith("hawkins_quiz_results_") ||
+        k.startsWith("hawkins_rearrange_") ||
+        k.startsWith("hawkins_connections_") ||
+        k.startsWith("hawkins_team_save_") ||
+        k.startsWith("vecna_") ||
+        k === "hawkins_seen_briefings" ||
+        k === "hawkins_corrupt_answers" ||
+        k === "hawkins_active_chapter" ||
+        k === "hawkins_live_score_sync" ||
+        k === "hawkins_persisted_leaderboard"
+      ) {
+        if (!teamId || k.includes(teamId)) {
+          keysToRemove.push(k);
+        }
+      }
+    }
+    keysToRemove.forEach((k) => {
+      try {
+        localStorage.removeItem(k);
+      } catch {}
+    });
+  } catch {}
+}
+
 export const useGame = () => {
   const c = useContext(GameCtx);
   if (!c) throw new Error("useGame outside provider");
@@ -439,8 +477,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const teamUnlocked = { ...INITIAL_UNLOCKED, ...(localSave?.unlockedLocations || {}) };
         const teamProgress = localSave?.storyProgress ?? 10;
         const teamBreakdown = localSave?.breakdown || {
-          tech: teamScore,
-          puzzle: 0,
+          tech: 0,
+          puzzle: teamScore,
           clue: 0,
           speed: 0,
           story: 0,
@@ -493,6 +531,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (!sessionToken) {
       setSessionVerified(true);
     } else {
+      fetch("/api/admin/event/state")
+        .then((r) => r.json())
+        .then((evData) => {
+          if (evData?.eventState?.unlockedStages && Array.isArray(evData.eventState.unlockedStages)) {
+            setS((prev) => ({ ...prev, unlockedStages: evData.eventState.unlockedStages }));
+          }
+        })
+        .catch(() => {});
       fetch("/api/auth/session", {
         headers: { Authorization: `Bearer ${sessionToken}` },
       })
@@ -524,16 +570,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
               if (raw) localSave = JSON.parse(raw);
             } catch {}
 
-            const teamScore = data.team?.totalScore ?? data.team?.score ?? localSave?.totalScore ?? localSave?.score ?? 0;
-            const teamSolvedChapters = Array.from(
-              new Set([...(data.team?.solvedChapters || []), ...(localSave?.solvedChapters || [])])
-            );
-            const teamCompleted = Array.from(
-              new Set([...(data.team?.completedTasks || []), ...(localSave?.completedTasks || [])])
-            );
+            const sTotalScore = typeof data.team?.totalScore === "number" ? data.team.totalScore : (typeof data.team?.score === "number" ? data.team.score : 0);
+            const sSolvedChapters = Array.isArray(data.team?.solvedChapters) ? data.team.solvedChapters : [];
+            const sCompletedTasks = Array.isArray(data.team?.completedTasks) ? data.team.completedTasks : [];
+
+            if (sTotalScore === 0 && sCompletedTasks.length === 0) {
+              purgeTeamGameplayCache(sData.teamId);
+              localSave = null;
+            }
+
+            const teamScore = sTotalScore;
+            const teamSolvedChapters = sSolvedChapters;
+            const teamCompleted = sCompletedTasks;
             const sBreakdown: Breakdown = data.team?.breakdown || localSave?.breakdown || {
-              tech: teamScore,
-              puzzle: 0,
+              tech: 0,
+              puzzle: teamScore,
               clue: 0,
               speed: 0,
               story: 0,
@@ -772,6 +823,40 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      if (m.type === "event_reset") {
+        purgeTeamGameplayCache();
+        sfx("boom");
+        say("HAWKINS COMMAND: FRESH TOURNAMENT EVENT INITIATED · All scores and stages reset to 0.");
+        setS((p) => ({
+          ...p,
+          breakdown: { tech: 0, puzzle: 0, clue: 0, speed: 0, story: 0, teamwork: 0 },
+          penalty: 0,
+          completedTasks: [],
+          solvedChapters: [],
+          taskScores: {},
+          solved: {},
+          activeChapterId: 1,
+          viewMode: "board",
+          storyProgress: 0,
+          team: p.team
+            ? {
+                ...p.team,
+                score: 0,
+                totalScore: 0,
+                solvedChapters: [],
+                completedTasks: [],
+                storyProgress: 0,
+              }
+            : p.team,
+        }));
+      }
+
+      if (m.type === "event_ended") {
+        purgeTeamGameplayCache(sRef.current.team?.id);
+        sfx("err");
+        say("HAWKINS COMMAND: TOURNAMENT CONCLUDED BY ADMINISTRATOR");
+      }
+
       if (m.type === "force_logout") {
         const myTeamId = sRef.current.team?.id;
         const myTeamName = sRef.current.team?.name;
@@ -982,13 +1067,18 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       }
 
-      const teamScore = team.totalScore ?? team.score ?? localSave?.totalScore ?? localSave?.score ?? 0;
-      const teamSolvedChapters = Array.from(
-        new Set([...(team.solvedChapters || []), ...(localSave?.solvedChapters || [])])
-      );
-      const teamCompleted = Array.from(
-        new Set([...(team.completedTasks || []), ...(localSave?.completedTasks || [])])
-      );
+      const sTotalScore = typeof team.totalScore === "number" ? team.totalScore : (typeof team.score === "number" ? team.score : 0);
+      const sSolvedChapters = Array.isArray(team.solvedChapters) ? team.solvedChapters : [];
+      const sCompletedTasks = Array.isArray(team.completedTasks) ? team.completedTasks : [];
+
+      if (sTotalScore === 0 && sCompletedTasks.length === 0) {
+        purgeTeamGameplayCache(team.id);
+        localSave = null;
+      }
+
+      const teamScore = sTotalScore;
+      const teamSolvedChapters = sSolvedChapters;
+      const teamCompleted = sCompletedTasks;
       const teamBreakdown: Breakdown = team.breakdown || localSave?.breakdown || {
         tech: teamScore,
         puzzle: 0,
@@ -1194,23 +1284,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const newProgress = Math.min(100, p.storyProgress + progressGain);
 
       const nextTaskScores = { ...(p.taskScores || {}), [taskId]: points };
-      
-      // If already awarded by authoritative server validation, do not add points again
-      const nextBreakdown = alreadyAwarded
-        ? { ...p.breakdown }
-        : {
-            ...p.breakdown,
-            [category]: Math.max(0, (p.breakdown[category] || 0) + (pointDelta > 0 ? pointDelta : points)),
-          };
-
       const taskScoresSum = computeAggregatedTaskScore(nextTaskScores);
-      const computedTotalScore = alreadyAwarded
-        ? Math.max(p.team?.score ?? 0, p.team?.totalScore ?? 0, taskScoresSum, totalScore(nextBreakdown, p.penalty))
-        : Math.max(
-            totalScore(nextBreakdown, p.penalty),
-            taskScoresSum,
-            (p.team?.score || 0) + Math.max(0, pointDelta)
-          );
+      const computedTotalScore = taskScoresSum > 0 ? taskScoresSum : (p.team?.totalScore ?? p.team?.score ?? 0);
+      const netTotalScore = Math.max(0, computedTotalScore - (p.penalty || 0));
+      const nextBreakdown: Breakdown = {
+        tech: 0,
+        puzzle: netTotalScore,
+        clue: p.breakdown?.clue || 0,
+        speed: p.breakdown?.speed || 0,
+        story: p.breakdown?.story || 0,
+        teamwork: p.breakdown?.teamwork || 0,
+      };
 
       // Extract chapter number if applicable (Only whole chapter tasks, NOT individual subquestions)
       const isChapterCompletionTask = (id: string) => {
@@ -1234,8 +1318,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const nextTeam = p.team
         ? {
             ...p.team,
-            score: computedTotalScore,
-            totalScore: computedTotalScore,
+            score: netTotalScore,
+            totalScore: netTotalScore,
+            penalty: p.penalty || 0,
             completedTasks: nextCompleted,
             solvedChapters,
           }
@@ -1252,7 +1337,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             unlockedLocations: nextUnlocked,
             storyProgress: newProgress,
             breakdown: nextBreakdown,
-            totalScore: computedTotalScore,
+            totalScore: netTotalScore,
             penalty: p.penalty || 0,
             solved: { ...p.solved, [taskId]: true },
           };
@@ -1267,7 +1352,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
           unlockedLocations: nextUnlocked,
           storyProgress: newProgress,
           breakdown: nextBreakdown,
-          totalScore: computedTotalScore,
+          totalScore: netTotalScore,
           penalty: p.penalty || 0,
         }).catch((err) => console.warn("[PROGRESS PERSISTENCE NOTICE]", err));
       }
@@ -1535,6 +1620,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const stored = getStoredSession();
       const token = stored && (stored as any).token ? (stored as any).token : "";
       const teamId = (stored as any)?.teamId || s.team?.id;
+      if (teamId) {
+        purgeTeamGameplayCache(teamId);
+      }
       if (token || teamId) {
         await fetch(`${API_BASE}/auth/logout`, {
           method: "POST",
@@ -1615,37 +1703,87 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
       if (cur.unlockedHints?.[hintKey]) return true;
 
-      const currentScore = totalScore(cur.breakdown, cur.penalty);
+      const currentScore = typeof cur.team?.totalScore === "number"
+        ? cur.team.totalScore
+        : Math.max(0, computeAggregatedTaskScore(cur.taskScores || {}) - (cur.penalty || 0));
+
       if (currentScore < cost) {
-        say("INSUFFICIENT SCORE: You need at least 5 points to unlock an Intel Clue.");
+        say(`INSUFFICIENT SCORE: You need at least ${cost} points to unlock an Intel Clue.`);
         sfx("err");
         return false;
       }
 
       sfx("clue");
-      setS((p) => ({
-        ...p,
-        penalty: p.penalty + cost,
-        unlockedHints: {
-          ...(p.unlockedHints || {}),
-          [hintKey]: true,
-        },
-      }));
+      const nextPenalty = (cur.penalty || 0) + cost;
+      const nextScore = Math.max(0, currentScore - cost);
+
+      setS((p) => {
+        const updatedTeam = p.team
+          ? {
+              ...p.team,
+              totalScore: nextScore,
+              score: nextScore,
+              penalty: (p.team.penalty || 0) + cost,
+              unlockedHints: {
+                ...(p.team.unlockedHints || {}),
+                [hintKey]: true,
+              },
+            }
+          : p.team;
+
+        return {
+          ...p,
+          penalty: nextPenalty,
+          team: updatedTeam,
+          unlockedHints: {
+            ...(p.unlockedHints || {}),
+            [hintKey]: true,
+          },
+        };
+      });
+
       say(`CLASSIFIED INTEL DECRYPTED (-${cost} PTS)`);
 
       // Authoritatively persist Intel Clue unlock and score deduction to backend
-      unlockHintOnServer(hintKey, cur.team?.id)
+      unlockHintOnServer(hintKey, cur.team?.id, cost)
         .then((res) => {
-          if (!res.success && res.error === "INSUFFICIENT_BALANCE") {
+          if (res.success && typeof res.currentScore === "number") {
             setS((p) => ({
               ...p,
-              penalty: Math.max(0, p.penalty - cost),
-              unlockedHints: {
-                ...(p.unlockedHints || {}),
-                [hintKey]: false,
-              },
+              team: p.team
+                ? {
+                    ...p.team,
+                    totalScore: res.currentScore,
+                    score: res.currentScore,
+                  }
+                : p.team,
             }));
-            say("INSUFFICIENT SCORE: You need at least 5 points to unlock an Intel Clue.");
+          } else if (!res.success && res.error === "INSUFFICIENT_BALANCE") {
+            setS((p) => {
+              const restoredTeam = p.team
+                ? {
+                    ...p.team,
+                    totalScore: (p.team.totalScore ?? 0) + cost,
+                    score: (p.team.score ?? 0) + cost,
+                    penalty: Math.max(0, (p.team.penalty || 0) - cost),
+                    unlockedHints: {
+                      ...(p.team.unlockedHints || {}),
+                      [hintKey]: false,
+                    },
+                  }
+                : p.team;
+
+              return {
+                ...p,
+                penalty: Math.max(0, p.penalty - cost),
+                team: restoredTeam,
+                unlockedHints: {
+                  ...(p.unlockedHints || {}),
+                  [hintKey]: false,
+                },
+              };
+            });
+            say(`INSUFFICIENT SCORE: You need at least ${cost} points to unlock an Intel Clue.`);
             sfx("err");
           }
         })
@@ -1687,12 +1825,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       hydrated,
       sessionVerified,
       session,
-      score: Math.max(
-        typeof s.team?.totalScore === "number" ? s.team.totalScore : 0,
-        typeof s.team?.score === "number" ? s.team.score : 0,
-        totalScore(s.breakdown, s.penalty),
-        computeAggregatedTaskScore(s.taskScores || {})
-      ),
+      score: typeof s.team?.totalScore === "number"
+        ? s.team.totalScore
+        : Math.max(0, computeAggregatedTaskScore(s.taskScores || {}) - (s.penalty || 0)),
       isPaused: Boolean(s.isPaused),
       isLocationLocked: Boolean(
         sabotage &&

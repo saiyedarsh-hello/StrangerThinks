@@ -41,6 +41,10 @@ router.post("/event/open-submissions", AdminController.openSubmissions);
 router.post("/event/stop-submissions", AdminController.stopSubmissions);
 router.post("/event/end", AdminController.endEvent);
 
+// Stage Access Switchboard Controls
+router.get("/stages", AdminController.getStages);
+router.post("/stages/toggle", AdminController.toggleStage);
+
 // Results & Exports
 router.get("/results/overall", AdminController.getOverallResults);
 router.get("/results/rounds", AdminController.getRoundResults);

@@ -21,7 +21,9 @@ interface DatabaseSnapshot {
   chapters: ChapterDef[];
   activeSabotages: Record<string, ActiveSabotage>; // key = sabotageId
   vecnaProgress?: Record<string, Record<string, any>>;
+  playerSubmissions?: Record<string, Record<string, any>>;
   eventHistory?: any[];
+  unlockedStages?: number[];
 }
 
 class DatabaseService {
@@ -29,7 +31,9 @@ class DatabaseService {
   private chapters: ChapterDef[] = [];
   private activeSabotages = new Map<string, ActiveSabotage>();
   private vecnaQuestionProgress = new Map<string, Record<string, any>>();
+  private playerQuestionProgress = new Map<string, Record<string, any>>();
   private eventHistory: any[] = [];
+  private unlockedStages = new Set<number>([1]);
   private isTiDBOnline = false;
 
   constructor() {
@@ -141,8 +145,18 @@ class DatabaseService {
             this.vecnaQuestionProgress.set(k, v)
           );
         }
+        if (parsed.playerSubmissions) {
+          Object.entries(parsed.playerSubmissions).forEach(([k, v]) =>
+            this.playerQuestionProgress.set(k, v)
+          );
+        }
         if (parsed.eventHistory && Array.isArray(parsed.eventHistory)) {
           this.eventHistory = parsed.eventHistory;
+        }
+        if (parsed.unlockedStages && Array.isArray(parsed.unlockedStages) && parsed.unlockedStages.length > 0) {
+          this.unlockedStages = new Set(parsed.unlockedStages.map(Number));
+        } else {
+          this.unlockedStages = new Set([1]);
         }
         console.log(
           `[DATABASE] Loaded snapshot: ${this.teams.size} teams, ${this.chapters.length} chapters, ${this.eventHistory.length} historical events.`
@@ -171,12 +185,17 @@ class DatabaseService {
       const vecnaProgObj: Record<string, Record<string, any>> = {};
       this.vecnaQuestionProgress.forEach((p, k) => (vecnaProgObj[k] = p));
 
+      const playerProgObj: Record<string, Record<string, any>> = {};
+      this.playerQuestionProgress.forEach((p, k) => (playerProgObj[k] = p));
+
       const snapshot: DatabaseSnapshot = {
         teams: teamsObj,
         chapters: this.chapters,
         activeSabotages: sabotagesObj,
         vecnaProgress: vecnaProgObj,
+        playerSubmissions: playerProgObj,
         eventHistory: this.eventHistory,
+        unlockedStages: Array.from(this.unlockedStages).sort((a, b) => a - b),
       };
 
       fs.writeFileSync(STATE_FILE, JSON.stringify(snapshot, null, 2), "utf-8");
@@ -451,6 +470,7 @@ class DatabaseService {
       team.breakdown = { tech: 0, puzzle: 0, speed: 0, clue: 0, story: 0, teamwork: 0 };
     }
     this.vecnaQuestionProgress.clear();
+    this.playerQuestionProgress.clear();
     this.activeSabotages.clear();
     this.saveSnapshot();
     const pool = tidb.pool;
@@ -467,6 +487,9 @@ class DatabaseService {
         await pool.query("DELETE FROM score_ledger WHERE 1=1").catch(() => {});
         await pool.query("DELETE FROM question_submissions WHERE 1=1").catch(() => {});
         await pool.query("DELETE FROM team_hint_usages WHERE 1=1").catch(() => {});
+        await pool.query("DELETE FROM chapter_solves WHERE 1=1").catch(() => {});
+        await pool.query("DELETE FROM team_round_progress WHERE 1=1").catch(() => {});
+        await pool.query("DELETE FROM team_progress WHERE 1=1").catch(() => {});
       } catch {}
     }
   }
@@ -704,9 +727,9 @@ class DatabaseService {
   public getVecnaProgress(
     teamId: string,
     trialId: number
-  ): Record<number, { status: "solved" | "failed"; earnedPoints: number; chosenAnswer: string; submittedAt: string }> {
+  ): Record<number, { status: "solved" | "failed" | "attempted"; earnedPoints: number; chosenAnswer: string; attemptNumber?: number; submittedAt: string }> {
     const teamMap = this.vecnaQuestionProgress.get(teamId) || {};
-    const trialProgress: Record<number, { status: "solved" | "failed"; earnedPoints: number; chosenAnswer: string; submittedAt: string }> = {};
+    const trialProgress: Record<number, { status: "solved" | "failed" | "attempted"; earnedPoints: number; chosenAnswer: string; submittedAt: string }> = {};
     for (let i = 0; i < 10; i++) {
       const key = `${trialId}-${i}`;
       if (teamMap[key]) {
@@ -714,6 +737,12 @@ class DatabaseService {
       }
     }
     return trialProgress;
+  }
+
+  public getAllVecnaProgress(
+    teamId: string
+  ): Record<string, { status: "solved" | "failed" | "attempted"; earnedPoints: number; chosenAnswer: string; attemptNumber?: number; submittedAt: string }> {
+    return this.vecnaQuestionProgress.get(teamId) || {};
   }
 
   public clearVecnaProgressForTeam(teamId: string): void {
@@ -725,9 +754,10 @@ class DatabaseService {
     teamId: string,
     trialId: number,
     questionIdx: number,
-    status: "solved" | "failed",
+    status: "solved" | "failed" | "attempted",
     earnedPoints: number,
-    chosenAnswer: string
+    chosenAnswer: string,
+    attemptNumber: number = 1
   ): void {
     const key = `${trialId}-${questionIdx}`;
     const teamMap = this.vecnaQuestionProgress.get(teamId) || {};
@@ -735,11 +765,124 @@ class DatabaseService {
       status,
       earnedPoints,
       chosenAnswer,
+      attemptNumber,
       submittedAt: new Date().toISOString(),
     };
     this.vecnaQuestionProgress.set(teamId, teamMap);
+  }
+
+  public recordPlayerAttempt(
+    teamId: string,
+    roundId: number,
+    questionCode: string,
+    status: "solved" | "failed" | "attempted",
+    earnedPoints: number,
+    chosenAnswer: string,
+    attemptNumber: number = 1
+  ): void {
+    const key = questionCode.toLowerCase();
+    const teamMap = this.playerQuestionProgress.get(teamId) || {};
+    teamMap[key] = {
+      roundId,
+      questionCode,
+      status,
+      earnedPoints,
+      chosenAnswer,
+      attemptNumber,
+      isLocked: status === "solved" || attemptNumber >= 2,
+      submittedAt: new Date().toISOString(),
+    };
+    this.playerQuestionProgress.set(teamId, teamMap);
     this.saveSnapshot();
   }
+
+  public getPlayerSubmissions(teamId: string): Array<{
+    roundId: number;
+    questionCode: string;
+    submittedAnswer: string;
+    isCorrect: boolean;
+    pointsAwarded: number;
+    attempts: number;
+    isLocked: boolean;
+    submittedAt: string;
+  }> {
+    const teamMap = this.playerQuestionProgress.get(teamId) || {};
+    return Object.values(teamMap).map((entry: any) => ({
+      roundId: entry.roundId,
+      questionCode: entry.questionCode,
+      submittedAnswer: entry.chosenAnswer || "",
+      isCorrect: entry.status === "solved",
+      pointsAwarded: entry.earnedPoints || 0,
+      attempts: entry.attemptNumber || 1,
+      isLocked: Boolean(entry.isLocked),
+      submittedAt: entry.submittedAt,
+    }));
+    this.saveSnapshot();
+  }
+
+  public getUnlockedStages(): number[] {
+    return Array.from(this.unlockedStages).sort((a, b) => a - b);
+  }
+
+  public setUnlockedStages(stages: number[]): number[] {
+    const valid = stages.map(Number).filter((n) => !isNaN(n) && n >= 1 && n <= 6);
+    this.unlockedStages = new Set(valid.length > 0 ? valid : [1]);
+    this.saveSnapshot();
+    return this.getUnlockedStages();
+  }
+
+  public toggleStage(stageNumber: number, unlocked: boolean): number[] {
+    const num = Number(stageNumber);
+    if (!isNaN(num) && num >= 1 && num <= 6) {
+      if (unlocked) {
+        this.unlockedStages.add(num);
+      } else {
+        this.unlockedStages.delete(num);
+      }
+      this.saveSnapshot();
+    }
+    return this.getUnlockedStages();
+  }
+
+  public resetUnlockedStages(): number[] {
+    this.unlockedStages = new Set([1]);
+    this.saveSnapshot();
+    return this.getUnlockedStages();
+  }
+
+  public isStageUnlocked(stageNumber: number): boolean {
+    return this.unlockedStages.has(Number(stageNumber));
+  }
+
+  public isTeamStageCleared(teamId: string, stageNumber: number): boolean {
+    const num = Number(stageNumber);
+    if (num <= 0) return true;
+    const team = this.teams.get(teamId);
+    if (team) {
+      if (team.solvedChapters && team.solvedChapters.includes(num)) return true;
+      if (team.completedTasks && (team.completedTasks.includes(`ch${num}`) || team.completedTasks.includes(`ch${num}-quiz`))) return true;
+    }
+    // Check playerQuestionProgress
+    const pMap = this.playerQuestionProgress.get(teamId);
+    if (pMap) {
+      const stageKeys = Object.keys(pMap).filter((k) => k.startsWith(`ch${num}-`));
+      if (stageKeys.length >= 10) {
+        const allDone = stageKeys.every((k) => pMap[k].status === 'solved' || pMap[k].isLocked);
+        if (allDone) return true;
+      }
+    }
+    // Check vecnaQuestionProgress
+    const vMap = this.vecnaQuestionProgress.get(teamId);
+    if (vMap) {
+      const trialKeys = Object.keys(vMap).filter((k) => k.startsWith(`${num}-`));
+      if (trialKeys.length >= 10) {
+        const allDone = trialKeys.every((k) => vMap[k].status === 'solved' || vMap[k].status === 'failed');
+        if (allDone) return true;
+      }
+    }
+    return false;
+  }
+
 }
 
 export const db = new DatabaseService();

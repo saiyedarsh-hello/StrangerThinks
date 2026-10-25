@@ -21,12 +21,12 @@ import { sfx } from "@/lib/audio";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/store";
 
-import VecnaTacticalMap, { MapTeamInfo } from "@/components/vecna/VecnaTacticalMap";
 import VecnaTriggerPanel, { TriggerAction, TargetSquadItem } from "@/components/vecna/VecnaTriggerPanel";
 import VecnaMessagePanel from "@/components/vecna/VecnaMessagePanel";
 import VecnaStoryDialog from "@/components/vecna/VecnaStoryDialog";
-import VecnaChaptersModal from "@/components/vecna/VecnaChaptersModal";
+import VecnaChaptersBoard from "@/components/vecna/VecnaChaptersBoard";
 import QuestionTypeRenderer from "@/components/chapters/QuestionTypeRenderer";
+import VecnaSummaryView from "@/components/vecna/VecnaSummaryView";
 import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
 
 interface VecnaTrial {
@@ -50,7 +50,7 @@ const VECNA_TRIALS: VecnaTrial[] = [
     category: "SERIES KNOWLEDGE",
     description:
       "Multiple-choice questions testing lore, logic, and timeline understanding across the Hawkins dimension.",
-    points: 50,
+    points: 200,
     powersGranted: "GLITCH · CRT FREAKOUT",
   },
   {
@@ -61,7 +61,7 @@ const VECNA_TRIALS: VecnaTrial[] = [
     category: "RELATIONSHIP MAPPING",
     description:
       "Match related clues, characters, locations, objects, or concepts by identifying their deep relationships.",
-    points: 50,
+    points: 200,
     powersGranted: "SIGNAL JAM · RADIO DISTORTION",
   },
   {
@@ -72,7 +72,7 @@ const VECNA_TRIALS: VecnaTrial[] = [
     category: "SEQUENCE RESTORATION",
     description:
       "Arrange scrambled words, sentences, codes, steps, or clues in the correct order to reveal hidden intelligence.",
-    points: 50,
+    points: 200,
     powersGranted: "DISTORT · CLUE OBFUSCATION",
   },
   {
@@ -83,7 +83,7 @@ const VECNA_TRIALS: VecnaTrial[] = [
     category: "INVESTIGATIVE ANALYSIS",
     description:
       "Analyze a given situation report or set of clues, examine evidence logs, and draw forensic conclusions.",
-    points: 50,
+    points: 200,
     powersGranted: "LOCK · ACCESS DENIED",
   },
   {
@@ -94,7 +94,7 @@ const VECNA_TRIALS: VecnaTrial[] = [
     category: "SIGNAL DECODING",
     description:
       "Decode hidden messages or signals using methods such as Morse code, binary sequences, or audio ciphers.",
-    points: 50,
+    points: 200,
     powersGranted: "FREQUENCY SHIFT · STATIC SURGE",
   },
   {
@@ -105,7 +105,7 @@ const VECNA_TRIALS: VecnaTrial[] = [
     category: "TECHNICAL EXPERIMENTS",
     description:
       "Interactive technical challenges involving logical sequences, system operations, bug fixing, and data analysis.",
-    points: 50,
+    points: 200,
     powersGranted: "GRANDFATHER CLOCK · GATE MASTERY",
   },
 ];
@@ -114,6 +114,10 @@ export default function VecnaDashboard() {
   const router = useRouter();
   const { logout } = useGame();
   const [session, setSession] = useState<AuthSession | null>(null);
+
+  // Default Landing View is "board" (Horizontal Evidence Board)
+  const [viewMode, setViewMode] = useState<"board" | "stage">("board");
+  const [showStageSummary, setShowStageSummary] = useState<boolean>(false);
 
   // Active Trial & Question Selection
   const [activeTrialId, setActiveTrialId] = useState<number>(1);
@@ -126,18 +130,65 @@ export default function VecnaDashboard() {
   const [solvedQuestions, setSolvedQuestions] = useState<Record<string, boolean>>({});
   // Failed status: keyed by `${trialId}-${qIdx}` (wrong answers, permanently locked with 0 pts)
   const [failedQuestions, setFailedQuestions] = useState<Record<string, boolean>>({});
+  const [attemptedQuestions, setAttemptedQuestions] = useState<Record<string, boolean>>({});
+  const [unlockedStages, setUnlockedStages] = useState<number[]>([1]);
+
+  // Google Meet Style Side Drawer State: "none" | "powers" | "dispatch"
+  const [activeSideDrawer, setActiveSideDrawer] = useState<"none" | "powers" | "dispatch">("none");
+  const [isStoryDialogOpen, setIsStoryDialogOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Sync tournament stage access switchboard with Admin
+  useEffect(() => {
+    let active = true;
+    const fetchStages = async () => {
+      try {
+        const res = await fetch("/api/admin/stages");
+        const data = await res.json();
+        if (active && data.success && Array.isArray(data.unlockedStages)) {
+          setUnlockedStages(data.unlockedStages);
+        }
+      } catch {}
+    };
+    fetchStages();
+
+    const sock = getSocket();
+    const handleStageUnlocked = (d: any) => {
+      if (d?.unlockedStages && Array.isArray(d.unlockedStages)) {
+        setUnlockedStages(d.unlockedStages);
+      }
+    };
+    sock?.on("stage:unlocked", handleStageUnlocked);
+
+    const unsubRealtime = subscribe((m: any) => {
+      if (m.type === "stage_unlocked" && Array.isArray(m.unlockedStages)) {
+        setUnlockedStages(m.unlockedStages);
+      }
+      if (m.type === "event_reset") {
+        setUnlockedStages([1]);
+        setSolvedQuestions({});
+        setFailedQuestions({});
+        setAttemptedQuestions({});
+        setSelectedAnswers({});
+        setServerVecnaScore(0);
+        setActiveTrialId(1);
+        setActiveQuestionIdx(0);
+        setShowStageSummary(false);
+        setViewMode("board");
+      }
+    });
+
+    return () => {
+      active = false;
+      sock?.off("stage:unlocked", handleStageUnlocked);
+      unsubRealtime();
+    };
+  }, []);
+
   const [trialResults, setTrialResults] = useState<Record<number, boolean>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Modals state
-  const [isMapOpen, setIsMapOpen] = useState(false);
-  const [isMessageOpen, setIsMessageOpen] = useState(false);
-  const [isPowersOpen, setIsPowersOpen] = useState(false);
-  const [isChaptersModalOpen, setIsChaptersModalOpen] = useState(false);
-  const [isStoryDialogOpen, setIsStoryDialogOpen] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     const handleFs = () => setIsFullscreen(Boolean(typeof document !== "undefined" && document.fullscreenElement));
@@ -155,22 +206,13 @@ export default function VecnaDashboard() {
     }
   };
 
-  // Selected team state for targeting
+  // Target team state
   const [selectedLocation, setSelectedLocation] = useState("town");
   const [selectedTeamName, setSelectedTeamName] = useState<string | undefined>("Null Pointers");
-
-  // Live Tactical Map state for 6 canonical tournament stages
-  const [tacticalMapData, setTacticalMapData] = useState<Record<string, MapTeamInfo[]>>({
-    town: [],
-    police: [],
-    byers: [],
-    lab: [],
-    radioTower: [],
-    gate: [],
-  });
   const [availableSquads, setAvailableSquads] = useState<TargetSquadItem[]>([]);
 
-  const refreshTacticalMap = useCallback(async () => {
+  // Fetch online squads for targeting in Powers & Team Dispatch
+  const refreshSquads = useCallback(async () => {
     try {
       const stored = getStoredSession();
       const token = stored && (stored as any).token ? (stored as any).token : "";
@@ -180,51 +222,22 @@ export default function VecnaDashboard() {
       if (!res.ok) return;
       const data = await res.json();
       if (data && Array.isArray(data.stages)) {
-        const nextMap: Record<string, MapTeamInfo[]> = {
-          town: [],
-          police: [],
-          byers: [],
-          lab: [],
-          radioTower: [],
-          gate: [],
-        };
         const uniqueMap = new Map<string, TargetSquadItem>();
         data.stages.forEach((stg: any) => {
-          const locKey =
-            stg.slug ||
-            (stg.id === 1
-              ? "town"
-              : stg.id === 2
-              ? "police"
-              : stg.id === 3
-              ? "byers"
-              : stg.id === 4
-              ? "lab"
-              : stg.id === 5
-              ? "radioTower"
-              : "gate");
-          const teamList: MapTeamInfo[] = Array.isArray(stg.teams)
-            ? stg.teams.map((t: any) => ({
-                id: t.id,
-                name: t.name,
-                leader: t.leader,
-                status: t.status || "Online",
-              }))
-            : [];
-          nextMap[locKey] = teamList;
-          teamList.forEach((t) => {
-            if (!uniqueMap.has(t.id)) {
-              uniqueMap.set(t.id, {
-                id: t.id,
-                name: t.name,
-                leader: t.leader,
-                status: t.status,
-              });
-            }
-          });
+          if (Array.isArray(stg.teams)) {
+            stg.teams.forEach((t: any) => {
+              if (t.id && !uniqueMap.has(t.id)) {
+                uniqueMap.set(t.id, {
+                  id: t.id,
+                  name: t.name,
+                  leader: t.leader,
+                  status: t.status || "Online",
+                });
+              }
+            });
+          }
         });
         const squads = Array.from(uniqueMap.values());
-        setTacticalMapData(nextMap);
         setAvailableSquads(squads);
         if (squads.length > 0 && (!selectedTeamName || !squads.some((s) => s.name === selectedTeamName))) {
           setSelectedTeamName(squads[0].name);
@@ -236,8 +249,8 @@ export default function VecnaDashboard() {
   }, [selectedTeamName]);
 
   useEffect(() => {
-    refreshTacticalMap();
-    const interval = setInterval(refreshTacticalMap, 10000);
+    refreshSquads();
+    const interval = setInterval(refreshSquads, 10000);
     const unsub = subscribe((msg: any) => {
       if (
         msg.type === "presence" ||
@@ -246,11 +259,11 @@ export default function VecnaDashboard() {
         msg.type === "event_state" ||
         msg.type === "SCORE_UPDATE"
       ) {
-        refreshTacticalMap();
+        refreshSquads();
       }
     });
     const sock = getSocket();
-    const onUpdate = () => refreshTacticalMap();
+    const onUpdate = () => refreshSquads();
     sock?.on("presence:update", onUpdate);
     sock?.on("vecna:tactical_update", onUpdate);
     sock?.on("event:state_changed", onUpdate);
@@ -262,7 +275,7 @@ export default function VecnaDashboard() {
       sock?.off("vecna:tactical_update", onUpdate);
       sock?.off("event:state_changed", onUpdate);
     };
-  }, [refreshTacticalMap]);
+  }, [refreshSquads]);
 
   useEffect(() => {
     const s = getStoredSession();
@@ -276,7 +289,7 @@ export default function VecnaDashboard() {
     }
   }, [router]);
 
-  // Keep Vecna authenticated and online in Security Mainframe
+  // Keep Vecna authenticated and online
   useEffect(() => {
     if (!session || session.role !== "VECNA") return;
     const token = (session as any)?.token;
@@ -344,7 +357,6 @@ export default function VecnaDashboard() {
     }
   }, [logout]);
 
-  // Realtime logout & event termination handler (Issue 4 & 5)
   useEffect(() => {
     const unsub = subscribe((msg: any) => {
       if (msg.type === "force_logout" || (msg.type === "event_state" && msg.status === "ended")) {
@@ -354,7 +366,7 @@ export default function VecnaDashboard() {
     return () => unsub();
   }, [handleLogout]);
 
-  // Eagerly fetch progress for ALL 6 trials on mount so totalVecnaSolved is accurate on reload
+  // Eagerly fetch progress for ALL 6 trials on mount
   useEffect(() => {
     let isCancelled = false;
     const fetchAllProgress = async () => {
@@ -384,6 +396,8 @@ export default function VecnaDashboard() {
                 setSolvedQuestions((prev) => ({ ...prev, [`${tId}-${idx}`]: true }));
               } else if (att.status === "failed") {
                 setFailedQuestions((prev) => ({ ...prev, [`${tId}-${idx}`]: true }));
+              } else if (att.status === "attempted") {
+                setAttemptedQuestions((prev) => ({ ...prev, [`${tId}-${idx}`]: true }));
               }
               if (att.chosenAnswer) {
                 setSelectedAnswers((prev) => ({ ...prev, [`${tId}-${idx}`]: att.chosenAnswer }));
@@ -402,7 +416,7 @@ export default function VecnaDashboard() {
     };
   }, []);
 
-  // Fetch authoritative trial progress from backend to enforce sequential progression
+  // Fetch progress when activeTrialId changes
   useEffect(() => {
     let isCancelled = false;
     const fetchProgress = async () => {
@@ -421,6 +435,8 @@ export default function VecnaDashboard() {
                 setSolvedQuestions((prev) => ({ ...prev, [`${activeTrialId}-${idx}`]: true }));
               } else if (att.status === "failed") {
                 setFailedQuestions((prev) => ({ ...prev, [`${activeTrialId}-${idx}`]: true }));
+              } else if (att.status === "attempted") {
+                setAttemptedQuestions((prev) => ({ ...prev, [`${activeTrialId}-${idx}`]: true }));
               }
               if (att.chosenAnswer) {
                 setSelectedAnswers((prev) => ({ ...prev, [`${activeTrialId}-${idx}`]: att.chosenAnswer }));
@@ -454,6 +470,27 @@ export default function VecnaDashboard() {
   const currentQuestion = currentQuestions[activeQuestionIdx] || currentQuestions[0];
   const totalQuestionsForTrial = currentQuestions.length;
 
+  const isTrialCleared = useCallback(
+    (trialId: number) => {
+      const qs = STAGE_QUIZ_CONFIGS[trialId]?.questions || [];
+      return (
+        qs.length > 0 &&
+        qs.every((_, idx) => !!solvedQuestions[`${trialId}-${idx}`] || !!failedQuestions[`${trialId}-${idx}`])
+      );
+    },
+    [solvedQuestions, failedQuestions]
+  );
+
+  const isTrialUnlocked = useCallback(
+    (trialId: number) => {
+      const adminUnlocked = unlockedStages.includes(trialId);
+      if (trialId === 1) return adminUnlocked;
+      const priorCleared = isTrialCleared(trialId - 1);
+      return priorCleared && adminUnlocked;
+    },
+    [unlockedStages, isTrialCleared]
+  );
+
   const isLevelAttempted = (trialId: number, idx: number) =>
     Boolean(solvedQuestions[`${trialId}-${idx}`] || failedQuestions[`${trialId}-${idx}`]);
 
@@ -469,7 +506,6 @@ export default function VecnaDashboard() {
   const isQuestionFailed = !!failedQuestions[`${currentTrial.id}-${activeQuestionIdx}`];
   const isQuestionAttempted = isQuestionSolved || isQuestionFailed;
 
-  // Unified scoring rules: 1 question solved = +10 PTS across all questions
   const [spentPowerPoints, setSpentPowerPoints] = useState(0);
   const [serverVecnaScore, setServerVecnaScore] = useState<number | null>(null);
 
@@ -499,7 +535,6 @@ export default function VecnaDashboard() {
 
   useEffect(() => {
     const handleScore = (data: any) => {
-      // Guard against foreign squad score contamination (e.g. Hawkins teams playing concurrently)
       const targetTeamId = (data?.teamId || data?.team || "").toString().trim().toUpperCase();
       const myTeamId = (session?.teamId || "").toString().trim().toUpperCase();
       const isForVecna =
@@ -538,7 +573,7 @@ export default function VecnaDashboard() {
   }, [session?.teamId]);
 
   const totalVecnaSolved = Object.values(solvedQuestions).filter(Boolean).length;
-  const computedVecnaScore = Math.max(0, totalVecnaSolved * 10 - spentPowerPoints);
+  const computedVecnaScore = Math.max(0, totalVecnaSolved * 20 - spentPowerPoints);
   const effectiveVecnaScore = serverVecnaScore !== null ? serverVecnaScore : computedVecnaScore;
   const currentTrialSolvedCount = currentQuestions.filter((_, idx) => !!solvedQuestions[`${currentTrial.id}-${idx}`]).length;
   const currentTrialScore = currentTrialSolvedCount * 10;
@@ -555,7 +590,6 @@ export default function VecnaDashboard() {
 
     setIsSubmitting(true);
     try {
-      // Simulate authentic transmitting delay (~1.2s) matching Hawkins terminal
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
       const stored = getStoredSession();
@@ -584,7 +618,6 @@ export default function VecnaDashboard() {
           setTimeout(() => setErrorMessage(null), 3000);
           return;
         }
-        // General server or auth failure: report cleanly without failing question
         setErrorMessage(data.message || `TRANSMISSION FAILED (${res.status}): Central server rejected override telemetry.`);
         sfx("err");
         setTimeout(() => setErrorMessage(null), 3500);
@@ -602,10 +635,10 @@ export default function VecnaDashboard() {
         if (typeof data.totalScore === "number" || typeof data.newScore === "number") {
           setServerVecnaScore(data.totalScore ?? data.newScore);
         }
-        setSuccessMessage(`LEVEL ${activeQuestionIdx + 1} OVERRIDE CONFIRMED (+10 PTS)`);
+        const awarded = typeof data.pointsAwarded === "number" ? data.pointsAwarded : 20;
+        setSuccessMessage(`LEVEL ${activeQuestionIdx + 1} OVERRIDE CONFIRMED (+${awarded} PTS)`);
         setErrorMessage(null);
 
-        // Check if all questions in this trial will be cleared
         const willBeAllCleared = currentQuestions.every((_, idx) =>
           idx === activeQuestionIdx ? true : !!solvedQuestions[`${currentTrial.id}-${idx}`]
         );
@@ -620,16 +653,29 @@ export default function VecnaDashboard() {
           });
         }
 
-        // Auto advance to next question after brief delay
         if (activeQuestionIdx < totalQuestionsForTrial - 1) {
           setTimeout(() => {
             setActiveQuestionIdx((i) => i + 1);
             setSuccessMessage(null);
           }, 650);
         } else {
-          setTimeout(() => setSuccessMessage(null), 2500);
+          setTimeout(() => {
+            setSuccessMessage(null);
+            setShowStageSummary(true);
+          }, 1800);
         }
       } else {
+        if (!data.isLocked && data.status === "attempted") {
+          sfx("err");
+          setAttemptedQuestions((prev) => ({
+            ...prev,
+            [`${currentTrial.id}-${activeQuestionIdx}`]: true,
+          }));
+          setErrorMessage(`INCORRECT VECTOR · ATTEMPT 1 FAILED (RETRY FOR +10 PTS)`);
+          setSuccessMessage(null);
+          return;
+        }
+
         sfx("err");
         setFailedQuestions((prev) => ({
           ...prev,
@@ -637,14 +683,16 @@ export default function VecnaDashboard() {
         }));
         setErrorMessage(`INCORRECT VECTOR · LEVEL ${activeQuestionIdx + 1} RECORDED (0 PTS)`);
         setSuccessMessage(null);
-        // Auto advance to next question on wrong answer
         if (activeQuestionIdx < totalQuestionsForTrial - 1) {
           setTimeout(() => {
             setActiveQuestionIdx((i) => i + 1);
             setErrorMessage(null);
           }, 650);
         } else {
-          setTimeout(() => setErrorMessage(null), 3000);
+          setTimeout(() => {
+            setErrorMessage(null);
+            setShowStageSummary(true);
+          }, 1800);
         }
       }
     } catch (e) {
@@ -719,7 +767,6 @@ export default function VecnaDashboard() {
         throw new Error(data.message || data.error || "Failed to dispatch message.");
       }
 
-      // Realtime publication for local preview and immediate delivery
       publish({
         type: "sabotage",
         kind: "MESSAGE",
@@ -732,7 +779,7 @@ export default function VecnaDashboard() {
         ts: Date.now(),
       });
 
-      setIsMessageOpen(false);
+      setActiveSideDrawer("none");
       return true;
     } catch (err: any) {
       console.error("[VECNA DISPATCH ERROR]", err);
@@ -742,7 +789,7 @@ export default function VecnaDashboard() {
 
   const handleExecuteTrigger = async (action: TriggerAction) => {
     sfx("boom");
-    const kind = action.id; // "LOCK" | "CORRUPT"
+    const kind = action.id;
     const targetTeams = action.targetTeams && action.targetTeams.length > 0 ? action.targetTeams : [];
     const clientRequestId = `power-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -781,7 +828,6 @@ export default function VecnaDashboard() {
       sfx("boom");
       setTimeout(() => setSuccessMessage(null), 3000);
 
-      // Local publication for immediate UI response
       const duration = kind === "LOCK" ? 120 : 80;
       publish({
         type: "sabotage",
@@ -792,7 +838,7 @@ export default function VecnaDashboard() {
         ts: Date.now(),
       });
 
-      setIsPowersOpen(false);
+      setActiveSideDrawer("none");
     } catch (err: any) {
       console.error("[EXECUTE TRIGGER ERROR]", err);
       setErrorMessage(err?.message || "Network error while unleashing power.");
@@ -807,7 +853,7 @@ export default function VecnaDashboard() {
         position: "relative",
         height: "100vh",
         maxHeight: "100vh",
-        overflowY: "auto",
+        overflowY: viewMode === "stage" ? "auto" : "hidden",
         overflowX: "hidden",
         background: "#080204",
         color: "#ffebee",
@@ -818,15 +864,17 @@ export default function VecnaDashboard() {
         scrollbarColor: "#ff2d3a #120407",
       }}
     >
-      <CinematicBackground
-        src="/upsidedown-bg.jpg"
-        particles="embers"
-        vignette="heavy"
-        overlayOpacity={0.82}
-      />
+      {viewMode === "stage" && (
+        <CinematicBackground
+          src="/upsidedown-bg.jpg"
+          particles="embers"
+          vignette="heavy"
+          overlayOpacity={0.82}
+        />
+      )}
 
       {/* ───────────────────────────────────────────────────────────────────
-          TOP VECNA HEADER & ACTIONS (MATCHING SCREENSHOT)
+          TOP VECNA HEADER & CONTROLS
           ─────────────────────────────────────────────────────────────────── */}
       <header
         style={{
@@ -836,17 +884,17 @@ export default function VecnaDashboard() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "14px 28px",
-          background: "rgba(10, 2, 5, 0.94)",
+          padding: "12px 24px",
+          background: "rgba(10, 2, 5, 0.95)",
           borderBottom: "1.5px solid rgba(255, 45, 58, 0.4)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           flexWrap: "wrap",
-          gap: "14px",
+          gap: "12px",
         }}
       >
-        {/* Left: VECNA Brand + CONTROL PROTOCOL + HIVE MIND ACTIVE */}
-        <div style={{ display: "flex", alignItems: "center", gap: "22px" }}>
+        {/* Left: VECNA Brand + SCORE */}
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div
               style={{
@@ -861,8 +909,8 @@ export default function VecnaDashboard() {
               <span
                 style={{
                   fontFamily:
-                    '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", "Libre Caslon Display", "Playfair Display", Georgia, serif',
-                  fontSize: "26px",
+                    '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", Georgia, serif',
+                  fontSize: "24px",
                   fontWeight: 900,
                   color: "#ff2d3a",
                   letterSpacing: "0.14em",
@@ -876,7 +924,7 @@ export default function VecnaDashboard() {
             </div>
             <div
               style={{
-                fontSize: "9px",
+                fontSize: "8.5px",
                 letterSpacing: "0.26em",
                 color: "#ff3a48",
                 fontFamily: '"Share Tech Mono", monospace',
@@ -904,7 +952,7 @@ export default function VecnaDashboard() {
           >
             <div
               style={{
-                fontSize: "9px",
+                fontSize: "8.5px",
                 fontFamily: '"Share Tech Mono", monospace',
                 letterSpacing: "0.22em",
                 color: "rgba(255, 120, 120, 0.8)",
@@ -930,120 +978,104 @@ export default function VecnaDashboard() {
           </div>
         </div>
 
-        {/* Center: 3 Action Popups */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          {/* Tactical Map */}
+        {/* Center / Navigation Actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          {viewMode === "stage" && (
+            <button
+              id="vecna-return-to-map-btn"
+              type="button"
+              onClick={() => {
+                sfx("click");
+                setViewMode("board");
+              }}
+              style={{
+                background: "rgba(255, 45, 58, 0.2)",
+                color: "#ffffff",
+                border: "1.5px solid #ff2d3a",
+                padding: "8px 18px",
+                borderRadius: "3px",
+                fontFamily: '"Share Tech Mono", monospace',
+                fontSize: "12px",
+                fontWeight: "bold",
+                letterSpacing: "0.14em",
+                cursor: "pointer",
+                boxShadow: "0 0 14px rgba(255, 45, 58, 0.4)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span>◀</span>
+              <span>RETURN TO SECTOR MAP</span>
+            </button>
+          )}
+
+          {/* Google Meet Style Side Option: VECNA POWERS */}
           <button
-            id="vecna-map-popup-btn"
+            id="vecna-powers-btn"
             type="button"
             onClick={() => {
               sfx("click");
-              refreshTacticalMap();
-              setIsMapOpen(true);
+              refreshSquads();
+              setActiveSideDrawer((prev) => (prev === "powers" ? "none" : "powers"));
             }}
+            title="Open Vecna Powers Side Drawer"
             style={{
-              background: isMapOpen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
-              color: isMapOpen ? "#000" : "#ffb3ba",
+              background: activeSideDrawer === "powers" ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
+              color: activeSideDrawer === "powers" ? "#000" : "#ffb3ba",
               border: "1.5px solid #ff2d3a",
-              padding: "8px 18px",
+              padding: "8px 16px",
               borderRadius: "3px",
               fontFamily: '"Share Tech Mono", monospace',
               fontSize: "12px",
               fontWeight: "bold",
               letterSpacing: "0.14em",
               cursor: "pointer",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
+              boxShadow: activeSideDrawer === "powers" ? "0 0 15px rgba(255, 45, 58, 0.55)" : "0 0 10px rgba(255, 45, 58, 0.25)",
               transition: "all 0.15s ease",
-            }}
-          >
-            TACTICAL MAP
-          </button>
-
-          {/* Team Dispatch */}
-          <button
-            id="vecna-message-popup-btn"
-            type="button"
-            onClick={() => {
-              sfx("click");
-              setIsMessageOpen(true);
-            }}
-            style={{
-              background: isMessageOpen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
-              color: isMessageOpen ? "#000" : "#ffb3ba",
-              border: "1.5px solid #ff2d3a",
-              padding: "8px 18px",
-              borderRadius: "3px",
-              fontFamily: '"Share Tech Mono", monospace',
-              fontSize: "12px",
-              fontWeight: "bold",
-              letterSpacing: "0.14em",
-              cursor: "pointer",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
-              transition: "all 0.15s ease",
-            }}
-          >
-            TEAM DISPATCH
-          </button>
-
-          {/* Vecna Powers */}
-          <button
-            id="vecna-powers-popup-btn"
-            type="button"
-            onClick={() => {
-              sfx("click");
-              refreshTacticalMap();
-              setIsPowersOpen(true);
-            }}
-            style={{
-              background: isPowersOpen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
-              color: isPowersOpen ? "#000" : "#ffb3ba",
-              border: "1.5px solid #ff2d3a",
-              padding: "8px 18px",
-              borderRadius: "3px",
-              fontFamily: '"Share Tech Mono", monospace',
-              fontSize: "12px",
-              fontWeight: "bold",
-              letterSpacing: "0.14em",
-              cursor: "pointer",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
-              transition: "all 0.15s ease",
-            }}
-          >
-            VECNA POWERS
-          </button>
-        </div>
-
-        {/* Right: Chapters Button + Exit Vecna Button */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <button
-            id="vecna-chapters-modal-btn"
-            type="button"
-            onClick={() => {
-              sfx("click");
-              setIsChaptersModalOpen(true);
-            }}
-            style={{
-              background: isChaptersModalOpen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
-              color: isChaptersModalOpen ? "#000000" : "#ff8a80",
-              border: "1.5px solid #ff2d3a",
-              padding: "8px 18px",
-              borderRadius: "3px",
-              fontSize: "12px",
-              fontFamily: '"Share Tech Mono", monospace',
-              fontWeight: "bold",
-              letterSpacing: "0.15em",
-              cursor: "pointer",
               display: "flex",
               alignItems: "center",
               gap: "7px",
-              boxShadow: "0 0 10px rgba(255, 45, 58, 0.35)",
-              transition: "all 0.15s ease",
             }}
           >
-            <span style={{ fontSize: "11px", color: isChaptersModalOpen ? "#000" : "#ff2d3a" }}>◈</span>
-            <span>CHAPTERS</span>
+            <span>VECNA POWERS</span>
           </button>
 
+          {/* Google Meet Style Side Option: TEAM DISPATCH */}
+          <button
+            id="vecna-dispatch-btn"
+            type="button"
+            onClick={() => {
+              sfx("click");
+              refreshSquads();
+              setActiveSideDrawer((prev) => (prev === "dispatch" ? "none" : "dispatch"));
+            }}
+            title="Open Team Dispatch Side Drawer"
+            style={{
+              background: activeSideDrawer === "dispatch" ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
+              color: activeSideDrawer === "dispatch" ? "#000" : "#ffb3ba",
+              border: "1.5px solid #ff2d3a",
+              padding: "8px 16px",
+              borderRadius: "3px",
+              fontFamily: '"Share Tech Mono", monospace',
+              fontSize: "12px",
+              fontWeight: "bold",
+              letterSpacing: "0.14em",
+              cursor: "pointer",
+              boxShadow: activeSideDrawer === "dispatch" ? "0 0 15px rgba(255, 45, 58, 0.55)" : "0 0 10px rgba(255, 45, 58, 0.25)",
+              transition: "all 0.15s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: "7px",
+            }}
+          >
+            <span>TEAM DISPATCH</span>
+          </button>
+        </div>
+
+        {/* Right: Fullscreen + Exit Vecna */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <button
             id="vecna-fullscreen-btn"
             type="button"
@@ -1053,7 +1085,7 @@ export default function VecnaDashboard() {
               background: isFullscreen ? "#ff2d3a" : "rgba(18, 4, 7, 0.85)",
               color: isFullscreen ? "#000000" : "#ffb3ba",
               border: "1.5px solid #ff2d3a",
-              padding: "8px 16px",
+              padding: "8px 14px",
               borderRadius: "3px",
               fontSize: "12px",
               fontFamily: '"Share Tech Mono", monospace',
@@ -1079,7 +1111,7 @@ export default function VecnaDashboard() {
               background: "rgba(18, 4, 7, 0.85)",
               color: "#ff3a48",
               border: "1.5px solid #ff2d3a",
-              padding: "8px 16px",
+              padding: "8px 14px",
               borderRadius: "3px",
               fontSize: "12px",
               fontFamily: '"Share Tech Mono", monospace',
@@ -1100,714 +1132,757 @@ export default function VecnaDashboard() {
       </header>
 
       {/* ───────────────────────────────────────────────────────────────────
-          MAIN AREA: 7 TRIAL TABS (WITH HOVER DROPDOWNS) & CONSOLE CARD
+          MAIN VIEW CONTAINER: BOARD (DEFAULT) OR STAGE QUESTION SOLVER
           ─────────────────────────────────────────────────────────────────── */}
-      <main
-        style={{
-          position: "relative",
-          zIndex: 10,
-          maxWidth: "min(1600px, 98vw)",
-          width: "100%",
-          margin: "0 auto",
-          padding: "20px 16px 140px 16px",
-          boxSizing: "border-box",
-          flex: 1,
-        }}
-      >
-        {/* Minimal Sector Header & Level Pager Bar */}
-        <div
+      {viewMode === "board" ? (
+        <div style={{ flex: 1, position: "relative", width: "100%", height: "calc(100vh - 65px)", overflow: "hidden" }}>
+          <VecnaChaptersBoard
+            activeTrialId={activeTrialId}
+            solvedQuestions={solvedQuestions}
+            failedQuestions={failedQuestions}
+            unlockedStages={unlockedStages}
+            isStageUnlocked={isTrialUnlocked}
+            isStageCleared={isTrialCleared}
+            effectiveScore={effectiveVecnaScore}
+            onSelectTrial={(trialId) => {
+              setActiveTrialId(trialId);
+              setActiveQuestionIdx(0);
+              setViewMode("stage");
+              const cleared = isTrialCleared(trialId);
+              setShowStageSummary(cleared);
+              if (!cleared) {
+                setIsStoryDialogOpen(true);
+              }
+            }}
+            onEnterTrial={(trialId) => {
+              setActiveTrialId(trialId);
+              setActiveQuestionIdx(0);
+              setViewMode("stage");
+              const cleared = isTrialCleared(trialId);
+              setShowStageSummary(cleared);
+              if (!cleared) {
+                setIsStoryDialogOpen(true);
+              }
+            }}
+          />
+        </div>
+      ) : showStageSummary ? (
+        <VecnaSummaryView
+          trial={currentTrial}
+          questions={currentQuestions}
+          solvedQuestions={solvedQuestions}
+          failedQuestions={failedQuestions}
+          attemptedQuestions={attemptedQuestions}
+          selectedAnswers={selectedAnswers}
+          onBackToBoard={() => {
+            setViewMode("board");
+            setShowStageSummary(false);
+          }}
+          onReviewQuestions={() => {
+            setShowStageSummary(false);
+          }}
+        />
+      ) : (
+        <main
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "20px",
-            flexWrap: "wrap",
-            gap: "12px",
+            position: "relative",
+            zIndex: 10,
+            maxWidth: "min(1600px, 98vw)",
+            width: "100%",
+            margin: "0 auto",
+            padding: "20px 16px 140px 16px",
+            boxSizing: "border-box",
+            flex: 1,
           }}
         >
-          {/* Active Sector Tag + Lore Replay Button */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => {
-                sfx("click");
-                setIsChaptersModalOpen(true);
-              }}
-              style={{
-                background: "rgba(20, 4, 8, 0.9)",
-                border: "1.5px solid #ff2d3a",
-                borderRadius: "3px",
-                padding: "8px 16px",
-                color: "#ff8a80",
-                fontFamily: '"Share Tech Mono", monospace',
-                fontSize: "12px",
-                fontWeight: "bold",
-                letterSpacing: "0.14em",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "7px",
-                boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
-              }}
-            >
-              <span style={{ color: "#ff2d3a" }}>◈</span>
-              <span>TRIAL {currentTrial.id} // {currentTrial.shortName}</span>
-              <span style={{ fontSize: "9px", opacity: 0.65 }}>▼</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                sfx("click");
-                setIsStoryDialogOpen(true);
-              }}
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(255, 45, 58, 0.4)",
-                borderRadius: "3px",
-                padding: "8px 14px",
-                color: "rgba(255, 200, 200, 0.8)",
-                fontFamily: '"Share Tech Mono", monospace',
-                fontSize: "11.5px",
-                letterSpacing: "0.12em",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <span>👁</span>
-              <span>VECNA TRANSMISSION</span>
-            </button>
-          </div>
-
-          {/* Quick Level Navigator (Levels 1 to 10) */}
+          {/* Minimal Sector Header & Level Pager Bar */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "6px",
-              fontFamily: '"Share Tech Mono", monospace',
-              fontSize: "11.5px",
-              letterSpacing: "0.12em",
-            }}
-          >
-            <span style={{ color: "rgba(255, 180, 180, 0.7)", marginRight: "4px" }}>LEVEL:</span>
-            {Array.from({ length: 10 }).map((_, idx) => {
-              const isCurr = activeQuestionIdx === idx;
-              const isSolved = !!solvedQuestions[`${currentTrial.id}-${idx}`];
-              const isFailed = !!failedQuestions[`${currentTrial.id}-${idx}`];
-              const isUnlocked = isLevelUnlocked(currentTrial.id, idx);
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  disabled={!isUnlocked}
-                  onClick={() => {
-                    if (!isUnlocked) {
-                      sfx("err");
-                      setErrorMessage(`LEVEL ${idx + 1} LOCKED · COMPLETE PRECEDING LEVEL FIRST`);
-                      setTimeout(() => setErrorMessage(null), 2500);
-                      return;
-                    }
-                    sfx("click");
-                    setActiveQuestionIdx(idx);
-                    setErrorMessage(null);
-                    setSuccessMessage(null);
-                  }}
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: "3px",
-                    border: isCurr
-                      ? "1.5px solid #ff2d3a"
-                      : isSolved
-                      ? "1px solid #81c784"
-                      : isFailed
-                      ? "1px solid #e57373"
-                      : isUnlocked
-                      ? "1px solid rgba(255, 45, 58, 0.35)"
-                      : "1px solid rgba(255, 45, 58, 0.15)",
-                    background: isCurr
-                      ? "#ff2d3a"
-                      : isSolved
-                      ? "rgba(129, 199, 132, 0.15)"
-                      : isFailed
-                      ? "rgba(229, 115, 115, 0.15)"
-                      : isUnlocked
-                      ? "rgba(15, 3, 6, 0.7)"
-                      : "rgba(10, 2, 4, 0.4)",
-                    color: isCurr ? "#000000" : isSolved ? "#81c784" : isFailed ? "#e57373" : isUnlocked ? "#ffb3ba" : "rgba(255, 179, 186, 0.3)",
-                    fontWeight: isCurr ? 900 : "normal",
-                    fontSize: "11px",
-                    cursor: isUnlocked ? "pointer" : "not-allowed",
-                    boxShadow: isCurr ? "0 0 10px #ff2d3a" : "none",
-                    opacity: isUnlocked ? 1 : 0.45,
-                    transition: "all 0.12s ease",
-                  }}
-                  title={!isUnlocked ? "Locked until preceding question is completed" : `Level ${idx + 1}`}
-                >
-                  {isSolved ? "✔" : isFailed ? "✕" : idx + 1}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ─── MAIN CONSOLE CARD (OLD CLASSIC PAPER DOSSIER — VECNA THEMED) ─── */}
-        <motion.div
-          key={`${currentTrial.id}-${activeQuestionIdx}`}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          style={{
-            background: "#f4eedf",
-            backgroundImage: "radial-gradient(#e4dac2 1.2px, transparent 1.2px)",
-            backgroundSize: "16px 16px",
-            border: "2.5px solid #8f231e",
-            borderRadius: "4px",
-            boxShadow:
-              "0 14px 44px rgba(0, 0, 0, 0.8), inset 0 0 50px rgba(140, 35, 30, 0.1)",
-            padding: "26px 30px",
-            color: "#1c140e",
-            boxSizing: "border-box",
-            position: "relative",
-          }}
-        >
-          {/* Card Header: Trial Index, Title, Subtitle & Bounty */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "stretch",
               justifyContent: "space-between",
-              borderBottom: "2px solid #8f231e",
-              paddingBottom: "16px",
               marginBottom: "20px",
               flexWrap: "wrap",
-              gap: "16px",
+              gap: "12px",
             }}
           >
-            {/* Left Header Section */}
-            <div style={{ flex: 1, minWidth: "260px" }}>
-              <h2
-                style={{
-                  fontFamily:
-                    '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", "Libre Caslon Display", "Playfair Display", Georgia, serif',
-                  fontSize: "clamp(22px, 2.4vw, 32px)",
-                  fontWeight: 900,
-                  color: "#8f231e",
-                  letterSpacing: "0.05em",
-                  margin: "2px 0 4px 0",
-                  textTransform: "uppercase",
+            {/* Active Sector Tag + Lore Replay Button */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  sfx("click");
+                  setViewMode("board");
                 }}
-              >
-                {currentTrial.title}
-              </h2>
-              <div
                 style={{
-                  fontFamily: "'Courier New', monospace",
+                  background: "rgba(20, 4, 8, 0.9)",
+                  border: "1.5px solid #ff2d3a",
+                  borderRadius: "3px",
+                  padding: "8px 16px",
+                  color: "#ff8a80",
+                  fontFamily: '"Share Tech Mono", monospace',
                   fontSize: "12px",
-                  color: "#544336",
-                  letterSpacing: "0.06em",
-                  fontWeight: 700,
+                  fontWeight: "bold",
+                  letterSpacing: "0.14em",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  boxShadow: "0 0 10px rgba(255, 45, 58, 0.25)",
                 }}
               >
-                {currentTrial.subtitle}
-              </div>
+                <span style={{ color: "#ff2d3a" }}>◈</span>
+                <span>TRIAL {currentTrial.id} // {currentTrial.shortName}</span>
+                <span style={{ fontSize: "10px", opacity: 0.8 }}>[◀ RETURN TO MAP]</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sfx("click");
+                  setIsStoryDialogOpen(true);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(255, 45, 58, 0.4)",
+                  borderRadius: "3px",
+                  padding: "8px 14px",
+                  color: "rgba(255, 200, 200, 0.8)",
+                  fontFamily: '"Share Tech Mono", monospace',
+                  fontSize: "11.5px",
+                  letterSpacing: "0.12em",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span>👁</span>
+                <span>VECNA TRANSMISSION</span>
+              </button>
+
+              {isTrialCleared(currentTrial.id) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx("boom");
+                    setShowStageSummary(true);
+                  }}
+                  style={{
+                    background: "#b71c1c",
+                    border: "1.5px solid #ff3b30",
+                    borderRadius: "3px",
+                    padding: "8px 16px",
+                    color: "#ffffff",
+                    fontFamily: '"Share Tech Mono", monospace',
+                    fontSize: "12px",
+                    fontWeight: 900,
+                    letterSpacing: "0.14em",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "7px",
+                    boxShadow: "0 0 14px rgba(255, 45, 58, 0.5)",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#d32f2f")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#b71c1c")}
+                >
+                  <span style={{ color: "#ffffff" }}>◈</span>
+                  <span>SUBMIT STAGE DOSSIER</span>
+                </button>
+              )}
             </div>
 
-            {/* Right Header Section: Psychic Bounty */}
+            {/* Quick Level Navigator (Levels 1 to 10) */}
             <div
               style={{
                 display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                textAlign: "right",
-                borderLeft: "2px solid #8f231e",
-                paddingLeft: "20px",
-                minWidth: "160px",
+                alignItems: "center",
+                gap: "6px",
+                fontFamily: '"Share Tech Mono", monospace',
+                fontSize: "11.5px",
+                letterSpacing: "0.12em",
               }}
             >
-              <div
-                style={{
-                  fontSize: "10.5px",
-                  color: "#8f231e",
-                  letterSpacing: "0.15em",
-                  fontWeight: 900,
-                  fontFamily: "'Courier New', monospace",
-                  textTransform: "uppercase",
-                }}
-              >
-                PSYCHIC BOUNTY
-              </div>
-              <div
-                style={{
-                  fontFamily:
-                    '"ITC Benguiat Std", "Benguiat", "Libre Caslon Display", Georgia, serif',
-                  fontSize: "26px",
-                  fontWeight: 900,
-                  color: "#8f231e",
-                  marginTop: "1px",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                +10 PTS
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Courier New', monospace",
-                  fontSize: "11px",
-                  color: "#47382d",
-                  fontWeight: 700,
-                  marginTop: "3px",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                TRIAL: {currentTrialScore} PTS · TOTAL: {effectiveVecnaScore} PTS
-              </div>
+              <span style={{ color: "rgba(255, 180, 180, 0.7)", marginRight: "4px" }}>LEVEL:</span>
+              {Array.from({ length: 10 }).map((_, idx) => {
+                const isCurr = activeQuestionIdx === idx;
+                const isSolved = !!solvedQuestions[`${currentTrial.id}-${idx}`];
+                const isFailed = !!failedQuestions[`${currentTrial.id}-${idx}`];
+                const isUnlocked = isLevelUnlocked(currentTrial.id, idx);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    disabled={!isUnlocked}
+                    onClick={() => {
+                      if (!isUnlocked) {
+                        sfx("err");
+                        setErrorMessage(`LEVEL ${idx + 1} LOCKED · COMPLETE PRECEDING LEVEL FIRST`);
+                        setTimeout(() => setErrorMessage(null), 2500);
+                        return;
+                      }
+                      sfx("click");
+                      setActiveQuestionIdx(idx);
+                      setErrorMessage(null);
+                      setSuccessMessage(null);
+                    }}
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "3px",
+                      border: isCurr
+                        ? "1.5px solid #ff2d3a"
+                        : isSolved
+                        ? "1px solid #81c784"
+                        : isFailed
+                        ? "1px solid #e57373"
+                        : isUnlocked
+                        ? "1px solid rgba(255, 45, 58, 0.35)"
+                        : "1px solid rgba(255, 45, 58, 0.15)",
+                      background: isCurr
+                        ? "#ff2d3a"
+                        : isSolved
+                        ? "rgba(129, 199, 132, 0.15)"
+                        : isFailed
+                        ? "rgba(229, 115, 115, 0.15)"
+                        : isUnlocked
+                        ? "rgba(15, 3, 6, 0.7)"
+                        : "rgba(10, 2, 4, 0.4)",
+                      color: isCurr ? "#000000" : isSolved ? "#81c784" : isFailed ? "#e57373" : isUnlocked ? "#ffb3ba" : "rgba(255, 179, 186, 0.3)",
+                      fontWeight: isCurr ? 900 : "normal",
+                      fontSize: "11px",
+                      cursor: isUnlocked ? "pointer" : "not-allowed",
+                      boxShadow: isCurr ? "0 0 10px #ff2d3a" : "none",
+                      opacity: isUnlocked ? 1 : 0.45,
+                      transition: "all 0.12s ease",
+                    }}
+                    title={!isUnlocked ? "Locked until preceding question is completed" : `Level ${idx + 1}`}
+                  >
+                    {isSolved ? "✔" : isFailed ? "✕" : idx + 1}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Specialized Interactive Question Formation */}
-          <div style={{ marginBottom: "22px" }}>
-            <QuestionTypeRenderer
-              question={currentQuestion}
-              selectedAnswer={selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]}
-              onSelectOption={(optId) => handleSelectOption(currentTrial.id, activeQuestionIdx, optId)}
-              isVecnaMode={true}
-              questionIndex={activeQuestionIdx}
-            />
-          </div>
+          {/* ─── MAIN CONSOLE CARD ─── */}
+          <motion.div
+            key={`${currentTrial.id}-${activeQuestionIdx}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{
+              background: "#ece5d8",
+              color: "#1a1614",
+              border: "2px solid #3d352e",
+              borderRadius: "4px",
+              padding: "24px 28px",
+              boxShadow:
+                "0 20px 60px rgba(0, 0, 0, 0.9), inset 0 0 40px rgba(0, 0, 0, 0.08)",
+              position: "relative",
+              backgroundImage:
+                "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.4) 0%, rgba(220, 210, 195, 0.25) 100%)",
+            }}
+          >
+            {/* Top Red Classification Stripe */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: "2px solid #b71c1c",
+                paddingBottom: "8px",
+                marginBottom: "16px",
+                flexWrap: "wrap",
+                gap: "8px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span
+                  style={{
+                    background: "#b71c1c",
+                    color: "#ffffff",
+                    fontSize: "10.5px",
+                    fontWeight: 900,
+                    letterSpacing: "0.18em",
+                    padding: "3px 8px",
+                    borderRadius: "2px",
+                    fontFamily: '"Share Tech Mono", monospace',
+                  }}
+                >
+                  CLASSIFIED // LEVEL {activeQuestionIdx + 1} OF {totalQuestionsForTrial}
+                </span>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontFamily: '"Share Tech Mono", monospace',
+                    letterSpacing: "0.14em",
+                    color: "#5d4037",
+                    fontWeight: "bold",
+                  }}
+                >
+                  VECNA TELEMETRY NODE · STAGE {currentTrial.id}
+                </span>
+              </div>
 
-          {/* Feedback Messages */}
-          <AnimatePresence>
-            {errorMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
+              {/* Solved / Locked Status Tag */}
+              <div>
+                {isQuestionSolved ? (
+                  <span
+                    style={{
+                      background: "rgba(46, 125, 50, 0.15)",
+                      border: "1.5px solid #2e7d32",
+                      color: "#1b5e20",
+                      padding: "3px 10px",
+                      borderRadius: "2px",
+                      fontSize: "11px",
+                      fontWeight: 900,
+                      letterSpacing: "0.14em",
+                    }}
+                  >
+                    ✔ SYSTEM OVERRIDDEN (+20 PTS)
+                  </span>
+                ) : isQuestionFailed ? (
+                  <span
+                    style={{
+                      background: "rgba(183, 28, 28, 0.15)",
+                      border: "1.5px solid #b71c1c",
+                      color: "#b71c1c",
+                      padding: "3px 10px",
+                      borderRadius: "2px",
+                      fontSize: "11px",
+                      fontWeight: 900,
+                      letterSpacing: "0.14em",
+                    }}
+                  >
+                    ✕ VECTOR COMPROMISED (0 PTS)
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      background: "rgba(230, 81, 0, 0.15)",
+                      border: "1.5px solid #e65100",
+                      color: "#bf360c",
+                      padding: "3px 10px",
+                      borderRadius: "2px",
+                      fontSize: "11px",
+                      fontWeight: "bold",
+                      letterSpacing: "0.14em",
+                    }}
+                  >
+                    ● READY FOR BREACH
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Dossier Header Info */}
+            <div style={{ marginBottom: "16px" }}>
+              <div
                 style={{
-                  padding: "10px 14px",
-                  background: "rgba(184, 29, 36, 0.12)",
-                  border: "1.5px solid #8f231e",
-                  borderRadius: "3px",
-                  color: "#8f231e",
-                  fontFamily: "'Courier New', monospace",
-                  fontSize: "13px",
-                  textAlign: "center",
-                  fontWeight: 900,
-                  letterSpacing: "0.08em",
-                  marginBottom: "18px",
+                  fontSize: "11.5px",
+                  letterSpacing: "0.18em",
+                  color: "#8d6e63",
+                  fontFamily: '"Share Tech Mono", monospace',
+                  textTransform: "uppercase",
+                  fontWeight: "bold",
+                  marginBottom: "4px",
                 }}
               >
-                {errorMessage}
-              </motion.div>
+                {currentQuestion?.subHeader || currentTrial.subtitle}
+              </div>
+              <h2
+                style={{
+                  margin: "0 0 6px 0",
+                  fontFamily:
+                    '"ITC Benguiat Std", "Benguiat", "Benguiat Bold Condensed", Georgia, serif',
+                  fontSize: "22px",
+                  fontWeight: 900,
+                  color: "#1a120b",
+                  letterSpacing: "0.06em",
+                  lineHeight: "1.3",
+                }}
+              >
+                {currentQuestion?.question}
+              </h2>
+            </div>
+
+            {/* Specialized Question Type Renderer */}
+            <div style={{ marginBottom: "20px" }}>
+              <QuestionTypeRenderer
+                question={currentQuestion}
+                selectedAnswer={selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]}
+                onSelectOption={(optId) => handleSelectOption(currentTrial.id, activeQuestionIdx, optId)}
+                disabled={isQuestionAttempted || isSubmitting}
+                isVecnaMode={true}
+              />
+            </div>
+
+            {/* Status / Feedback Alerts */}
+            {errorMessage && (
+              <div
+                style={{
+                  background: "rgba(183, 28, 28, 0.12)",
+                  border: "1.5px solid #b71c1c",
+                  color: "#b71c1c",
+                  padding: "10px 14px",
+                  borderRadius: "3px",
+                  fontFamily: '"Share Tech Mono", monospace',
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  letterSpacing: "0.1em",
+                  marginBottom: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span>⚠</span>
+                <span>{errorMessage}</span>
+              </div>
             )}
 
             {successMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
+              <div
                 style={{
+                  background: "rgba(46, 125, 50, 0.12)",
+                  border: "1.5px solid #2e7d32",
+                  color: "#1b5e20",
                   padding: "10px 14px",
-                  background: "rgba(46, 105, 48, 0.12)",
-                  border: "1.5px solid #2e6930",
                   borderRadius: "3px",
-                  color: "#2e6930",
-                  fontFamily: "'Courier New', monospace",
-                  fontSize: "13px",
-                  textAlign: "center",
-                  fontWeight: 900,
-                  letterSpacing: "0.08em",
-                  marginBottom: "18px",
-                }}
-              >
-                {successMessage}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Action & Navigation Bar */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "14px",
-              paddingTop: "16px",
-              borderTop: "1.5px solid #c9bda4",
-            }}
-          >
-            {/* Level Stepper Buttons */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <button
-                type="button"
-                onClick={handlePrevLevel}
-                disabled={activeQuestionIdx === 0}
-                style={{
-                  padding: "8px 14px",
-                  background: activeQuestionIdx === 0 ? "rgba(0,0,0,0.06)" : "#e6dcc6",
-                  color: activeQuestionIdx === 0 ? "rgba(0,0,0,0.3)" : "#2a1e15",
-                  border: "1.5px solid #9c8973",
-                  borderRadius: "3px",
-                  cursor: activeQuestionIdx === 0 ? "not-allowed" : "pointer",
-                  fontFamily: "'Courier New', monospace",
+                  fontFamily: '"Share Tech Mono", monospace',
                   fontSize: "12px",
-                  fontWeight: 800,
+                  fontWeight: "bold",
                   letterSpacing: "0.1em",
-                }}
-              >
-                ◀ PREV LVL
-              </button>
-
-              <span
-                style={{
-                  fontSize: "12px",
-                  fontFamily: "'Courier New', monospace",
-                  color: "#47382d",
-                  fontWeight: 800,
-                  letterSpacing: "0.1em",
-                }}
-              >
-                LVL <b>{activeQuestionIdx + 1}</b> / {totalQuestionsForTrial}
-              </span>
-
-              <button
-                type="button"
-                onClick={handleNextLevel}
-                disabled={activeQuestionIdx === totalQuestionsForTrial - 1 || !isLevelAttempted(currentTrial.id, activeQuestionIdx)}
-                style={{
-                  padding: "8px 14px",
-                  background:
-                    activeQuestionIdx === totalQuestionsForTrial - 1 || !isLevelAttempted(currentTrial.id, activeQuestionIdx)
-                      ? "rgba(0,0,0,0.06)"
-                      : "#e6dcc6",
-                  color:
-                    activeQuestionIdx === totalQuestionsForTrial - 1 || !isLevelAttempted(currentTrial.id, activeQuestionIdx)
-                      ? "rgba(0,0,0,0.3)"
-                      : "#2a1e15",
-                  border: "1.5px solid #9c8973",
-                  borderRadius: "3px",
-                  cursor:
-                    activeQuestionIdx === totalQuestionsForTrial - 1 || !isLevelAttempted(currentTrial.id, activeQuestionIdx)
-                      ? "not-allowed"
-                      : "pointer",
-                  fontFamily: "'Courier New', monospace",
-                  fontSize: "12px",
-                  fontWeight: 800,
-                  letterSpacing: "0.1em",
-                }}
-                title={!isLevelAttempted(currentTrial.id, activeQuestionIdx) ? "Complete current level before moving to next" : "Next level"}
-              >
-                NEXT LVL ▶
-              </button>
-            </div>
-
-            {/* Right: Dedicated Submit Button */}
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-              <button
-                id="vecna-override-submit-btn"
-                type="button"
-                onClick={handleVerifyCurrentQuestion}
-                disabled={isQuestionAttempted || isSubmitting}
-                style={{
-                  background: isQuestionSolved
-                    ? "#2e6930"
-                    : isQuestionFailed
-                    ? "#66181b"
-                    : isSubmitting
-                    ? "#4a1215"
-                    : "#8f231e",
-                  color: "#ffffff",
-                  fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
-                  fontSize: "13.5px",
-                  fontWeight: 900,
-                  letterSpacing: "0.14em",
-                  padding: "12px 26px",
-                  border: "none",
-                  borderRadius: "3px",
-                  cursor: isQuestionAttempted ? "default" : isSubmitting ? "wait" : "pointer",
-                  boxShadow: isQuestionSolved
-                    ? "0 3px 12px rgba(46, 105, 48, 0.45)"
-                    : isQuestionFailed
-                    ? "0 3px 12px rgba(102, 24, 27, 0.45)"
-                    : "0 3px 12px rgba(143, 35, 30, 0.45)",
-                  transition: "all 0.2s ease",
-                  display: "inline-flex",
+                  marginBottom: "16px",
+                  display: "flex",
                   alignItems: "center",
                   gap: "8px",
-                  textTransform: "uppercase",
-                  opacity: isQuestionAttempted ? 0.9 : isSubmitting ? 0.75 : 1,
                 }}
               >
-                {isQuestionSolved ? (
-                  <span>✓ LEVEL CLEARED (+10 PTS)</span>
-                ) : isQuestionFailed ? (
-                  <span>✕ VECTOR RECORDED (0 PTS)</span>
-                ) : isSubmitting ? (
-                  <>
-                    <span style={{ display: "inline-block", animation: "spin 1s linear infinite" }}>⚙</span>
-                    <span>TRANSMITTING OVERRIDE TELEMETRY...</span>
-                  </>
+                <span>✔</span>
+                <span>{successMessage}</span>
+              </div>
+            )}
+
+            {/* Action Buttons Bar */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderTop: "1.5px solid rgba(61, 53, 46, 0.3)",
+                paddingTop: "16px",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  type="button"
+                  disabled={activeQuestionIdx === 0}
+                  onClick={handlePrevLevel}
+                  style={{
+                    background: activeQuestionIdx === 0 ? "rgba(0,0,0,0.06)" : "#2c221e",
+                    color: activeQuestionIdx === 0 ? "rgba(0,0,0,0.3)" : "#ffffff",
+                    border: "1px solid #2c221e",
+                    padding: "8px 16px",
+                    borderRadius: "3px",
+                    fontFamily: '"Share Tech Mono", monospace',
+                    fontSize: "11.5px",
+                    fontWeight: "bold",
+                    letterSpacing: "0.12em",
+                    cursor: activeQuestionIdx === 0 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  ◀ PREV LEVEL
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    activeQuestionIdx >= totalQuestionsForTrial - 1 ||
+                    !isLevelAttempted(currentTrial.id, activeQuestionIdx)
+                  }
+                  onClick={handleNextLevel}
+                  style={{
+                    background:
+                      activeQuestionIdx >= totalQuestionsForTrial - 1 ||
+                      !isLevelAttempted(currentTrial.id, activeQuestionIdx)
+                        ? "rgba(0,0,0,0.06)"
+                        : "#2c221e",
+                    color:
+                      activeQuestionIdx >= totalQuestionsForTrial - 1 ||
+                      !isLevelAttempted(currentTrial.id, activeQuestionIdx)
+                        ? "rgba(0,0,0,0.3)"
+                        : "#ffffff",
+                    border: "1px solid #2c221e",
+                    padding: "8px 16px",
+                    borderRadius: "3px",
+                    fontFamily: '"Share Tech Mono", monospace',
+                    fontSize: "11.5px",
+                    fontWeight: "bold",
+                    letterSpacing: "0.12em",
+                    cursor:
+                      activeQuestionIdx >= totalQuestionsForTrial - 1 ||
+                      !isLevelAttempted(currentTrial.id, activeQuestionIdx)
+                        ? "not-allowed"
+                        : "pointer",
+                  }}
+                >
+                  NEXT LEVEL ▶
+                </button>
+              </div>
+
+              {/* Submit / Verification Button */}
+              <div>
+                {!isQuestionAttempted ? (
+                  <button
+                    type="button"
+                    disabled={isSubmitting || !selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]}
+                    onClick={handleVerifyCurrentQuestion}
+                    style={{
+                      background:
+                        isSubmitting || !selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]
+                          ? "rgba(183, 28, 28, 0.4)"
+                          : "#b71c1c",
+                      color: "#ffffff",
+                      border: "1.5px solid #b71c1c",
+                      padding: "10px 26px",
+                      borderRadius: "3px",
+                      fontFamily: '"Share Tech Mono", monospace',
+                      fontSize: "13px",
+                      fontWeight: 900,
+                      letterSpacing: "0.16em",
+                      cursor:
+                        isSubmitting || !selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`]
+                          ? "not-allowed"
+                          : "pointer",
+                      boxShadow: "0 0 16px rgba(183, 28, 28, 0.45)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <span>{isSubmitting ? "CHECKING ANSWER..." : "CHECK ANSWER"}</span>
+                  </button>
+                ) : isQuestionSolved ? (
+                  <div
+                    style={{
+                      background: "#2e7d32",
+                      color: "#ffffff",
+                      padding: "8px 18px",
+                      borderRadius: "3px",
+                      fontFamily: '"Share Tech Mono", monospace',
+                      fontSize: "12px",
+                      fontWeight: 900,
+                      letterSpacing: "0.14em",
+                    }}
+                  >
+                    ✔ LEVEL SOLVED (+20 PTS RECORDED)
+                  </div>
                 ) : (
-                  <span>SUBMIT LEVEL (+10 PTS)</span>
+                  <div
+                    style={{
+                      background: "#b71c1c",
+                      color: "#ffffff",
+                      padding: "8px 18px",
+                      borderRadius: "3px",
+                      fontFamily: '"Share Tech Mono", monospace',
+                      fontSize: "12px",
+                      fontWeight: 900,
+                      letterSpacing: "0.14em",
+                    }}
+                  >
+                    ✕ LEVEL RECORDED (0 PTS)
+                  </div>
                 )}
-              </button>
+
+                {isTrialCleared(currentTrial.id) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx("boom");
+                      setShowStageSummary(true);
+                    }}
+                    style={{
+                      background: "#b71c1c",
+                      color: "#ffffff",
+                      border: "1.5px solid #ff3b30",
+                      padding: "9px 22px",
+                      borderRadius: "3px",
+                      fontFamily: '"Share Tech Mono", monospace',
+                      fontSize: "12px",
+                      fontWeight: 900,
+                      letterSpacing: "0.14em",
+                      cursor: "pointer",
+                      boxShadow: "0 0 16px rgba(255, 59, 48, 0.5)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      textTransform: "uppercase",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#d32f2f")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#b71c1c")}
+                  >
+                    <span>◈</span>
+                    <span>SUBMIT STAGE DOSSIER · VIEW SUMMARY</span>
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
-      </main>
+          </motion.div>
+        </main>
+      )}
 
       {/* ───────────────────────────────────────────────────────────────────
-          POPUP MODAL 1: 🗺️ TACTICAL VECTOR MAP MODAL
+          GOOGLE MEET STYLE SLIDE-OVER DRAWER (POWERS & TEAM DISPATCH)
           ─────────────────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {isMapOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 999,
-              background: "rgba(4, 1, 3, 0.92)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "24px",
-            }}
-            onClick={() => setIsMapOpen(false)}
-          >
+        {activeSideDrawer !== "none" && (
+          <>
+            {/* Backdrop overlay */}
             <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               style={{
-                width: "min(1200px, 96vw)",
-                maxHeight: "90vh",
-                overflowY: "auto",
-                background: "#0a0306",
-                border: "2px solid #ff2d3a",
-                borderRadius: "6px",
-                padding: "24px",
-                boxShadow: "0 0 50px rgba(0, 0, 0, 0.95)",
+                position: "fixed",
+                inset: 0,
+                zIndex: 998,
+                background: "rgba(0, 0, 0, 0.65)",
+                backdropFilter: "blur(5px)",
+                WebkitBackdropFilter: "blur(5px)",
+              }}
+              onClick={() => setActiveSideDrawer("none")}
+            />
+
+            {/* Slide-over Drawer Panel */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 260 }}
+              style={{
+                position: "fixed",
+                top: 0,
+                bottom: 0,
+                right: 0,
+                width: "min(460px, 94vw)",
+                zIndex: 999,
+                background: "#0c0408",
+                borderLeft: "2px solid #ff2d3a",
+                boxShadow: "-12px 0 45px rgba(0, 0, 0, 0.95), 0 0 25px rgba(255, 45, 58, 0.2)",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <div>
-                  <h3 style={{ margin: 0, color: "#ff2d3a", fontSize: "20px", fontWeight: "bold", letterSpacing: "0.1em" }}>
-                    HAWKINS TACTICAL VECTOR MAP
-                  </h3>
-                  <div style={{ fontSize: "12px", color: "rgba(255,200,200,0.6)", marginTop: "2px" }}>
-                    LIVE GPS TELEMETRY & ACTIVE RECON TEAM COORDINATES
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsMapOpen(false)}
-                  style={{
-                    background: "rgba(255, 45, 58, 0.15)",
-                    border: "1px solid #ff2d3a",
-                    color: "#ff8a80",
-                    padding: "6px 14px",
-                    borderRadius: "3px",
-                    cursor: "pointer",
-                    fontFamily: '"Share Tech Mono", monospace',
-                  }}
-                >
-                  [✕ CLOSE MAP]
-                </button>
-              </div>
-
-              <VecnaTacticalMap
-                selectedLocationId={selectedLocation}
-                onSelectLocation={(locId) => setSelectedLocation(locId)}
-                teamsAtLocation={tacticalMapData}
-                onInspectTeam={(tId) => {
-                  setSelectedTeamName(tId);
+              {/* Drawer Top Header */}
+              <div
+                style={{
+                  padding: "16px 20px",
+                  background: "rgba(20, 5, 10, 0.95)",
+                  borderBottom: "1.5px solid rgba(255, 45, 58, 0.4)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 12,
                 }}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ───────────────────────────────────────────────────────────────────
-          POPUP MODAL 2: ✉️ TEAM DISPATCH & MESSAGING MODAL
-          ─────────────────────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {isMessageOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 999,
-              background: "rgba(4, 1, 3, 0.92)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "24px",
-            }}
-            onClick={() => setIsMessageOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              style={{
-                width: "min(640px, 94vw)",
-                background: "#0a0306",
-                border: "2px solid #ff2d3a",
-                borderRadius: "6px",
-                padding: "24px",
-                boxShadow: "0 0 50px rgba(0, 0, 0, 0.95)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              >
                 <div>
-                  <h3 style={{ margin: 0, color: "#ff2d3a", fontSize: "18px", fontWeight: "bold", letterSpacing: "0.1em" }}>
-                    DISPATCH TRANSMISSION TO TEAMS
-                  </h3>
-                  <div style={{ fontSize: "12px", color: "rgba(255,200,200,0.6)", marginTop: "2px" }}>
-                    BROADCAST EERIE TELEPATHIC MESSAGES ACROSS GAMESPACE
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      color: "#ff2d3a",
+                      fontFamily: '"ITC Benguiat Std", "Benguiat", serif',
+                      fontSize: 17,
+                      fontWeight: 900,
+                      letterSpacing: "0.1em",
+                    }}
+                  >
+                    <span>
+                      {activeSideDrawer === "powers"
+                        ? "VECNA POWERS & SABOTAGE"
+                        : "TEAM DISPATCH TRANSMISSION"}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "rgba(255, 200, 200, 0.65)",
+                      fontFamily: '"Share Tech Mono", monospace',
+                      marginTop: 4,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {activeSideDrawer === "powers"
+                      ? "Deploy hive-mind disruptions against Hawkins squads. Spend points earned from solving sectors to trigger Lockouts, Cipher Corruptions, Signal Jams, or Freezes."
+                      : "Broadcast telepathic transmissions and psychological terror messages directly into the terminals of specific Hawkins squads or all squads simultaneously."}
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => setIsMessageOpen(false)}
+                  onClick={() => setActiveSideDrawer("none")}
                   style={{
                     background: "rgba(255, 45, 58, 0.15)",
                     border: "1px solid #ff2d3a",
                     color: "#ff8a80",
-                    padding: "6px 14px",
+                    padding: "4px 10px",
                     borderRadius: "3px",
                     cursor: "pointer",
                     fontFamily: '"Share Tech Mono", monospace',
+                    fontSize: "12px",
+                    fontWeight: "bold",
                   }}
                 >
-                  [✕ CLOSE]
+                  ✕
                 </button>
               </div>
 
-              <VecnaMessagePanel
-                onSendMessage={handleSendMessage}
-                selectedTeamName={selectedTeamName}
-                availableSquads={availableSquads}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ───────────────────────────────────────────────────────────────────
-          POPUP MODAL 3: ⚡ VECNA POWERS & SABOTAGE MODAL
-          ─────────────────────────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {isPowersOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 999,
-              background: "rgba(4, 1, 3, 0.92)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "24px",
-            }}
-            onClick={() => setIsPowersOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              style={{
-                width: "min(780px, 94vw)",
-                background: "#0a0306",
-                border: "2px solid #ff2d3a",
-                borderRadius: "6px",
-                padding: "24px",
-                boxShadow: "0 0 50px rgba(0, 0, 0, 0.95)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <div>
-                  <h3 style={{ margin: 0, color: "#ff2d3a", fontSize: "18px", fontWeight: "bold", letterSpacing: "0.1em" }}>
-                    VECNA POWERS & SABOTAGE COCKPIT
-                  </h3>
-                  <div style={{ fontSize: "12px", color: "rgba(255,200,200,0.6)", marginTop: "2px" }}>
-                    CORRUPT, LOCK, JAM, GLITCH, DISTORT, OR FREEZE TARGET TEAMS
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsPowersOpen(false)}
-                  style={{
-                    background: "rgba(255, 45, 58, 0.15)",
-                    border: "1px solid #ff2d3a",
-                    color: "#ff8a80",
-                    padding: "6px 14px",
-                    borderRadius: "3px",
-                    cursor: "pointer",
-                    fontFamily: '"Share Tech Mono", monospace',
-                  }}
-                >
-                  [✕ CLOSE]
-                </button>
+              {/* Drawer Body with Panels */}
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: "16px 18px",
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "#ff2d3a #120407",
+                }}
+              >
+                {activeSideDrawer === "powers" ? (
+                  <VecnaTriggerPanel
+                    selectedLocation={selectedLocation}
+                    onSelectLocation={(locId) => setSelectedLocation(locId)}
+                    onTriggerAction={handleExecuteTrigger}
+                    currentVecnaScore={effectiveVecnaScore}
+                    availableSquads={availableSquads}
+                  />
+                ) : (
+                  <VecnaMessagePanel
+                    onSendMessage={handleSendMessage}
+                    selectedTeamName={selectedTeamName}
+                    availableSquads={availableSquads}
+                  />
+                )}
               </div>
-
-              <VecnaTriggerPanel
-                selectedLocation={selectedLocation}
-                onSelectLocation={(locId) => setSelectedLocation(locId)}
-                onTriggerAction={handleExecuteTrigger}
-                currentVecnaScore={effectiveVecnaScore}
-                availableSquads={availableSquads}
-              />
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
 
-      {/* Chapters Modal (Square mode with pictures) */}
-      <VecnaChaptersModal
-        isOpen={isChaptersModalOpen}
-        activeTrialId={activeTrialId}
-        solvedQuestions={solvedQuestions}
-        onSelectTrial={(trialId) => {
-          setActiveTrialId(trialId);
-          setActiveQuestionIdx(0);
-          setErrorMessage(null);
-          setSuccessMessage(null);
-          setIsStoryDialogOpen(true);
-        }}
-        onClose={() => setIsChaptersModalOpen(false)}
-      />
-
-      {/* Vecna Story Dialogue (Pokemon FireRed bottom style with Vecna sprite) */}
+      {/* Vecna Story Dialogue */}
       <AnimatePresence>
         {isStoryDialogOpen && (
           <VecnaStoryDialog
