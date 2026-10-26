@@ -56,7 +56,7 @@ export default function StageView() {
   };
 
   if (eventStatus === "not_started" || eventStatus === "ended") {
-    return <EventStandby onEventStarted={() => setEventStatus("active")} />;
+    return <EventStandby onEventStarted={() => setEventStatus("active")} isEnded={eventStatus === "ended"} />;
   }
 
   return (

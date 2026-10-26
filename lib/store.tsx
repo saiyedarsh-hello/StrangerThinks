@@ -302,20 +302,27 @@ export function purgeTeamGameplayCache(teamId?: string): void {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (
+
+      const isTeamSpecific =
         k.startsWith("hawkins_quiz_answers_") ||
         k.startsWith("hawkins_quiz_attempts_") ||
         k.startsWith("hawkins_quiz_results_") ||
         k.startsWith("hawkins_rearrange_") ||
         k.startsWith("hawkins_connections_") ||
         k.startsWith("hawkins_team_save_") ||
-        k.startsWith("vecna_") ||
+        k.startsWith("vecna_");
+
+      const isGlobalGameplay =
+        k === CONFIG.STORAGE_KEY ||
         k === "hawkins_seen_briefings" ||
         k === "hawkins_corrupt_answers" ||
         k === "hawkins_active_chapter" ||
         k === "hawkins_live_score_sync" ||
-        k === "hawkins_persisted_leaderboard"
-      ) {
+        k === "hawkins_persisted_leaderboard";
+
+      if (isGlobalGameplay) {
+        keysToRemove.push(k);
+      } else if (isTeamSpecific) {
         if (!teamId || k.includes(teamId)) {
           keysToRemove.push(k);
         }
@@ -530,8 +537,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     fetch("/api/admin/event/state")
       .then((r) => r.json())
       .then((evData) => {
-        if (evData?.eventState?.unlockedStages && Array.isArray(evData.eventState.unlockedStages)) {
-          setS((prev) => ({ ...prev, unlockedStages: evData.eventState.unlockedStages }));
+        const ev = evData?.eventState;
+        if (ev) {
+          const hwk = ev.unlockedStagesHawkins || ev.unlockedStages;
+          setS((prev) => ({
+            ...prev,
+            isPaused: Boolean(ev.isPaused ?? (ev.status === "paused")),
+            ...(Array.isArray(hwk) && hwk.length > 0 ? { unlockedStages: hwk } : {}),
+          }));
         }
       })
       .catch(() => {});
@@ -649,13 +662,51 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isGame]);
 
-  // Persist to localStorage
+  // Persist to localStorage: debounce game state changes to prevent 1-second storage thrashing
+  const lastSavedJsonRef = useRef<string>("");
   useEffect(() => {
     if (!hydrated || !isGame) return;
-    try {
-      localStorage.setItem(KEY, JSON.stringify(s));
-    } catch {}
-  }, [s, hydrated, isGame]);
+    const timeout = setTimeout(() => {
+      try {
+        const serialized = JSON.stringify(s);
+        if (serialized !== lastSavedJsonRef.current) {
+          lastSavedJsonRef.current = serialized;
+          localStorage.setItem(KEY, serialized);
+        }
+      } catch {}
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [
+    s.breakdown,
+    s.completedTasks,
+    s.solved,
+    s.unlocked,
+    s.taskScores,
+    s.radiometer,
+    s.unlockedHints,
+    s.penalty,
+    s.stage,
+    s.phase,
+    s.team,
+    s.unlockedStages,
+    s.isPaused,
+    hydrated,
+    isGame,
+  ]);
+
+  // Ensure state is flushed before window unloads
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (hydrated && isGame && sRef.current) {
+        try {
+          localStorage.setItem(KEY, JSON.stringify(sRef.current));
+        } catch {}
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hydrated, isGame]);
 
   // Theme on <html>
   useEffect(() => {
@@ -669,14 +720,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setDroneTheme(isMind ? "mind" : theme);
   }, [s.stage, s.phase, s.location, path, isGame]);
 
-  // Clock
+  // Clock: freezes cleanly when paused
   useEffect(() => {
-    if (!isGame || s.phase !== "play" || s.stage === "ending") return;
+    if (!isGame || s.phase !== "play" || s.stage === "ending" || s.isPaused) return;
     const t = setInterval(() => {
-      setS((p) => (p.timeLeft <= 0 ? p : { ...p, timeLeft: p.timeLeft - 1 }));
+      setS((p) => {
+        if (p.isPaused) return p;
+        return p.timeLeft <= 0 ? p : { ...p, timeLeft: p.timeLeft - 1 };
+      });
     }, 1000);
     return () => clearInterval(t);
-  }, [s.phase, s.stage, isGame]);
+  }, [s.phase, s.stage, s.isPaused, isGame]);
 
   const say = useCallback((msg: string) => {
     setToast(msg);
@@ -758,7 +812,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (m.type === "stage_unlocked") {
-        const stages = (m as any).unlockedStages;
+        const target = (m as any).target || "all";
+        if (target === "vecna") return; // Hawkins players ignore Vecna-only stage unlocks
+        const stages = (m as any).unlockedStagesHawkins || (m as any).unlockedStages;
         if (Array.isArray(stages) && stages.length > 0) {
           setS((p) => ({
             ...p,
@@ -770,9 +826,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (m.type === "SCORE_UPDATE") {
         const myTeamId = sRef.current.team?.id;
         const myTeamName = sRef.current.team?.name;
+        const normalize = (val?: string) => (val || "").trim().toLowerCase().replace(/^team[\s\-_]*/i, "").replace(/^0+/, "");
+        const normMyId = normalize(myTeamId);
+        const normMsgId = normalize(m.teamId);
+        const normMyName = (myTeamName || "").trim().toLowerCase();
+        const normMsgName = (m.teamName || "").trim().toLowerCase();
+
         const isMyTeam =
-          (m.teamId && m.teamId === myTeamId) ||
-          (m.teamName && myTeamName && m.teamName.toLowerCase() === myTeamName.toLowerCase());
+          (m.teamId && (m.teamId === myTeamId || (normMyId && normMyId === normMsgId))) ||
+          (normMsgName && normMyName && normMsgName === normMyName);
 
         if (isMyTeam) {
           setS((p) => {
@@ -822,9 +884,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (m.type === "event_state") {
+        const newHawkinsStages = (m as any).unlockedStagesHawkins || (m as any).unlockedStages;
         setS((p) => ({
           ...p,
-          isPaused: m.isPaused,
+          isPaused: Boolean(m.isPaused),
+          ...(Array.isArray(newHawkinsStages) && newHawkinsStages.length > 0 ? { unlockedStages: newHawkinsStages } : {}),
         }));
         if (m.isPaused) {
           say("HAWKINS COMMAND: TOURNAMENT PAUSED BY ADMINISTRATOR");
@@ -840,16 +904,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         sfx("boom");
         say("HAWKINS COMMAND: FRESH TOURNAMENT EVENT INITIATED · All scores and stages reset to 0.");
         setS((p) => ({
-          ...p,
-          breakdown: { tech: 0, puzzle: 0, clue: 0, speed: 0, story: 0, teamwork: 0 },
-          penalty: 0,
-          completedTasks: [],
-          solvedChapters: [],
-          taskScores: {},
-          solved: {},
-          activeChapterId: 1,
-          viewMode: "board",
-          storyProgress: 0,
+          ...INITIAL,
+          phase: p.phase === "play" ? "play" : p.phase,
           team: p.team
             ? {
                 ...p.team,
@@ -859,14 +915,25 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
                 completedTasks: [],
                 storyProgress: 0,
               }
-            : p.team,
+            : null,
+          unlockedStages: (m as any).unlockedStagesHawkins || (m as any).unlockedStages || [1],
+          timeLeft: TOTAL_TIME,
+          isPaused: false,
         }));
+        setActiveChapterId(1);
+        try {
+          window.dispatchEvent(new CustomEvent("hawkins:event_reset"));
+        } catch {}
       }
 
       if (m.type === "event_ended") {
-        purgeTeamGameplayCache(sRef.current.team?.id);
         sfx("err");
         say("HAWKINS COMMAND: TOURNAMENT CONCLUDED BY ADMINISTRATOR");
+        setS((p) => ({
+          ...p,
+          stage: "ending",
+          isPaused: false,
+        }));
       }
 
       if (m.type === "force_logout") {

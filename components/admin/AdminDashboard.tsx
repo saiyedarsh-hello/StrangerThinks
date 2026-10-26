@@ -125,7 +125,10 @@ export default function AdminDashboard() {
     current_round_max: 7,
   });
   const [isUpdatingEvent, setIsUpdatingEvent] = useState(false);
+  const [unlockedStagesHawkins, setUnlockedStagesHawkins] = useState<number[]>([1]);
+  const [unlockedStagesVecna, setUnlockedStagesVecna] = useState<number[]>([1]);
   const [unlockedStages, setUnlockedStages] = useState<number[]>([1]);
+  const [stagesActiveTarget, setStagesActiveTarget] = useState<"hawkins" | "vecna">("hawkins");
   const [isUpdatingStage, setIsUpdatingStage] = useState<boolean>(false);
 
   // Auto-refresh timer state (user configurable: ON/OFF and 5s/10s/30s)
@@ -338,8 +341,14 @@ export default function AdminDashboard() {
       ]);
       if (evRes.success && evRes.eventState) {
         setEventState(evRes.eventState);
-        if (Array.isArray(evRes.eventState.unlockedStages) && evRes.eventState.unlockedStages.length > 0) {
-          setUnlockedStages(evRes.eventState.unlockedStages);
+        const hwk = evRes.eventState.unlockedStagesHawkins || evRes.eventState.unlockedStages;
+        const vcn = evRes.eventState.unlockedStagesVecna || evRes.eventState.unlockedStages;
+        if (Array.isArray(hwk) && hwk.length > 0) {
+          setUnlockedStagesHawkins(hwk);
+          setUnlockedStages(hwk);
+        }
+        if (Array.isArray(vcn) && vcn.length > 0) {
+          setUnlockedStagesVecna(vcn);
         }
       }
       if (tdLogs && tdLogs.length > 0) {
@@ -542,21 +551,68 @@ export default function AdminDashboard() {
 
     // 4. Subscribe to stage unlocking across tabs and socket
     const unsubRealtime = subscribe((m: any) => {
-      if (m.type === "stage_unlocked" && Array.isArray(m.unlockedStages) && m.unlockedStages.length > 0) {
-        setUnlockedStages(m.unlockedStages);
+      if (m.type === "stage_unlocked") {
+        if (m.unlockedStagesHawkins && Array.isArray(m.unlockedStagesHawkins)) {
+          setUnlockedStagesHawkins(m.unlockedStagesHawkins);
+          setUnlockedStages(m.unlockedStagesHawkins);
+        } else if (m.target !== "vecna" && Array.isArray(m.unlockedStages)) {
+          setUnlockedStagesHawkins(m.unlockedStages);
+          setUnlockedStages(m.unlockedStages);
+        }
+        if (m.unlockedStagesVecna && Array.isArray(m.unlockedStagesVecna)) {
+          setUnlockedStagesVecna(m.unlockedStagesVecna);
+        } else if (m.target === "vecna" && Array.isArray(m.unlockedStages)) {
+          setUnlockedStagesVecna(m.unlockedStages);
+        }
+      }
+      if (m.type === "event_state") {
+        setEventState((prev) => ({
+          ...prev,
+          status: m.status || (m.isPaused ? "paused" : prev.status),
+          submissions_open: m.submissionsOpen ?? prev.submissions_open,
+          login_open: m.loginOpen ?? prev.login_open,
+        }));
       }
       if (m.type === "event_reset") {
+        setUnlockedStagesHawkins([1]);
+        setUnlockedStagesVecna([1]);
         setUnlockedStages([1]);
       }
     });
 
     const sock = getSocket();
     const handleStageUnlocked = (d: any) => {
-      if (d?.unlockedStages && Array.isArray(d.unlockedStages) && d.unlockedStages.length > 0) {
+      if (d?.unlockedStagesHawkins && Array.isArray(d.unlockedStagesHawkins)) {
+        setUnlockedStagesHawkins(d.unlockedStagesHawkins);
+        setUnlockedStages(d.unlockedStagesHawkins);
+      } else if (d?.target !== "vecna" && Array.isArray(d?.unlockedStages)) {
+        setUnlockedStagesHawkins(d.unlockedStages);
         setUnlockedStages(d.unlockedStages);
+      }
+      if (d?.unlockedStagesVecna && Array.isArray(d.unlockedStagesVecna)) {
+        setUnlockedStagesVecna(d.unlockedStagesVecna);
+      } else if (d?.target === "vecna" && Array.isArray(d?.unlockedStages)) {
+        setUnlockedStagesVecna(d.unlockedStages);
       }
     };
     sock?.on("stage:unlocked", handleStageUnlocked);
+
+    const handleEventStateChanged = (d: any) => {
+      setEventState((prev) => ({
+        ...prev,
+        status: d?.status || (d?.isPaused ? "paused" : prev.status),
+        submissions_open: d?.submissionsOpen ?? prev.submissions_open,
+        login_open: d?.loginOpen ?? prev.login_open,
+      }));
+      if (d?.unlockedStagesHawkins && Array.isArray(d.unlockedStagesHawkins)) {
+        setUnlockedStagesHawkins(d.unlockedStagesHawkins);
+        setUnlockedStages(d.unlockedStagesHawkins);
+      }
+      if (d?.unlockedStagesVecna && Array.isArray(d.unlockedStagesVecna)) {
+        setUnlockedStagesVecna(d.unlockedStagesVecna);
+      }
+    };
+    sock?.on("event:state_changed", handleEventStateChanged);
 
     // 5. Automated background refresh cycle (controllable interval & pause/resume)
     const autoRefreshTimer = setInterval(() => {
@@ -578,6 +634,7 @@ export default function AdminDashboard() {
       unsubPresence();
       unsubRealtime();
       sock?.off("stage:unlocked", handleStageUnlocked);
+      sock?.off("event:state_changed", handleEventStateChanged);
     };
   }, [loadData, autoRefreshEnabled, autoRefreshInterval, token]);
 
@@ -708,7 +765,7 @@ export default function AdminDashboard() {
   };
 
   // Stage Switchboard Toggle
-  const handleToggleStage = async (stageNum: number, currentUnlocked: boolean) => {
+  const handleToggleStage = async (stageNum: number, currentUnlocked: boolean, target: "hawkins" | "vecna" | "all" = "hawkins") => {
     setIsUpdatingStage(true);
     try {
       const stored = getStoredSession();
@@ -718,20 +775,39 @@ export default function AdminDashboard() {
         localStorage.getItem("hawkins_admin_token") ||
         sessionStorage.getItem("hawkins_admin_token") ||
         "";
-      const bearerTok = activeTok ? (activeTok.startsWith("Bearer ") ? activeTok : `Bearer ${activeTok}`) : "";
+      const cleanTok = activeTok.replace(/^Bearer\s+/i, "");
+      const bearerTok = cleanTok ? `Bearer ${cleanTok}` : "";
       const res = await fetch("/api/admin/stages/toggle", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: bearerTok,
         },
-        body: JSON.stringify({ stageNumber: stageNum, unlocked: !currentUnlocked }),
+        body: JSON.stringify({ stageNumber: stageNum, unlocked: !currentUnlocked, target }),
       });
       const data = await res.json();
-      if (data.success && Array.isArray(data.unlockedStages)) {
-        setUnlockedStages(data.unlockedStages);
-        publish({ type: "stage_unlocked", unlockedStages: data.unlockedStages });
-        setStatusMessage(`Stage ${stageNum} access updated: ${!currentUnlocked ? "UNLOCKED / AUTHORIZED" : "LOCKED / RESTRICTED"}`);
+      if (data.success) {
+        const hwk = data.unlockedStagesHawkins || (target === "hawkins" || target === "all" ? data.unlockedStages : unlockedStagesHawkins);
+        const vcn = data.unlockedStagesVecna || (target === "vecna" || target === "all" ? data.unlockedStages : unlockedStagesVecna);
+        if (Array.isArray(hwk)) {
+          setUnlockedStagesHawkins(hwk);
+          setUnlockedStages(hwk);
+        }
+        if (Array.isArray(vcn)) {
+          setUnlockedStagesVecna(vcn);
+        }
+        publish({
+          type: "stage_unlocked",
+          unlockedStages: data.unlockedStages,
+          unlockedStagesHawkins: hwk,
+          unlockedStagesVecna: vcn,
+          target,
+        });
+        setStatusMessage(
+          `${target === "vecna" ? "Vecna Trial" : "Hawkins Stage"} ${stageNum} access updated: ${
+            !currentUnlocked ? "UNLOCKED / AUTHORIZED" : "LOCKED / RESTRICTED"
+          }`
+        );
         sfx("ok");
       } else {
         sfx("err");
@@ -1330,7 +1406,7 @@ export default function AdminDashboard() {
           >
             {[
               { id: "leaderboard", label: "Leaderboard", count: leaderboard.length },
-              { id: "stages", label: "Unlock Chapters", badge: `${unlockedStages.length}/6 Open` },
+              { id: "stages", label: "Unlock Chapters", badge: `H:${unlockedStagesHawkins.length}/6 · V:${unlockedStagesVecna.length}/6` },
               { id: "questions", label: "Questions", count: chapters.length },
               { id: "logs", label: "System Logs" },
             ].map((tab) => {
@@ -1859,6 +1935,18 @@ export default function AdminDashboard() {
                       if (d.success) {
                         sfx("ok");
                         setStatusMessage("All squad scores successfully reset to 0 PTS.");
+                        setUnlockedStagesHawkins([1]);
+                        setUnlockedStagesVecna([1]);
+                        setUnlockedStages([1]);
+                        setLeaderboard((prev) =>
+                          prev.map((item) => ({
+                            ...item,
+                            score: 0,
+                            solvedCount: 0,
+                            completedTasks: [],
+                            lastSubmissionTime: undefined,
+                          }))
+                        );
                         loadData(true);
                       } else {
                         alert("Reset failed: " + (d.message || d.error));
@@ -1953,38 +2041,120 @@ export default function AdminDashboard() {
                 }}
               >
                 <div>
-                  <h3
-                    style={{
-                      margin: 0,
-                      fontSize: 14,
-                      fontWeight: 700,
-                      letterSpacing: "0.04em",
-                      color: "#0f172a",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Stage Access Switchboard (Dual-Condition Locking)
-                  </h3>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        letterSpacing: "0.04em",
+                        color: "#0f172a",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Stage Access Switchboard (Dual-Condition Locking)
+                    </h3>
+                  </div>
                   <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
-                    Configure authorized stages. Squads unlock stages only when Condition A (prior stage cleared) AND Condition B (authorized below) are both TRUE.
+                    Configure authorized stages independently for Hawkins field operatives and Vecna shadow operators. Squads unlock stages only when Condition A (prior stage cleared) AND Condition B (authorized below) are both TRUE.
                   </p>
                 </div>
-                <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 6 }}>
-                  <span>Authorized Stages:</span>
-                  <span
+
+                {/* Squad Type Segmented Switcher */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div
                     style={{
-                      color: "#047857",
-                      fontWeight: 600,
-                      fontFamily: "var(--font-mono), monospace",
-                      backgroundColor: "#ecfdf5",
-                      padding: "3px 10px",
-                      borderRadius: 4,
-                      border: "1px solid #a7f3d0",
-                      fontSize: 11,
+                      display: "inline-flex",
+                      background: "#e2e8f0",
+                      padding: 2,
+                      borderRadius: 6,
+                      border: "1px solid #cbd5e1",
                     }}
                   >
-                    {unlockedStages.slice().sort((a, b) => a - b).map((s) => `STAGE ${s}`).join(", ") || "None"}
-                  </span>
+                    <button
+                      type="button"
+                      onClick={() => setStagesActiveTarget("hawkins")}
+                      style={{
+                        padding: "5px 12px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        border: "none",
+                        background: stagesActiveTarget === "hawkins" ? "#0284c7" : "transparent",
+                        color: stagesActiveTarget === "hawkins" ? "#ffffff" : "#475569",
+                        transition: "all 0.15s ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <span>🔵 HAWKINS SQUADS</span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          background: stagesActiveTarget === "hawkins" ? "rgba(255,255,255,0.25)" : "#cbd5e1",
+                          color: stagesActiveTarget === "hawkins" ? "#ffffff" : "#334155",
+                          padding: "1px 5px",
+                          borderRadius: 3,
+                        }}
+                      >
+                        {unlockedStagesHawkins.length}/6 Open
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStagesActiveTarget("vecna")}
+                      style={{
+                        padding: "5px 12px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        border: "none",
+                        background: stagesActiveTarget === "vecna" ? "#b91c1c" : "transparent",
+                        color: stagesActiveTarget === "vecna" ? "#ffffff" : "#475569",
+                        transition: "all 0.15s ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <span>🔴 VECNA SQUADS</span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          background: stagesActiveTarget === "vecna" ? "rgba(255,255,255,0.25)" : "#cbd5e1",
+                          color: stagesActiveTarget === "vecna" ? "#ffffff" : "#334155",
+                          padding: "1px 5px",
+                          borderRadius: 3,
+                        }}
+                      >
+                        {unlockedStagesVecna.length}/6 Open
+                      </span>
+                    </button>
+                  </div>
+
+                  <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span
+                      style={{
+                        color: stagesActiveTarget === "vecna" ? "#b91c1c" : "#0284c7",
+                        fontWeight: 600,
+                        fontFamily: "var(--font-mono), monospace",
+                        backgroundColor: stagesActiveTarget === "vecna" ? "#fef2f2" : "#f0f9ff",
+                        padding: "3px 10px",
+                        borderRadius: 4,
+                        border: `1px solid ${stagesActiveTarget === "vecna" ? "#fecaca" : "#bae6fd"}`,
+                        fontSize: 11,
+                      }}
+                    >
+                      {(stagesActiveTarget === "vecna" ? unlockedStagesVecna : unlockedStagesHawkins)
+                        .slice()
+                        .sort((a, b) => a - b)
+                        .map((s) => `${stagesActiveTarget === "vecna" ? "TRIAL" : "STAGE"} ${s}`)
+                        .join(", ") || "None"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1995,24 +2165,42 @@ export default function AdminDashboard() {
                   gap: 12,
                 }}
               >
-                {[
-                  { num: 1, title: "STAGE 1", name: "Hawkins Lab Breach", type: "Quiz Questions", points: 100 },
-                  { num: 2, title: "STAGE 2", name: "The Void & Upside Down", type: "Connection Questions", points: 150 },
-                  { num: 3, title: "STAGE 3", name: "Creel House Finale", type: "Rearrange Questions", points: 200 },
-                  { num: 4, title: "STAGE 4", name: "Forensic Dossier", type: "Case Study Questions", points: 250 },
-                  { num: 5, title: "STAGE 5", name: "Radio Transmission", type: "Signal Decryption", points: 300 },
-                  { num: 6, title: "STAGE 6", name: "System Override", type: "Lab-Type Tasks", points: 350 },
-                ].map((stg) => {
-                  const isUnlocked = unlockedStages.includes(stg.num);
-                  const squadsOnStage = leaderboard.filter((t) => (t.currentStage || 1) === stg.num).length;
-                  const squadsSolved = leaderboard.filter((t) => t.solvedCount >= stg.num).length;
+                {(stagesActiveTarget === "hawkins"
+                  ? [
+                      { num: 1, title: "STAGE 1", name: "Hawkins Town Telemetry", type: "Civic District (Quiz Questions)", points: 200 },
+                      { num: 2, title: "STAGE 2", name: "Chief Hopper's Dossier", type: "Precinct 2 (Connection Questions)", points: 200 },
+                      { num: 3, title: "STAGE 3", name: "Joyce & Will's Wall", type: "Mirkwood (Rearrange Questions)", points: 200 },
+                      { num: 4, title: "STAGE 4", name: "Hawkins Lab Sublevel 3", type: "Grid Mainframe (Case Study Questions)", points: 200 },
+                      { num: 5, title: "STAGE 5", name: "East Hill Radio Tower", type: "Radiometer Alignment (5-Pin Cipher)", points: 200 },
+                      { num: 6, title: "STAGE 6", name: "The Gateway Rift", type: "Parallel Abyss (Experiment 001 Severance)", points: 200 },
+                    ]
+                  : [
+                      { num: 1, title: "TRIAL 1", name: "Series Knowledge", type: "Hawkins Lore & Timeline (Quiz Questions)", points: 200 },
+                      { num: 2, title: "TRIAL 2", name: "Relationship Correlation", type: "Clues & Artifacts (Connection Questions)", points: 200 },
+                      { num: 3, title: "TRIAL 3", name: "Sequence Restoration", type: "Scrambled Codes & Steps (Rearrange Questions)", points: 200 },
+                      { num: 4, title: "TRIAL 4", name: "Investigative Forensics", type: "Situation Analysis (Case Study Questions)", points: 200 },
+                      { num: 5, title: "TRIAL 5", name: "Signal Intelligence", type: "Morse & Binary Radio Ciphers", points: 200 },
+                      { num: 6, title: "TRIAL 6", name: "Technical Experiments", type: "Sublevel 3 Bug Fixing & System Operations", points: 200 },
+                    ]
+                ).map((stg) => {
+                  const currentList = stagesActiveTarget === "vecna" ? unlockedStagesVecna : unlockedStagesHawkins;
+                  const isUnlocked = currentList.includes(stg.num);
+                  const isVecnaTarget = stagesActiveTarget === "vecna";
+                  const squadsOnStage = leaderboard.filter(
+                    (t) => (isVecnaTarget ? t.role === "VECNA" : t.role !== "VECNA") && (t.currentStage || 1) === stg.num
+                  ).length;
+                  const squadsSolved = leaderboard.filter(
+                    (t) => (isVecnaTarget ? t.role === "VECNA" : t.role !== "VECNA") && t.solvedCount >= stg.num
+                  ).length;
 
                   return (
                     <div
                       key={stg.num}
                       style={{
-                        background: isUnlocked ? "#f0fdf4" : "#f8fafc",
-                        border: isUnlocked ? "1px solid #86efac" : "1px solid #e2e8f0",
+                        background: isUnlocked ? (isVecnaTarget ? "#fff1f2" : "#f0fdf4") : "#f8fafc",
+                        border: isUnlocked
+                          ? (isVecnaTarget ? "1px solid #fecdd3" : "1px solid #86efac")
+                          : "1px solid #e2e8f0",
                         borderRadius: 8,
                         padding: "14px 16px",
                         display: "flex",
@@ -2028,7 +2216,7 @@ export default function AdminDashboard() {
                             style={{
                               fontSize: 11,
                               fontWeight: 700,
-                              color: isUnlocked ? "#15803d" : "#64748b",
+                              color: isUnlocked ? (isVecnaTarget ? "#be123c" : "#15803d") : "#64748b",
                               letterSpacing: "0.06em",
                               fontFamily: "var(--font-mono), monospace",
                             }}
@@ -2041,9 +2229,11 @@ export default function AdminDashboard() {
                               fontWeight: 700,
                               padding: "2px 7px",
                               borderRadius: 4,
-                              background: isUnlocked ? "#dcfce7" : "#e2e8f0",
-                              color: isUnlocked ? "#166534" : "#475569",
-                              border: `1px solid ${isUnlocked ? "#86efac" : "#cbd5e1"}`,
+                              background: isUnlocked ? (isVecnaTarget ? "#ffe4e6" : "#dcfce7") : "#e2e8f0",
+                              color: isUnlocked ? (isVecnaTarget ? "#9f1239" : "#166534") : "#475569",
+                              border: `1px solid ${
+                                isUnlocked ? (isVecnaTarget ? "#fca5a5" : "#86efac") : "#cbd5e1"
+                              }`,
                             }}
                           >
                             {isUnlocked ? "OPEN" : "LOCKED"}
@@ -2056,16 +2246,30 @@ export default function AdminDashboard() {
                           {stg.type}
                         </div>
 
-                        <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed rgba(0,0,0,0.08)", display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b" }}>
-                          <span>Solves: <strong style={{ color: "#0f172a" }}>{squadsSolved}</strong></span>
-                          <span>Active here: <strong style={{ color: "#0f172a" }}>{squadsOnStage}</strong></span>
+                        <div
+                          style={{
+                            marginTop: 10,
+                            paddingTop: 8,
+                            borderTop: "1px dashed rgba(0,0,0,0.08)",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: 11,
+                            color: "#64748b",
+                          }}
+                        >
+                          <span>
+                            Solves: <strong style={{ color: "#0f172a" }}>{squadsSolved}</strong>
+                          </span>
+                          <span>
+                            Active here: <strong style={{ color: "#0f172a" }}>{squadsOnStage}</strong>
+                          </span>
                         </div>
                       </div>
 
                       <button
                         type="button"
                         disabled={isUpdatingStage}
-                        onClick={() => handleToggleStage(stg.num, isUnlocked)}
+                        onClick={() => handleToggleStage(stg.num, isUnlocked, stagesActiveTarget)}
                         style={{
                           width: "100%",
                           padding: "6px 10px",
@@ -2073,14 +2277,22 @@ export default function AdminDashboard() {
                           fontWeight: 600,
                           borderRadius: 6,
                           cursor: isUpdatingStage ? "not-allowed" : "pointer",
-                          background: isUnlocked ? "#ffffff" : "#0f172a",
-                          border: isUnlocked ? "1px solid #fca5a5" : "none",
-                          color: isUnlocked ? "#b91c1c" : "#ffffff",
+                          background: isUnlocked
+                            ? "#ffffff"
+                            : (isVecnaTarget ? "#991b1b" : "#0f172a"),
+                          border: isUnlocked
+                            ? "1px solid #fca5a5"
+                            : "none",
+                          color: isUnlocked
+                            ? "#b91c1c"
+                            : "#ffffff",
                           transition: "all 0.15s ease",
                           boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
                         }}
                       >
-                        {isUnlocked ? "Lock Stage" : "Unlock Stage"}
+                        {isUnlocked
+                          ? `Lock ${isVecnaTarget ? "Trial" : "Stage"}`
+                          : `Unlock ${isVecnaTarget ? "Trial" : "Stage"}`}
                       </button>
                     </div>
                   );

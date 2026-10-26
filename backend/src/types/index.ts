@@ -225,6 +225,8 @@ export interface EventRecord {
   createdAt: string;
   updatedAt: string;
   unlockedStages?: number[];
+  unlockedStagesHawkins?: number[];
+  unlockedStagesVecna?: number[];
 }
 
 export interface RoundRecord {

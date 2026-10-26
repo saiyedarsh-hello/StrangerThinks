@@ -24,6 +24,16 @@ export async function GET() {
             : Array.isArray(data.unlockedStages)
             ? data.unlockedStages
             : [1],
+          unlockedStagesHawkins: Array.isArray(ev.unlockedStagesHawkins)
+            ? ev.unlockedStagesHawkins
+            : Array.isArray(data.unlockedStagesHawkins)
+            ? data.unlockedStagesHawkins
+            : [1],
+          unlockedStagesVecna: Array.isArray(ev.unlockedStagesVecna)
+            ? ev.unlockedStagesVecna
+            : Array.isArray(data.unlockedStagesVecna)
+            ? data.unlockedStagesVecna
+            : [1],
         },
       });
     }
@@ -106,6 +116,16 @@ export async function PATCH(req: NextRequest) {
           ? ev.unlockedStages
           : Array.isArray(stateData.unlockedStages)
           ? stateData.unlockedStages
+          : [1],
+        unlockedStagesHawkins: Array.isArray(ev.unlockedStagesHawkins)
+          ? ev.unlockedStagesHawkins
+          : Array.isArray(stateData.unlockedStagesHawkins)
+          ? stateData.unlockedStagesHawkins
+          : [1],
+        unlockedStagesVecna: Array.isArray(ev.unlockedStagesVecna)
+          ? ev.unlockedStagesVecna
+          : Array.isArray(stateData.unlockedStagesVecna)
+          ? stateData.unlockedStagesVecna
           : [1],
       },
     });

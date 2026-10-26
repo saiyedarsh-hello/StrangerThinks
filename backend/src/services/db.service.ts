@@ -24,6 +24,8 @@ interface DatabaseSnapshot {
   playerSubmissions?: Record<string, Record<string, any>>;
   eventHistory?: any[];
   unlockedStages?: number[];
+  unlockedStagesHawkins?: number[];
+  unlockedStagesVecna?: number[];
 }
 
 class DatabaseService {
@@ -33,7 +35,8 @@ class DatabaseService {
   private vecnaQuestionProgress = new Map<string, Record<string, any>>();
   private playerQuestionProgress = new Map<string, Record<string, any>>();
   private eventHistory: any[] = [];
-  private unlockedStages = new Set<number>([1]);
+  private unlockedStagesHawkins = new Set<number>([1]);
+  private unlockedStagesVecna = new Set<number>([1]);
   private isTiDBOnline = false;
 
   constructor() {
@@ -153,10 +156,17 @@ class DatabaseService {
         if (parsed.eventHistory && Array.isArray(parsed.eventHistory)) {
           this.eventHistory = parsed.eventHistory;
         }
-        if (parsed.unlockedStages && Array.isArray(parsed.unlockedStages) && parsed.unlockedStages.length > 0) {
-          this.unlockedStages = new Set(parsed.unlockedStages.map(Number));
+        if (parsed.unlockedStagesHawkins && Array.isArray(parsed.unlockedStagesHawkins) && parsed.unlockedStagesHawkins.length > 0) {
+          this.unlockedStagesHawkins = new Set(parsed.unlockedStagesHawkins.map(Number));
+        } else if (parsed.unlockedStages && Array.isArray(parsed.unlockedStages) && parsed.unlockedStages.length > 0) {
+          this.unlockedStagesHawkins = new Set(parsed.unlockedStages.map(Number));
         } else {
-          this.unlockedStages = new Set([1]);
+          this.unlockedStagesHawkins = new Set([1]);
+        }
+        if (parsed.unlockedStagesVecna && Array.isArray(parsed.unlockedStagesVecna) && parsed.unlockedStagesVecna.length > 0) {
+          this.unlockedStagesVecna = new Set(parsed.unlockedStagesVecna.map(Number));
+        } else {
+          this.unlockedStagesVecna = new Set([1]);
         }
         console.log(
           `[DATABASE] Loaded snapshot: ${this.teams.size} teams, ${this.chapters.length} chapters, ${this.eventHistory.length} historical events.`
@@ -188,6 +198,9 @@ class DatabaseService {
       const playerProgObj: Record<string, Record<string, any>> = {};
       this.playerQuestionProgress.forEach((p, k) => (playerProgObj[k] = p));
 
+      const hawkinsSorted = Array.from(this.unlockedStagesHawkins).sort((a, b) => a - b);
+      const vecnaSorted = Array.from(this.unlockedStagesVecna).sort((a, b) => a - b);
+
       const snapshot: DatabaseSnapshot = {
         teams: teamsObj,
         chapters: this.chapters,
@@ -195,7 +208,9 @@ class DatabaseService {
         vecnaProgress: vecnaProgObj,
         playerSubmissions: playerProgObj,
         eventHistory: this.eventHistory,
-        unlockedStages: Array.from(this.unlockedStages).sort((a, b) => a - b),
+        unlockedStages: hawkinsSorted,
+        unlockedStagesHawkins: hawkinsSorted,
+        unlockedStagesVecna: vecnaSorted,
       };
 
       fs.writeFileSync(STATE_FILE, JSON.stringify(snapshot, null, 2), "utf-8");
@@ -890,37 +905,75 @@ class DatabaseService {
   }
 
   public getUnlockedStages(): number[] {
-    return Array.from(this.unlockedStages).sort((a, b) => a - b);
+    return this.getUnlockedStagesHawkins();
   }
 
-  public setUnlockedStages(stages: number[]): number[] {
+  public getUnlockedStagesHawkins(): number[] {
+    return Array.from(this.unlockedStagesHawkins).sort((a, b) => a - b);
+  }
+
+  public getUnlockedStagesVecna(): number[] {
+    return Array.from(this.unlockedStagesVecna).sort((a, b) => a - b);
+  }
+
+  public setUnlockedStages(stages: number[], target: "hawkins" | "vecna" | "all" = "hawkins"): number[] {
     const valid = stages.map(Number).filter((n) => !isNaN(n) && n >= 1 && n <= 6);
-    this.unlockedStages = new Set(valid.length > 0 ? valid : [1]);
+    const validSet = new Set(valid.length > 0 ? valid : [1]);
+    if (target === "hawkins" || target === "all") {
+      this.unlockedStagesHawkins = new Set(validSet);
+    }
+    if (target === "vecna" || target === "all") {
+      this.unlockedStagesVecna = new Set(validSet);
+    }
     this.saveSnapshot();
-    return this.getUnlockedStages();
+    return this.getUnlockedStagesHawkins();
   }
 
-  public toggleStage(stageNumber: number, unlocked: boolean): number[] {
+  public toggleStage(
+    stageNumber: number,
+    unlocked: boolean,
+    target: "hawkins" | "vecna" | "all" = "hawkins"
+  ): { hawkins: number[]; vecna: number[] } {
     const num = Number(stageNumber);
     if (!isNaN(num) && num >= 1 && num <= 6) {
-      if (unlocked) {
-        this.unlockedStages.add(num);
-      } else {
-        this.unlockedStages.delete(num);
+      if (target === "hawkins" || target === "all") {
+        if (unlocked) {
+          this.unlockedStagesHawkins.add(num);
+        } else {
+          this.unlockedStagesHawkins.delete(num);
+        }
+      }
+      if (target === "vecna" || target === "all") {
+        if (unlocked) {
+          this.unlockedStagesVecna.add(num);
+        } else {
+          this.unlockedStagesVecna.delete(num);
+        }
       }
       this.saveSnapshot();
     }
-    return this.getUnlockedStages();
+    return {
+      hawkins: this.getUnlockedStagesHawkins(),
+      vecna: this.getUnlockedStagesVecna(),
+    };
   }
 
-  public resetUnlockedStages(): number[] {
-    this.unlockedStages = new Set([1]);
+  public resetUnlockedStages(): { hawkins: number[]; vecna: number[] } {
+    this.unlockedStagesHawkins = new Set([1]);
+    this.unlockedStagesVecna = new Set([1]);
     this.saveSnapshot();
-    return this.getUnlockedStages();
+    return {
+      hawkins: this.getUnlockedStagesHawkins(),
+      vecna: this.getUnlockedStagesVecna(),
+    };
   }
 
-  public isStageUnlocked(stageNumber: number): boolean {
-    return this.unlockedStages.has(Number(stageNumber));
+  public isStageUnlocked(stageNumber: number, target: "hawkins" | "vecna" = "hawkins"): boolean {
+    const num = Number(stageNumber);
+    if (target === "vecna") {
+      return this.unlockedStagesVecna.has(num);
+    }
+    return this.unlockedStagesHawkins.has(num);
   }
 
   public isTeamStageCleared(teamId: string, stageNumber: number): boolean {

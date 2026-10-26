@@ -174,7 +174,7 @@ export class QuestionService {
     const stageMatch = questionCode.match(/^(?:ch|stage)[\-_]?(\d+)/i);
     if (stageMatch) {
       const stageNumber = parseInt(stageMatch[1], 10);
-      if (!EventControlService.isStageUnlocked(stageNumber)) {
+      if (!EventControlService.isStageUnlocked(stageNumber, "hawkins")) {
         return {
           success: false,
           isCorrect: false,

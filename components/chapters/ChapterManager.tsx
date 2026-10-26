@@ -935,8 +935,9 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
       try {
         const res = await fetch("/api/admin/stages");
         const data = await res.json();
-        if (active && data.success && Array.isArray(data.unlockedStages)) {
-          setUnlockedStages(data.unlockedStages);
+        if (active && data.success) {
+          const hwk = data.unlockedStagesHawkins || data.unlockedStages;
+          if (Array.isArray(hwk)) setUnlockedStages(hwk);
         }
       } catch {}
     };
@@ -944,25 +945,44 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
 
     const sock = getSocket();
     const handleStageUnlocked = (d: any) => {
-      if (d?.unlockedStages && Array.isArray(d.unlockedStages)) {
-        setUnlockedStages(d.unlockedStages);
+      if (d?.target === "vecna") return; // Hawkins players ignore Vecna-only unlocks
+      const hwk = d?.unlockedStagesHawkins || d?.unlockedStages;
+      if (Array.isArray(hwk) && hwk.length > 0) {
+        setUnlockedStages(hwk);
       }
     };
     sock?.on("stage:unlocked", handleStageUnlocked);
 
+    const handleResetAll = () => {
+      setUnlockedStages([1]);
+      setSeenBriefings([]);
+      setActiveLoreChapterId(1);
+      setCompletionStoryChapterId(null);
+      try {
+        localStorage.removeItem("hawkins_seen_briefings");
+      } catch {}
+    };
+
     const unsubRealtime = subscribe((m: any) => {
-      if (m.type === "stage_unlocked" && Array.isArray(m.unlockedStages)) {
-        setUnlockedStages(m.unlockedStages);
+      if (m.type === "stage_unlocked") {
+        if (m.target === "vecna") return;
+        const hwk = m.unlockedStagesHawkins || m.unlockedStages;
+        if (Array.isArray(hwk) && hwk.length > 0) {
+          setUnlockedStages(hwk);
+        }
       }
       if (m.type === "event_reset") {
-        setUnlockedStages([1]);
+        handleResetAll();
       }
     });
+
+    window.addEventListener("hawkins:event_reset", handleResetAll);
 
     return () => {
       active = false;
       sock?.off("stage:unlocked", handleStageUnlocked);
       unsubRealtime();
+      window.removeEventListener("hawkins:event_reset", handleResetAll);
     };
   }, []);
 

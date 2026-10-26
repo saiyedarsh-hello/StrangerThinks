@@ -18,7 +18,8 @@ export const SpecGameController = {
    */
   async getEventState(_req: Request, res: Response) {
     const event = await EventControlService.getEventState();
-    const unlockedStages = event.unlockedStages || db.getUnlockedStages();
+    const hawkins = event.unlockedStagesHawkins || db.getUnlockedStagesHawkins();
+    const vecna = event.unlockedStagesVecna || db.getUnlockedStagesVecna();
     return res.json({
       success: true,
       event: {
@@ -29,9 +30,13 @@ export const SpecGameController = {
         submissionsOpen: event.submissionsOpen,
         isPaused: event.isPaused,
         startedAt: event.startedAt,
-        unlockedStages,
+        unlockedStages: hawkins,
+        unlockedStagesHawkins: hawkins,
+        unlockedStagesVecna: vecna,
       },
-      unlockedStages,
+      unlockedStages: hawkins,
+      unlockedStagesHawkins: hawkins,
+      unlockedStagesVecna: vecna,
     });
   },
 
@@ -39,9 +44,13 @@ export const SpecGameController = {
    * GET /api/stages — Public endpoint to read authorized stages
    */
   async getStages(_req: Request, res: Response) {
+    const hawkins = db.getUnlockedStagesHawkins();
+    const vecna = db.getUnlockedStagesVecna();
     return res.json({
       success: true,
-      unlockedStages: db.getUnlockedStages(),
+      unlockedStages: hawkins,
+      unlockedStagesHawkins: hawkins,
+      unlockedStagesVecna: vecna,
     });
   },
 

@@ -476,15 +476,15 @@ export const VecnaController = {
     if (eventState.status === "ended") {
       return res.status(403).json({ success: false, error: "EVENT_ENDED", message: "Tournament has ended." });
     }
-    if (!eventState.submissionsOpen) {
-      return res.status(403).json({ success: false, error: "SUBMISSIONS_CLOSED", message: "Submissions are closed." });
+    if (!eventState.submissionsOpen || eventState.isPaused || eventState.status === "paused") {
+      return res.status(403).json({ success: false, error: "EVENT_PAUSED", message: "Tournament is currently paused." });
     }
 
-    if (!EventControlService.isStageUnlocked(trialId)) {
+    if (!EventControlService.isStageUnlocked(trialId, "vecna")) {
       return res.status(403).json({
         success: false,
         error: "STAGE_LOCKED",
-        message: `Stage ${trialId} is locked pending command authorization.`,
+        message: `Stage ${trialId} is locked pending command authorization for Vecna squads.`,
       });
     }
 

@@ -1284,12 +1284,18 @@ export const AdminController = {
    * Event Lifecycle Controls
    */
   async getStages(_req: Request, res: Response) {
-    const stages = EventControlService.getUnlockedStages();
-    return res.json({ success: true, unlockedStages: stages });
+    const hawkins = EventControlService.getUnlockedStagesHawkins();
+    const vecna = EventControlService.getUnlockedStagesVecna();
+    return res.json({
+      success: true,
+      unlockedStages: hawkins,
+      unlockedStagesHawkins: hawkins,
+      unlockedStagesVecna: vecna,
+    });
   },
 
   async toggleStage(req: Request, res: Response) {
-    const { stageNumber, unlocked } = req.body || {};
+    const { stageNumber, unlocked, target = "hawkins" } = req.body || {};
     if (stageNumber === undefined || stageNumber === null) {
       return res.status(400).json({ success: false, message: "stageNumber is required." });
     }
@@ -1297,9 +1303,22 @@ export const AdminController = {
     if (isNaN(num) || num < 1 || num > 6) {
       return res.status(400).json({ success: false, message: "stageNumber must be between 1 and 6." });
     }
+    const targetRole: "hawkins" | "vecna" | "all" =
+      target === "vecna" || target === "VECNA"
+        ? "vecna"
+        : target === "all"
+        ? "all"
+        : "hawkins";
     const adminId = (req as any).adminUser?.adminId || 1;
-    const stages = await EventControlService.toggleStage(num, Boolean(unlocked), adminId);
-    return res.json({ success: true, unlockedStages: stages, message: `Stage ${num} is now ${unlocked ? "UNLOCKED" : "LOCKED"}` });
+    const stages = await EventControlService.toggleStage(num, Boolean(unlocked), targetRole, adminId);
+    return res.json({
+      success: true,
+      unlockedStages: stages.hawkins,
+      unlockedStagesHawkins: stages.hawkins,
+      unlockedStagesVecna: stages.vecna,
+      target: targetRole,
+      message: `Stage ${num} for ${targetRole.toUpperCase()} is now ${unlocked ? "UNLOCKED" : "LOCKED"}`,
+    });
   },
 
   async startEvent(_req: Request, res: Response) {
@@ -1426,8 +1445,31 @@ export const AdminController = {
 
   async resetAllScores(_req: Request, res: Response) {
     await db.resetAllTeamScores();
+    const resetStages = db.resetUnlockedStages();
     socketService.broadcastLeaderboard();
-    return res.json({ success: true, message: "All team scores and submissions reset to 0 PTS." });
+    socketService.broadcast("leaderboard:update", db.getLeaderboard());
+    socketService.broadcast("event:reset", {
+      status: "active",
+      unlockedStages: resetStages.hawkins,
+      unlockedStagesHawkins: resetStages.hawkins,
+      unlockedStagesVecna: resetStages.vecna,
+      message: "All squad scores, submissions, and stage progress have been reset by Administrator.",
+      ts: Date.now(),
+    });
+    socketService.broadcast("stage:unlocked", {
+      unlockedStages: resetStages.hawkins,
+      unlockedStagesHawkins: resetStages.hawkins,
+      unlockedStagesVecna: resetStages.vecna,
+    });
+    const state = await EventControlService.getEventState();
+    socketService.broadcast("event:state_changed", state);
+    return res.json({
+      success: true,
+      message: "All team scores, submissions, and stage progress reset to 0 PTS.",
+      unlockedStages: resetStages.hawkins,
+      unlockedStagesHawkins: resetStages.hawkins,
+      unlockedStagesVecna: resetStages.vecna,
+    });
   },
 };
 

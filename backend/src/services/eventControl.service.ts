@@ -20,6 +20,8 @@ export class EventControlService {
 
   public static async getEventState(): Promise<EventRecord> {
     const pool = tidb.pool;
+    const hawkinsStages = db.getUnlockedStagesHawkins();
+    const vecnaStages = db.getUnlockedStagesVecna();
     if (pool) {
       try {
         const [rows] = await pool.query<any[]>("SELECT * FROM events WHERE event_id = 1");
@@ -37,12 +39,19 @@ export class EventControlService {
             endedAt: r.ended_at ? new Date(r.ended_at).toISOString() : null,
             createdAt: new Date(r.created_at).toISOString(),
             updatedAt: new Date(r.updated_at).toISOString(),
-            unlockedStages: db.getUnlockedStages(),
+            unlockedStages: hawkinsStages,
+            unlockedStagesHawkins: hawkinsStages,
+            unlockedStagesVecna: vecnaStages,
           };
         }
       } catch (err) {}
     }
-    return { ...this.localEvent, unlockedStages: db.getUnlockedStages() };
+    return {
+      ...this.localEvent,
+      unlockedStages: hawkinsStages,
+      unlockedStagesHawkins: hawkinsStages,
+      unlockedStagesVecna: vecnaStages,
+    };
   }
 
   public static async logAudit(
@@ -105,42 +114,72 @@ export class EventControlService {
     this.localEvent.isPaused = false;
     this.localEvent.startedAt = new Date().toISOString();
     this.localEvent.endedAt = null;
-    db.resetUnlockedStages();
+    const resetStages = db.resetUnlockedStages();
     await this.logAudit(adminId, "event_start");
 
-    socketService.broadcast("event:state_changed", this.localEvent);
+    const startState = await this.getEventState();
+    socketService.broadcast("event:state_changed", startState);
     socketService.broadcast("event:reset", {
       status: "active",
       startedAt: this.localEvent.startedAt,
-      unlockedStages: db.getUnlockedStages(),
+      unlockedStages: resetStages.hawkins,
+      unlockedStagesHawkins: resetStages.hawkins,
+      unlockedStagesVecna: resetStages.vecna,
       message: "A fresh tournament has commenced. All squad scores and stages have been reset.",
       ts: Date.now(),
     });
     socketService.broadcastLeaderboard();
-    socketService.broadcast("stage:unlocked", { unlockedStages: db.getUnlockedStages() });
-    return this.getEventState();
+    socketService.broadcast("stage:unlocked", {
+      unlockedStages: resetStages.hawkins,
+      unlockedStagesHawkins: resetStages.hawkins,
+      unlockedStagesVecna: resetStages.vecna,
+    });
+    return startState;
   }
-
 
   public static getUnlockedStages(): number[] {
-    return db.getUnlockedStages();
+    return db.getUnlockedStagesHawkins();
   }
 
-  public static isStageUnlocked(stageNumber: number): boolean {
-    return db.isStageUnlocked(stageNumber);
+  public static getUnlockedStagesHawkins(): number[] {
+    return db.getUnlockedStagesHawkins();
   }
 
-  public static async toggleStage(stageNumber: number, unlocked: boolean, adminId: number = 1): Promise<number[]> {
+  public static getUnlockedStagesVecna(): number[] {
+    return db.getUnlockedStagesVecna();
+  }
+
+  public static isStageUnlocked(stageNumber: number, target: "hawkins" | "vecna" = "hawkins"): boolean {
+    return db.isStageUnlocked(stageNumber, target);
+  }
+
+  public static async toggleStage(
+    stageNumber: number,
+    unlocked: boolean,
+    target: "hawkins" | "vecna" | "all" = "hawkins",
+    adminId: number = 1
+  ): Promise<{ hawkins: number[]; vecna: number[] }> {
     const pool = tidb.pool;
     if (pool) {
       try {
         await pool.query("UPDATE rounds SET is_active = ? WHERE round_number = ?", [unlocked ? 1 : 0, stageNumber]);
       } catch {}
     }
-    const stages = db.toggleStage(stageNumber, unlocked);
-    await this.logAudit(adminId, unlocked ? "stage_unlock" : "stage_lock", "stage", String(stageNumber), { stageNumber, unlocked });
+    const stages = db.toggleStage(stageNumber, unlocked, target);
+    await this.logAudit(
+      adminId,
+      unlocked ? "stage_unlock" : "stage_lock",
+      "stage",
+      String(stageNumber),
+      { stageNumber, unlocked, target }
+    );
     const state = await this.getEventState();
-    socketService.broadcast("stage:unlocked", { unlockedStages: stages });
+    socketService.broadcast("stage:unlocked", {
+      unlockedStages: stages.hawkins,
+      unlockedStagesHawkins: stages.hawkins,
+      unlockedStagesVecna: stages.vecna,
+      target,
+    });
     socketService.broadcast("event:state_changed", state);
     return stages;
   }

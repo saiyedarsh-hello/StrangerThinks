@@ -20,6 +20,7 @@ import CinematicBackground from "@/components/CinematicBackground";
 import { sfx } from "@/lib/audio";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/store";
+import PauseOverlay from "@/components/PauseOverlay";
 
 import VecnaTriggerPanel, { TriggerAction, TargetSquadItem } from "@/components/vecna/VecnaTriggerPanel";
 import VecnaMessagePanel from "@/components/vecna/VecnaMessagePanel";
@@ -132,6 +133,7 @@ export default function VecnaDashboard() {
   const [failedQuestions, setFailedQuestions] = useState<Record<string, boolean>>({});
   const [attemptedQuestions, setAttemptedQuestions] = useState<Record<string, boolean>>({});
   const [unlockedStages, setUnlockedStages] = useState<number[]>([1]);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
 
   // Google Meet Style Side Drawer State: "none" | "powers" | "dispatch"
   const [activeSideDrawer, setActiveSideDrawer] = useState<"none" | "powers" | "dispatch">("none");
@@ -307,6 +309,101 @@ export default function VecnaDashboard() {
       sock?.off("event:state_changed", onUpdate);
     };
   }, [refreshSquads]);
+
+  // Synchronize Vecna unlocked stages, pause state, and reset events
+  useEffect(() => {
+    let active = true;
+    const fetchEventAndStages = async () => {
+      try {
+        const [stgRes, evRes] = await Promise.all([
+          fetch("/api/admin/stages").catch(() => null),
+          fetch("/api/admin/event/state").catch(() => null),
+        ]);
+        if (stgRes && stgRes.ok) {
+          const stgData = await stgRes.json();
+          if (active && stgData.success) {
+            const vecnaStages = stgData.unlockedStagesVecna || stgData.unlockedStages;
+            if (Array.isArray(vecnaStages) && vecnaStages.length > 0) {
+              setUnlockedStages(vecnaStages);
+            }
+          }
+        }
+        if (evRes && evRes.ok) {
+          const evData = await evRes.json();
+          if (active && evData.success && evData.eventState) {
+            setIsPaused(Boolean(evData.eventState.isPaused ?? (evData.eventState.status === "paused")));
+          }
+        }
+      } catch {}
+    };
+
+    fetchEventAndStages();
+
+    const sock = getSocket();
+    const handleStageUnlocked = (d: any) => {
+      if (d?.target === "hawkins") return; // Vecna ignores Hawkins-only stage unlocks
+      const vecnaStages = d?.unlockedStagesVecna || d?.unlockedStages;
+      if (Array.isArray(vecnaStages) && vecnaStages.length > 0) {
+        setUnlockedStages(vecnaStages);
+      }
+    };
+    sock?.on("stage:unlocked", handleStageUnlocked);
+
+    const handleEventState = (d: any) => {
+      if (d?.isPaused !== undefined) {
+        setIsPaused(Boolean(d.isPaused));
+      } else if (d?.status) {
+        setIsPaused(d.status === "paused");
+      }
+      if (d?.unlockedStagesVecna && Array.isArray(d.unlockedStagesVecna)) {
+        setUnlockedStages(d.unlockedStagesVecna);
+      }
+    };
+    sock?.on("event:state_changed", handleEventState);
+
+    const handleResetAll = () => {
+      setUnlockedStages([1]);
+      setSelectedAnswers({});
+      setSolvedQuestions({});
+      setFailedQuestions({});
+      setAttemptedQuestions({});
+      setSpentPowerPoints(0);
+      setServerVecnaScore(0);
+      setIsPaused(false);
+      try {
+        localStorage.removeItem("vecna_seen_briefings");
+      } catch {}
+    };
+
+    const unsub = subscribe((m: any) => {
+      if (m.type === "stage_unlocked") {
+        if (m.target === "hawkins") return;
+        const vecnaStages = m.unlockedStagesVecna || m.unlockedStages;
+        if (Array.isArray(vecnaStages) && vecnaStages.length > 0) {
+          setUnlockedStages(vecnaStages);
+        }
+      }
+      if (m.type === "event_state") {
+        setIsPaused(Boolean(m.isPaused));
+        if (m.unlockedStagesVecna && Array.isArray(m.unlockedStagesVecna)) {
+          setUnlockedStages(m.unlockedStagesVecna);
+        }
+      }
+      if (m.type === "event_reset") {
+        handleResetAll();
+      }
+    });
+
+    window.addEventListener("hawkins:event_reset", handleResetAll);
+
+    return () => {
+      active = false;
+      sock?.off("stage:unlocked", handleStageUnlocked);
+      sock?.off("event:state_changed", handleEventState);
+      unsub();
+      window.removeEventListener("hawkins:event_reset", handleResetAll);
+    };
+  }, []);
 
   useEffect(() => {
     const s = getStoredSession();
@@ -604,6 +701,12 @@ export default function VecnaDashboard() {
   const currentTrialScore = currentTrialSolvedCount * 10;
 
   const handleVerifyCurrentQuestion = async () => {
+    if (isPaused) {
+      setErrorMessage("EVENT PAUSED: Submissions are currently suspended by Hawkins Command.");
+      sfx("err");
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
     if (!currentQuestion || isQuestionAttempted || isSubmitting) return;
 
     let chosen = selectedAnswers[`${currentTrial.id}-${activeQuestionIdx}`];
@@ -749,6 +852,10 @@ export default function VecnaDashboard() {
   };
 
   const handleSendMessage = async (target: "all" | string, message: string): Promise<boolean> => {
+    if (isPaused) {
+      sfx("err");
+      throw new Error("EVENT PAUSED: Transmissions are currently suspended by Hawkins Command.");
+    }
     sfx("boom");
 
     const matchedSquad = availableSquads.find(
@@ -807,6 +914,10 @@ export default function VecnaDashboard() {
   };
 
   const handleExecuteTrigger = async (action: TriggerAction) => {
+    if (isPaused) {
+      sfx("err");
+      throw new Error("EVENT PAUSED: Curses and powers are suspended by Hawkins Command.");
+    }
     sfx("boom");
     const kind = action.id;
     const targetTeams = action.targetTeams && action.targetTeams.length > 0 ? action.targetTeams : [];
@@ -1879,6 +1990,9 @@ export default function VecnaDashboard() {
           />
         )}
       </AnimatePresence>
+
+      {/* Security Pause Modal */}
+      {isPaused && <PauseOverlay isVecna teamName={session?.teamName || "VECNA BRIGADE"} />}
     </div>
   );
 }

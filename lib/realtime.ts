@@ -123,12 +123,17 @@ export interface EventStatePayload {
   submissionsOpen: boolean;
   loginOpen?: boolean;
   unlockedStages?: number[];
+  unlockedStagesHawkins?: number[];
+  unlockedStagesVecna?: number[];
   ts?: number;
 }
 
 export interface StageUnlockedPayload {
   type: "stage_unlocked";
   unlockedStages: number[];
+  unlockedStagesHawkins?: number[];
+  unlockedStagesVecna?: number[];
+  target?: string;
   ts?: number;
 }
 
@@ -341,6 +346,8 @@ export function getSocket(): Socket | null {
           isPaused: Boolean(data?.isPaused ?? (data?.status === "paused")),
           submissionsOpen: Boolean(data?.submissionsOpen),
           loginOpen: Boolean(data?.loginOpen),
+          unlockedStagesHawkins: Array.isArray(data?.unlockedStagesHawkins) ? data.unlockedStagesHawkins : undefined,
+          unlockedStagesVecna: Array.isArray(data?.unlockedStagesVecna) ? data.unlockedStagesVecna : undefined,
           ts: Date.now(),
         });
       });
@@ -358,6 +365,9 @@ export function getSocket(): Socket | null {
         dispatchToSubscribers({
           type: "stage_unlocked",
           unlockedStages: Array.isArray(data?.unlockedStages) ? data.unlockedStages : [1],
+          unlockedStagesHawkins: Array.isArray(data?.unlockedStagesHawkins) ? data.unlockedStagesHawkins : undefined,
+          unlockedStagesVecna: Array.isArray(data?.unlockedStagesVecna) ? data.unlockedStagesVecna : undefined,
+          target: data?.target || "all",
           ts: Date.now(),
         });
       });
@@ -375,13 +385,6 @@ export function getSocket(): Socket | null {
           type: "event_ended",
           message: data?.message || "The tournament has ended.",
           endedAt: data?.endedAt,
-          ts: Date.now(),
-        });
-        dispatchToSubscribers({
-          type: "force_logout",
-          target: "all",
-          reason: "event_ended",
-          message: data?.message || "The tournament has ended.",
           ts: Date.now(),
         });
       });
@@ -534,8 +537,10 @@ function dispatchToSubscribers(msg: RealtimeMessage) {
 export function publish(msg: RealtimeMessage): void {
   const stampedMsg = { ...msg, ts: msg.ts || Date.now() };
 
-  // Dispatch locally in current window
-  dispatchToSubscribers(stampedMsg);
+  // Dispatch locally in current window (skip high-frequency presence heartbeats)
+  if (msg.type !== "presence") {
+    dispatchToSubscribers(stampedMsg);
+  }
 
   // Dispatch via Socket.IO to Express Backend (Port 5000)
   const sock = getSocket();

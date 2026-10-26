@@ -202,22 +202,30 @@ export default function HopperPoliceReportQuiz({
     };
 
     fetchSubmissions();
+    const handleResetAll = () => {
+      setSelectedAnswers({});
+      setQuestionAttempts({});
+      setQuestionResults({});
+      setCurrentIdx(0);
+      try {
+        localStorage.removeItem(`hawkins_quiz_answers_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+        localStorage.removeItem(`hawkins_quiz_attempts_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+        localStorage.removeItem(`hawkins_quiz_results_ch${chapterNumber}_${s?.team?.id || "anon"}`);
+      } catch {}
+    };
+
     const unsub = subscribe((m: any) => {
       if (m.type === "event_reset") {
-        setSelectedAnswers({});
-        setQuestionAttempts({});
-        setQuestionResults({});
-        setCurrentIdx(0);
-        try {
-          localStorage.removeItem(`hawkins_quiz_answers_ch${chapterNumber}_${s?.team?.id || "anon"}`);
-          localStorage.removeItem(`hawkins_quiz_attempts_ch${chapterNumber}_${s?.team?.id || "anon"}`);
-          localStorage.removeItem(`hawkins_quiz_results_ch${chapterNumber}_${s?.team?.id || "anon"}`);
-        } catch {}
+        handleResetAll();
       }
     });
+
+    window.addEventListener("hawkins:event_reset", handleResetAll);
+
     return () => {
       active = false;
       unsub();
+      window.removeEventListener("hawkins:event_reset", handleResetAll);
     };
   }, [chapterNumber, questions, s?.team?.id]);
   const [unlockingHintKey, setUnlockingHintKey] = useState<string | null>(null);

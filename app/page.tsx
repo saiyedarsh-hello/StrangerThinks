@@ -9,6 +9,7 @@ import Ending from "@/components/Ending";
 import ChapterCard from "@/components/ChapterCard";
 import Hud, { Toast } from "@/components/Hud";
 import SabotageOverlay from "@/components/SabotageOverlay";
+import PauseOverlay from "@/components/PauseOverlay";
 import dynamic from "next/dynamic";
 
 const AdminPage = dynamic(() => import("@/components/admin/AdminDashboard"), { ssr: false });
@@ -91,6 +92,7 @@ export default function Home() {
 
     return (
       <>
+        {s.isPaused && <PauseOverlay teamName={session.teamName || s.team?.name} />}
         {!cutscene && (s.stage === "ending" ? <Ending /> : <StageView />)}
         <Hud />
         <SabotageOverlay />
