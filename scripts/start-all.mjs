@@ -9,18 +9,21 @@ const backendDir = path.resolve(rootDir, "backend");
 
 console.log("\x1b[31m%s\x1b[0m", "======================================================");
 console.log("\x1b[31m%s\x1b[0m", "★ LAUNCHING HAWKINS PROTOCOL FULLSTACK SYSTEM ★");
-console.log("\x1b[36m%s\x1b[0m", "  Backend Port  : 5055 (Express + TiDB + Socket.IO)");
+console.log("\x1b[36m%s\x1b[0m", "  Backend Port  : 5000 (Express + TiDB + Socket.IO)");
 console.log("\x1b[32m%s\x1b[0m", "  Frontend Port : 3000 (Next.js Retro CRT Client)");
 console.log("\x1b[31m%s\x1b[0m", "======================================================\n");
 
+const isWin = process.platform === "win32";
+const npmCmd = isWin ? "npm.cmd" : "npm";
+
 // 1. Spawn Backend
 const backendProcess = spawn(
-  process.execPath,
-  ["dist/server.js"],
+  npmCmd,
+  ["run", "dev"],
   {
     cwd: backendDir,
     stdio: "inherit",
-    shell: false,
+    shell: isWin,
     env: { ...process.env },
   }
 );
@@ -36,14 +39,13 @@ backendProcess.on("exit", (code, signal) => {
 });
 
 // 2. Spawn Frontend
-const nextBin = path.resolve(rootDir, "node_modules/next/dist/bin/next");
 const frontendProcess = spawn(
-  process.execPath,
-  [nextBin, "dev"],
+  npmCmd,
+  ["run", "dev:frontend"],
   {
     cwd: rootDir,
     stdio: "inherit",
-    shell: false,
+    shell: isWin,
     env: { ...process.env },
   }
 );

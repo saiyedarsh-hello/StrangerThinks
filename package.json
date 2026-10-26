@@ -1,13 +1,15 @@
 {
   "name": "hawkins-protocol",
   "version": "0.1.0",
-  "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0",
+    "dev": "concurrently -k -p \"[{name}]\" -n \"BACKEND,FRONTEND\" -c \"cyan.bold,magenta.bold\" \"npm --prefix backend run dev\" \"next dev -H 0.0.0.0\"",
+    "dev:frontend": "next dev -H 0.0.0.0",
+    "dev:backend": "npm --prefix backend run dev",
     "dev:all": "node scripts/start-all.mjs",
     "build": "next build",
     "start": "next start -H 0.0.0.0"
   },
+
   "dependencies": {
     "framer-motion": "^11.11.0",
     "next": "^15.5.24",
@@ -21,6 +23,7 @@
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "concurrently": "^10.0.6",
     "typescript": "^5.5.0"
   }
 }
