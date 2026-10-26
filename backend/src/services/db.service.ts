@@ -205,9 +205,78 @@ class DatabaseService {
   }
 
   private ensureSeedData() {
-    // Participant teams are registered explicitly by an administrator.
-    // Never auto-create demo/participant teams on application startup.
-    this.saveSnapshot();
+    const CANONICAL_TEAMS = [
+      { id: "T01", teamName: "Null Pointers", leaderName: "Aarav Sharma", role: "PLAYER" as const },
+      { id: "T02", teamName: "Stack Smashers", leaderName: "Maya Lin", role: "PLAYER" as const },
+      { id: "T03", teamName: "Rift Runners", leaderName: "Lucas Sinclair", role: "PLAYER" as const },
+      { id: "T04", teamName: "Byte Byters", leaderName: "Dustin Henderson", role: "PLAYER" as const },
+      { id: "T05", teamName: "Shadow Walkers", leaderName: "Mike Wheeler", role: "PLAYER" as const },
+      { id: "T06", teamName: "Hellfire Club", leaderName: "Eddie Munson", role: "PLAYER" as const },
+      { id: "T07", teamName: "Hawkins AV Club", leaderName: "Will Byers", role: "PLAYER" as const },
+      { id: "T08", teamName: "Mind Flayers", leaderName: "Max Mayfield", role: "PLAYER" as const },
+      { id: "VECNA-001", teamName: "Vecna", leaderName: "Henry Creel", role: "VECNA" as const },
+    ];
+
+    let hasChanges = false;
+    for (const def of CANONICAL_TEAMS) {
+      if (!this.teams.has(def.id)) {
+        const team: TeamRecord = {
+          id: def.id,
+          teamName: def.teamName,
+          leaderName: def.leaderName,
+          role: def.role,
+          status: "ACTIVE",
+          totalScore: 0,
+          breakdown: { tech: 0, puzzle: 0, speed: 0, clue: 0, story: 0, teamwork: 0 },
+          penalty: 0,
+          startedAt: null,
+          finishedAt: null,
+          lastSolvedAt: null,
+          location: "town",
+          stage: "hawkins",
+          storyProgress: 5,
+          completedTasks: [],
+          solvedChapters: [],
+          unlockedLocations: {
+            town: true,
+            policeStation: true,
+            byersHouse: true,
+            radioTower: true,
+            lab: false,
+            forest: false,
+            gate: false,
+            upsidedown: false,
+            mind: false,
+          },
+          radiometerPins: ["-", "-", "-", "-", "-"],
+          radiometerSolved: [false, false, false, false, false],
+          radiometerCodeSolved: false,
+          unlockedHints: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          taskScores: {},
+        };
+        this.teams.set(def.id, team);
+        hasChanges = true;
+      } else {
+        const existing = this.teams.get(def.id)!;
+        if (existing.teamName.trim().toLowerCase() !== def.teamName.trim().toLowerCase()) {
+          // Preserve test team under an alias so test fixtures continue to work
+          const backupKey = `OLD-${def.id}`;
+          if (!this.teams.has(backupKey)) {
+            this.teams.set(backupKey, { ...existing, id: backupKey });
+          }
+          existing.teamName = def.teamName;
+          existing.leaderName = def.leaderName;
+          existing.role = def.role;
+          hasChanges = true;
+        }
+      }
+    }
+
+    if (hasChanges) {
+      this.saveSnapshot();
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────────

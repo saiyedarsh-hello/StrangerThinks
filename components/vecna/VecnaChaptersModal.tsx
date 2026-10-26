@@ -385,7 +385,7 @@ export default function VecnaChaptersModal({
                   }}
                 >
                   <span>S{ch.id}</span>
-                  <span>{cleared ? "✓" : unlocked ? "●" : "🔒"}</span>
+                  <span>{cleared ? "✓" : unlocked ? "●" : "✕"}</span>
                 </button>
               );
             })}
@@ -864,7 +864,7 @@ export default function VecnaChaptersModal({
                             boxShadow: "0 2px 6px rgba(0,0,0,0.6)",
                           }}
                         >
-                          🔒 LOCKED
+                          LOCKED
                         </span>
                       )}
                     </div>
@@ -1328,7 +1328,7 @@ export default function VecnaChaptersModal({
                               ? "✓ CONQUERED (10/10 SOLVED · REVISIT PERMITTED)"
                               : isUnlocked
                               ? "✓ AUTHORIZED · READY TO ENGAGE"
-                              : "🔒 ACCESS RESTRICTED · LOCK ACTIVE"}
+                              : "ACCESS RESTRICTED · LOCK ACTIVE"}
                           </span>
                         </div>
                       </div>
@@ -1457,10 +1457,10 @@ export default function VecnaChaptersModal({
                           }}
                         >
                           {!isUnlocked
-                            ? "🔒 ACCESS RESTRICTED · LOCKED"
+                            ? "ACCESS RESTRICTED · LOCKED"
                             : isCleared
                             ? "✓ REVISIT SECTOR (CLEARED)"
-                            : "⚡ COMMENCE STAGE PROTOCOL"}
+                            : "COMMENCE STAGE PROTOCOL"}
                         </button>
                       </div>
                     );

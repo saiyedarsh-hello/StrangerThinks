@@ -33,15 +33,22 @@ export default function VecnaSummaryView({
   onReviewQuestions,
 }: VecnaSummaryViewProps) {
   const { s, session } = useGame();
-  const [showLore, setShowLore] = useState(true);
 
-  // Calculate statistics for this trial
-  const totalQuestions = questions.length || 10;
+  const safeTrial = trial || {
+    id: 1,
+    title: "STAGE 1",
+    subtitle: "HAWKINS CHRONICLES",
+    powersGranted: "GLITCH · CRT FREAKOUT",
+    points: 200,
+  };
+
+  const safeQuestions = Array.isArray(questions) ? questions : [];
+  const totalQuestions = safeQuestions.length || 10;
   let solvedCount = 0;
   let totalPointsEarned = 0;
 
-  questions.forEach((q, idx) => {
-    const k = `${trial.id}-${idx}`;
+  safeQuestions.forEach((_, idx) => {
+    const k = `${safeTrial.id}-${idx}`;
     const isSolved = Boolean(solvedQuestions[k]);
     if (isSolved) {
       solvedCount += 1;
@@ -50,7 +57,7 @@ export default function VecnaSummaryView({
     }
   });
 
-  const maxPoints = trial.points || totalQuestions * 20;
+  const maxPoints = safeTrial.points || totalQuestions * 20;
   const accuracyPct = totalQuestions > 0 ? Math.round((solvedCount / totalQuestions) * 100) : 100;
 
   const handleReturn = () => {
@@ -67,10 +74,20 @@ export default function VecnaSummaryView({
     <div
       style={{
         position: "relative",
+        zIndex: 10,
         width: "100%",
         minHeight: "calc(100vh - 65px)",
-        padding: "clamp(16px, 3vw, 40px) clamp(14px, 4vw, 48px)",
-        background: "transparent",
+        maxHeight: "calc(100vh - 65px)",
+        overflowY: "auto",
+        scrollbarWidth: "thin",
+        padding: "16px 14px 28px",
+        background: "#f4eedf",
+        backgroundImage:
+          "radial-gradient(#e4dac5 1px, transparent 1px), radial-gradient(#dcd0ba 1px, transparent 1px)",
+        backgroundSize: "20px 20px, 40px 40px",
+        backgroundPosition: "0 0, 20px 20px",
+        fontFamily: "'Courier New', Courier, monospace",
+        color: "#231e1a",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
@@ -84,17 +101,16 @@ export default function VecnaSummaryView({
         transition={{ duration: 0.35 }}
         style={{
           width: "100%",
-          maxWidth: 960,
-          background: "linear-gradient(180deg, #18090d 0%, #100508 100%)",
-          border: "2px solid #b71c1c",
-          borderRadius: 4,
+          maxWidth: 900,
+          background: "#faf6ee",
+          border: "2px solid #3c3228",
+          borderRadius: 2,
           boxShadow:
-            "0 20px 50px rgba(0, 0, 0, 0.85), 0 0 40px rgba(183, 28, 28, 0.35), inset 0 0 30px rgba(80, 0, 10, 0.3)",
-          padding: "clamp(20px, 3.5vw, 42px)",
+            "0 18px 45px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25), inset 0 0 40px rgba(180, 160, 130, 0.25)",
+          padding: "18px 24px 20px",
           position: "relative",
           boxSizing: "border-box",
-          color: "#f3e8e8",
-          fontFamily: '"Share Tech Mono", monospace',
+          color: "#231e1a",
         }}
       >
         {/* Top Header Bar */}
@@ -103,7 +119,7 @@ export default function VecnaSummaryView({
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "space-between",
-            borderBottom: "1.5px solid rgba(183, 28, 28, 0.6)",
+            borderBottom: "2px solid #2d241e",
             paddingBottom: 16,
             marginBottom: 24,
             gap: 16,
@@ -114,13 +130,13 @@ export default function VecnaSummaryView({
               style={{
                 fontSize: "11px",
                 letterSpacing: ".22em",
-                color: "#ff7961",
-                fontWeight: 900,
+                color: "#7a6a58",
+                fontWeight: "bold",
                 textTransform: "uppercase",
                 marginBottom: 4,
               }}
             >
-              HAWKINS NATIONAL LABORATORY // UPSIDE DOWN SECTOR DOSSIER
+              HAWKINS NATIONAL LABORATORY // VECNA CONTROL PROTOCOL
             </div>
             <h1
               style={{
@@ -128,44 +144,42 @@ export default function VecnaSummaryView({
                 fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
                 fontSize: "clamp(22px, 3vw, 32px)",
                 fontWeight: 900,
-                color: "#ff3b30",
-                letterSpacing: ".04em",
-                textShadow: "0 0 14px rgba(255, 59, 48, 0.6)",
+                color: "#1a120c",
+                letterSpacing: ".02em",
               }}
             >
-              SECTOR 0{trial.id}: {trial.title}
+              CHAPTER 0{safeTrial.id}: {safeTrial.title}
             </h1>
             <div
               style={{
                 fontSize: "12px",
-                color: "#e0b0b0",
+                color: "#5c4e40",
                 letterSpacing: ".12em",
-                marginTop: 6,
+                marginTop: 4,
               }}
             >
-              {trial.subtitle} // VECNA PROTOCOL // AGENT: {s.team?.name || session?.teamName || "HENRY CREEL"}
+              DOSSIER: FORM HPD-0{safeTrial.id}-83 // AGENT: {s?.team?.name || session?.teamName || "VECNA PROTOCOL"}
             </div>
           </div>
 
           <button
             type="button"
             onClick={handleReturn}
-            title="Return to Sector Grid"
+            title="Return to Chapter Map"
             style={{
-              background: "rgba(183, 28, 28, 0.15)",
-              border: "1.5px solid #b71c1c",
-              borderRadius: 3,
-              padding: "7px 16px",
+              background: "transparent",
+              border: "1.5px solid #7a6a58",
+              borderRadius: 2,
+              padding: "6px 14px",
               cursor: "pointer",
-              fontFamily: '"Share Tech Mono", monospace',
-              fontSize: "13px",
-              fontWeight: 900,
-              color: "#ff8080",
+              fontFamily: "'Courier New', Courier, monospace",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: "#3a2f26",
               display: "inline-flex",
               alignItems: "center",
-              gap: 8,
+              gap: 6,
               transition: "all 0.15s ease",
-              boxShadow: "0 0 10px rgba(183, 28, 28, 0.25)",
             }}
           >
             <span>✕</span>
@@ -179,12 +193,11 @@ export default function VecnaSummaryView({
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             gap: 16,
-            background: "rgba(35, 10, 15, 0.6)",
-            border: "1.5px dashed rgba(255, 60, 60, 0.5)",
+            background: "#f0e8d6",
+            border: "1.5px dashed #5c4e40",
             padding: "20px 24px",
             marginBottom: 28,
             position: "relative",
-            borderRadius: 4,
           }}
         >
           {/* Status Stamp */}
@@ -193,8 +206,8 @@ export default function VecnaSummaryView({
               position: "absolute",
               top: 14,
               right: 18,
-              border: "3px solid #ff3b30",
-              color: "#ff3b30",
+              border: "3px solid #b81d24",
+              color: "#b81d24",
               padding: "4px 14px",
               fontWeight: 900,
               fontSize: "14px",
@@ -202,8 +215,7 @@ export default function VecnaSummaryView({
               transform: "rotate(-4deg)",
               userSelect: "none",
               pointerEvents: "none",
-              textShadow: "0 0 8px rgba(255, 59, 48, 0.8)",
-              boxShadow: "0 0 12px rgba(255, 59, 48, 0.4)",
+              opacity: 0.9,
             }}
           >
             BREACH CONFIRMED
@@ -215,8 +227,8 @@ export default function VecnaSummaryView({
               style={{
                 fontSize: "11px",
                 letterSpacing: ".15em",
-                color: "#ff8a80",
-                fontWeight: 900,
+                color: "#7a6a58",
+                fontWeight: "bold",
               }}
             >
               TELEMETRY HARVESTED
@@ -226,12 +238,14 @@ export default function VecnaSummaryView({
                 fontSize: "clamp(26px, 3.5vw, 36px)",
                 fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
                 fontWeight: 900,
-                color: "#ff5252",
+                color: "#b81d24",
                 marginTop: 4,
-                textShadow: "0 0 14px rgba(255, 82, 82, 0.5)",
               }}
             >
-              +{totalPointsEarned} <span style={{ fontSize: "16px", color: "#e0a0a0" }}>/ {maxPoints} PTS</span>
+              +{totalPointsEarned} <span style={{ fontSize: "16px", color: "#5c4e40" }}>/ {maxPoints} PTS</span>
+            </div>
+            <div style={{ fontSize: "11px", color: "#2e7d32", marginTop: 4, fontWeight: "bold" }}>
+              TELEMETRY LOGGED TO PROTOCOL
             </div>
           </div>
 
@@ -241,22 +255,25 @@ export default function VecnaSummaryView({
               style={{
                 fontSize: "11px",
                 letterSpacing: ".15em",
-                color: "#ff8a80",
-                fontWeight: 900,
+                color: "#7a6a58",
+                fontWeight: "bold",
               }}
             >
               OVERRIDE ACCURACY
             </div>
             <div
               style={{
-                fontSize: "clamp(22px, 3vw, 30px)",
-                fontFamily: '"Share Tech Mono", monospace',
-                fontWeight: 900,
-                color: "#ffffff",
+                fontSize: "clamp(24px, 3vw, 32px)",
+                fontFamily: "'Courier New', Courier, monospace",
+                fontWeight: "bold",
+                color: "#1a120c",
                 marginTop: 4,
               }}
             >
-              {solvedCount} / {totalQuestions} <span style={{ fontSize: "14px", color: "#ff8a80" }}>RESOLVED ({accuracyPct}%)</span>
+              {solvedCount} / {totalQuestions} <span style={{ fontSize: "15px", color: "#6a5c4e" }}>RESOLVED ({accuracyPct}%)</span>
+            </div>
+            <div style={{ fontSize: "11px", color: "#7a6a58", marginTop: 4 }}>
+              {solvedCount === totalQuestions ? "All vectors breached successfully" : `${totalQuestions - solvedCount} vectors compromised`}
             </div>
           </div>
 
@@ -266,60 +283,72 @@ export default function VecnaSummaryView({
               style={{
                 fontSize: "11px",
                 letterSpacing: ".15em",
-                color: "#ff8a80",
-                fontWeight: 900,
+                color: "#7a6a58",
+                fontWeight: "bold",
               }}
             >
               POWER UNLOCKED
             </div>
             <div
               style={{
-                fontSize: "16px",
-                fontFamily: '"Share Tech Mono", monospace',
+                fontSize: "15px",
+                fontFamily: "'Courier New', Courier, monospace",
                 fontWeight: 900,
-                color: "#4ade80",
+                color: "#1a120c",
                 marginTop: 8,
-                letterSpacing: "0.08em",
-                textShadow: "0 0 10px rgba(74, 222, 128, 0.4)",
+                letterSpacing: "0.06em",
               }}
             >
-              {trial.powersGranted}
+              {safeTrial.powersGranted}
+            </div>
+            <div style={{ fontSize: "11px", color: "#2e7d32", marginTop: 4, fontWeight: "bold" }}>
+              ACTIVE IN ARSENAL
             </div>
           </div>
         </div>
 
         {/* Section: Question-by-Question Breakdown */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 20 }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              borderBottom: "1.5px solid rgba(183, 28, 28, 0.5)",
-              paddingBottom: 8,
-              marginBottom: 16,
+              borderBottom: "1.5px solid #3c3228",
+              paddingBottom: 6,
+              marginBottom: 12,
             }}
           >
             <span
               style={{
-                fontSize: "13px",
+                fontSize: "12px",
                 fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
                 fontWeight: 900,
                 letterSpacing: ".15em",
-                color: "#ff5252",
+                color: "#1a120c",
                 textTransform: "uppercase",
               }}
             >
-              SECTOR TELEMETRY LEDGER // OVERRIDE VERIFICATION
+              STAGE QUESTION LEDGER // FINDINGS
             </span>
-            <span style={{ fontSize: "12px", color: "#ff8a80", letterSpacing: ".1em" }}>
+            <span style={{ fontSize: "11px", color: "#6a5c4e", letterSpacing: ".1em" }}>
               {solvedCount} SOLVED · {totalQuestions - solvedCount} FAILED
             </span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {questions.map((q, idx) => {
-              const k = `${trial.id}-${idx}`;
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              maxHeight: "340px",
+              overflowY: "auto",
+              paddingRight: "6px",
+              scrollbarWidth: "thin",
+            }}
+          >
+            {safeQuestions.map((q, idx) => {
+              const k = `${safeTrial.id}-${idx}`;
               const isSolved = Boolean(solvedQuestions[k]);
               const isFailed = Boolean(failedQuestions[k]);
               const userAns = selectedAnswers[k];
@@ -340,17 +369,9 @@ export default function VecnaSummaryView({
                 <div
                   key={q.id || idx}
                   style={{
-                    background: isSolved
-                      ? "rgba(16, 60, 24, 0.25)"
-                      : isFailed
-                      ? "rgba(80, 10, 16, 0.25)"
-                      : "rgba(30, 10, 15, 0.2)",
-                    border: isSolved
-                      ? "1.5px solid #2e7d32"
-                      : isFailed
-                      ? "1.5px solid #b71c1c"
-                      : "1.5px solid rgba(183, 28, 28, 0.3)",
-                    borderRadius: 3,
+                    background: isSolved ? "rgba(35, 110, 50, 0.06)" : "rgba(184, 29, 36, 0.06)",
+                    border: isSolved ? "1.5px solid #3d8053" : "1.5px solid #8f2d24",
+                    borderRadius: 2,
                     padding: "14px 18px",
                     display: "flex",
                     flexDirection: "column",
@@ -373,7 +394,7 @@ export default function VecnaSummaryView({
                           fontWeight: 900,
                           fontSize: "13px",
                           letterSpacing: ".1em",
-                          color: "#ff5252",
+                          color: "#1a120c",
                         }}
                       >
                         LEVEL #{idx + 1 < 10 ? `0${idx + 1}` : idx + 1}
@@ -382,11 +403,11 @@ export default function VecnaSummaryView({
                         <span
                           style={{
                             fontSize: "11px",
-                            background: "rgba(183, 28, 28, 0.25)",
-                            border: "1px solid rgba(183, 28, 28, 0.5)",
+                            background: "#e4dac4",
+                            border: "1px solid #b5a48b",
                             padding: "2px 8px",
                             borderRadius: 2,
-                            color: "#ff8a80",
+                            color: "#544638",
                             letterSpacing: ".08em",
                           }}
                         >
@@ -401,7 +422,7 @@ export default function VecnaSummaryView({
                         style={{
                           fontSize: "12px",
                           fontWeight: 900,
-                          color: isSolved ? "#4ade80" : "#ff5252",
+                          color: isSolved ? "#1b7a41" : "#9e151b",
                           letterSpacing: ".1em",
                         }}
                       >
@@ -415,19 +436,19 @@ export default function VecnaSummaryView({
                           borderRadius: 2,
                           letterSpacing: ".1em",
                           background: isSolved
-                            ? "#1b5e20"
+                            ? "#234d31"
                             : isFailed
-                            ? "#b71c1c"
-                            : "rgba(255, 255, 255, 0.1)",
-                          color: "#ffffff",
+                            ? "#3d1414"
+                            : "#e4dac4",
+                          color: isSolved || isFailed ? "#ffffff" : "#2a221a",
                         }}
                       >
                         {isSolved
                           ? isSecondAttempt
-                            ? "✔ OVERRIDE (ATTEMPT 2)"
-                            : "✔ OVERRIDE CONFIRMED"
+                            ? "OVERRIDE (ATTEMPT 2)"
+                            : "OVERRIDE CONFIRMED"
                           : isFailed
-                          ? "✖ VECTOR FAILED"
+                          ? "✕ VECTOR FAILED"
                           : "— UNATTEMPTED"}
                       </span>
                     </div>
@@ -437,9 +458,10 @@ export default function VecnaSummaryView({
                   <div
                     style={{
                       fontSize: "13px",
-                      color: "#f5e8e8",
+                      color: "#231e1a",
                       lineHeight: 1.5,
                       letterSpacing: ".02em",
+                      fontWeight: 600,
                     }}
                   >
                     {q.question}
@@ -449,15 +471,15 @@ export default function VecnaSummaryView({
                   <div
                     style={{
                       fontSize: "12px",
-                      color: isSolved ? "#a7f3d0" : "#fca5a5",
+                      color: isSolved ? "#1b5e20" : "#b71c1c",
                       letterSpacing: ".04em",
-                      background: "rgba(0, 0, 0, 0.3)",
+                      background: "#f0e8d6",
                       padding: "6px 12px",
                       borderRadius: 2,
-                      borderLeft: isSolved ? "3px solid #10b981" : "3px solid #ef4444",
+                      borderLeft: isSolved ? "3px solid #2e7d32" : "3px solid #b71c1c",
                     }}
                   >
-                    <span style={{ color: "#e0a0a0", fontWeight: "bold" }}>TELEMETRY TRANSMITTED: </span>
+                    <span style={{ color: "#544638", fontWeight: "bold" }}>TELEMETRY TRANSMITTED: </span>
                     {displayAnswer}
                   </div>
 
@@ -466,14 +488,14 @@ export default function VecnaSummaryView({
                     <div
                       style={{
                         fontSize: "12px",
-                        color: "#fecdd3",
-                        background: "rgba(183, 28, 28, 0.1)",
+                        color: "#544638",
+                        background: "#e4dac4",
                         padding: "6px 12px",
                         borderRadius: 2,
                         marginTop: 2,
                       }}
                     >
-                      <span style={{ color: "#ff8a80", fontWeight: "bold" }}>INTEL RECORD: </span>
+                      <span style={{ color: "#1a0f05", fontWeight: "bold" }}>INTEL RECORD: </span>
                       {q.hint}
                     </div>
                   )}
@@ -497,66 +519,61 @@ export default function VecnaSummaryView({
             type="button"
             onClick={handleReturn}
             style={{
-              background: "#b71c1c",
+              background: "#b81d24",
               color: "#ffffff",
-              fontFamily: '"Share Tech Mono", monospace',
-              fontSize: "clamp(14px, 1.5vw, 16px)",
+              fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+              fontSize: "clamp(13px, 1.4vw, 15px)",
               fontWeight: 900,
-              letterSpacing: ".16em",
-              padding: "13px 36px",
-              border: "2px solid #e53935",
+              letterSpacing: ".14em",
+              padding: "12px 32px",
+              border: "1.5px solid #8f1218",
               borderRadius: 3,
               cursor: "pointer",
-              boxShadow: "0 0 20px rgba(183, 28, 28, 0.5)",
+              boxShadow: "0 6px 16px rgba(184, 29, 36, 0.4)",
               textTransform: "uppercase",
               display: "inline-flex",
               alignItems: "center",
-              gap: 10,
+              gap: 8,
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#d32f2f";
-              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.background = "#941319";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#b71c1c";
-              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.background = "#b81d24";
             }}
           >
             <span>◀</span>
-            <span>RETURN TO SECTOR MAP</span>
+            <span>RETURN TO CHAPTER MAP</span>
           </button>
 
           <button
             type="button"
             onClick={handleReview}
             style={{
-              background: "rgba(183, 28, 28, 0.2)",
-              color: "#ffcdd2",
-              fontFamily: '"Share Tech Mono", monospace',
-              fontSize: "clamp(14px, 1.5vw, 16px)",
+              background: "#2e2118",
+              color: "#ffffff",
+              fontFamily: "'Benguiat Bold', 'ITC Benguiat', serif",
+              fontSize: "clamp(13px, 1.4vw, 15px)",
               fontWeight: 900,
-              letterSpacing: ".16em",
-              padding: "13px 32px",
-              border: "2px solid rgba(183, 28, 28, 0.6)",
+              letterSpacing: ".14em",
+              padding: "12px 30px",
+              border: "1px solid #573a2e",
               borderRadius: 3,
               cursor: "pointer",
               textTransform: "uppercase",
               display: "inline-flex",
               alignItems: "center",
-              gap: 10,
+              gap: 8,
               transition: "all 0.15s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(183, 28, 28, 0.4)";
-              e.currentTarget.style.color = "#ffffff";
+              e.currentTarget.style.background = "#4a3528";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(183, 28, 28, 0.2)";
-              e.currentTarget.style.color = "#ffcdd2";
+              e.currentTarget.style.background = "#2e2118";
             }}
           >
-            <span>👁</span>
             <span>REVIEW QUESTIONS</span>
           </button>
         </div>

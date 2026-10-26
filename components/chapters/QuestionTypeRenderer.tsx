@@ -485,7 +485,7 @@ export default function QuestionTypeRenderer({
               width: "100%",
               display: "flex",
               justifyContent: "center",
-              margin: "4px auto 10px",
+              margin: "2px auto 8px",
             }}
           >
             <div
@@ -494,9 +494,9 @@ export default function QuestionTypeRenderer({
               style={{
                 position: "relative",
                 display: "grid",
-                gridTemplateColumns: "minmax(250px, 350px) minmax(250px, 350px)",
-                gap: "clamp(24px, 4vw, 56px)",
-                padding: "16px 18px",
+                gridTemplateColumns: "minmax(200px, 320px) minmax(200px, 320px)",
+                gap: "clamp(12px, 2.5vw, 28px)",
+                padding: "10px 14px",
                 background: "rgba(255, 255, 255, 0.65)",
                 border: paperBorder,
                 borderRadius: "4px",
@@ -660,7 +660,7 @@ export default function QuestionTypeRenderer({
               </svg>
 
               {/* Left Column (Column A) */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", zIndex: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", zIndex: 12 }}>
                 <div
                   style={{
                     fontSize: "11px",
@@ -668,7 +668,7 @@ export default function QuestionTypeRenderer({
                     letterSpacing: ".12em",
                     color: paperAccent,
                     borderBottom: "1px solid #d4c4a8",
-                    paddingBottom: "4px",
+                    paddingBottom: "3px",
                     fontFamily: "'Courier New', monospace",
                   }}
                 >
@@ -699,8 +699,8 @@ export default function QuestionTypeRenderer({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        gap: "10px",
-                        padding: "8px 12px",
+                        gap: "8px",
+                        padding: "6px 10px",
                         background: isSelected
                           ? "rgba(184, 29, 36, 0.12)"
                           : isConnected
@@ -712,9 +712,9 @@ export default function QuestionTypeRenderer({
                           ? "1.5px solid #c48a80"
                           : "1px solid #d4c4a8",
                         borderRadius: "3px",
-                        fontSize: "12px",
+                        fontSize: "11px",
                         fontFamily: "'Courier New', monospace",
-                        lineHeight: 1.35,
+                        lineHeight: 1.25,
                         cursor: "grab",
                         boxShadow: isSelected
                           ? "0 2px 8px rgba(184, 29, 36, 0.25)"
@@ -723,7 +723,7 @@ export default function QuestionTypeRenderer({
                         userSelect: "none",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: "6px", flex: 1 }}>
                         <span
                           style={{
                             fontWeight: 900,
@@ -772,7 +772,7 @@ export default function QuestionTypeRenderer({
               </div>
 
               {/* Right Column (Column B) */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", zIndex: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", zIndex: 12 }}>
                 <div
                   style={{
                     fontSize: "11px",
@@ -780,7 +780,7 @@ export default function QuestionTypeRenderer({
                     letterSpacing: ".12em",
                     color: "#184070",
                     borderBottom: "1px solid #d4c4a8",
-                    paddingBottom: "4px",
+                    paddingBottom: "3px",
                     fontFamily: "'Courier New', monospace",
                   }}
                 >
@@ -814,8 +814,8 @@ export default function QuestionTypeRenderer({
                         position: "relative",
                         display: "flex",
                         alignItems: "center",
-                        gap: "10px",
-                        padding: "8px 12px",
+                        gap: "8px",
+                        padding: "6px 10px",
                         background: connectedFromLeft ? "#fdf7f4" : "#fdfbf7",
                         border: connectedFromLeft
                           ? "1.5px solid #c48a80"
@@ -823,9 +823,9 @@ export default function QuestionTypeRenderer({
                           ? "1.5px dashed #205080"
                           : "1px solid #c9bda4",
                         borderRadius: "3px",
-                        fontSize: "12px",
+                        fontSize: "11px",
                         fontFamily: "'Courier New', monospace",
-                        lineHeight: 1.35,
+                        lineHeight: 1.25,
                         cursor: selectedLeftId ? "pointer" : "default",
                         boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                         transition: "all 0.15s ease",
@@ -885,18 +885,18 @@ export default function QuestionTypeRenderer({
           {/* Connection Summary Bar */}
           <div
             style={{
-              padding: "8px 12px",
+              padding: "6px 10px",
               background: "#e9dfcb",
               borderRadius: "2px",
               borderLeft: `3px solid ${paperAccent}`,
-              fontSize: "12px",
+              fontSize: "11px",
               fontFamily: "'Courier New', Courier, monospace",
               color: "#2b1c11",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
               flexWrap: "wrap",
-              gap: "8px",
+              gap: "6px",
             }}
           >
             <div>
@@ -941,7 +941,7 @@ export default function QuestionTypeRenderer({
             onClick={() => setHasInteracted(true)}
             style={{
               position: "relative",
-              padding: "14px 16px",
+              padding: "10px 14px",
               background: isVecnaMode
                 ? "linear-gradient(180deg, rgba(38, 16, 18, 0.75), rgba(24, 10, 12, 0.85))"
                 : "linear-gradient(180deg, rgba(253, 249, 240, 0.95), rgba(246, 238, 222, 0.92))",
@@ -958,7 +958,7 @@ export default function QuestionTypeRenderer({
                 : "0 2px 10px rgba(0,0,0,0.06)",
               display: "flex",
               flexDirection: "column",
-              gap: "12px",
+              gap: "8px",
             }}
           >
             {/* Ghost Cursor Interactive Tutorial Overlay for Stage 3 (First question only) */}
@@ -1259,8 +1259,8 @@ export default function QuestionTypeRenderer({
                   display: "flex",
                   justifyContent: "center",
                   flexWrap: "wrap",
-                  gap: "clamp(6px, 1.2vw, 14px)",
-                  padding: "10px 4px",
+                  gap: "clamp(5px, 1vw, 10px)",
+                  padding: "6px 2px",
                 }}
               >
                 {reorderedTokens.map((tok, idx) => {
@@ -1305,12 +1305,12 @@ export default function QuestionTypeRenderer({
                         setDragOverTokenIdx(null);
                       }}
                       onClick={() => handleSelectToken(idx)}
-                      whileHover={{ y: -3, scale: 1.03 }}
-                      whileTap={{ scale: 0.96 }}
+                      whileHover={{ y: -2, scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
                       style={{
                         position: "relative",
-                        width: "clamp(38px, 4.5vw, 54px)",
-                        height: "clamp(52px, 6vw, 68px)",
+                        width: "clamp(34px, 3.8vw, 46px)",
+                        height: "clamp(46px, 5.2vw, 60px)",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",

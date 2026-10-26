@@ -144,7 +144,7 @@ export default function VecnaTeamModal({
             }}
           >
             <div style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "#36e0c4", marginBottom: "6px" }}>
-              ⚡ UNLOCKED POWERS
+              UNLOCKED POWERS
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
               {team.powers && team.powers.length > 0 ? (
