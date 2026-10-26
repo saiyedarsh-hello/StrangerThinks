@@ -19,7 +19,11 @@ export async function GET() {
           submissions_open: ev.submissionsOpen !== false,
           current_round_max: 7,
           is_paused: !!ev.isPaused,
-          unlockedStages: Array.isArray(ev.unlockedStages) ? ev.unlockedStages : [1],
+          unlockedStages: Array.isArray(ev.unlockedStages)
+            ? ev.unlockedStages
+            : Array.isArray(data.unlockedStages)
+            ? data.unlockedStages
+            : [1],
         },
       });
     }
@@ -98,7 +102,11 @@ export async function PATCH(req: NextRequest) {
         submissions_open: ev.submissionsOpen !== undefined ? Boolean(ev.submissionsOpen) : body.submissionsOpen !== false,
         current_round_max: 7,
         is_paused: Boolean(ev.isPaused),
-        unlockedStages: Array.isArray(ev.unlockedStages) ? ev.unlockedStages : [1],
+        unlockedStages: Array.isArray(ev.unlockedStages)
+          ? ev.unlockedStages
+          : Array.isArray(stateData.unlockedStages)
+          ? stateData.unlockedStages
+          : [1],
       },
     });
   } catch (err: any) {

@@ -6,6 +6,7 @@ const router = Router();
 
 // Event status relevant to participants (public)
 router.get("/event/state", SpecGameController.getEventState);
+router.get("/stages", SpecGameController.getStages);
 
 // All participant gameplay endpoints require PLAYER or ADMIN role
 router.use(requireAuth(["PLAYER", "ADMIN"]));

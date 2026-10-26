@@ -6,10 +6,10 @@
       "leaderName": "apple",
       "role": "PLAYER",
       "status": "ACTIVE",
-      "totalScore": 0,
+      "totalScore": 100,
       "breakdown": {
         "tech": 0,
-        "puzzle": 0,
+        "puzzle": 100,
         "speed": 0,
         "clue": 0,
         "story": 0,
@@ -18,12 +18,26 @@
       "penalty": 0,
       "startedAt": "2026-10-21T19:24:06.457Z",
       "finishedAt": null,
-      "lastSolvedAt": null,
+      "lastSolvedAt": "2026-10-25T11:03:09.652Z",
       "location": "town",
       "stage": "hawkins",
-      "storyProgress": 100,
-      "completedTasks": [],
-      "solvedChapters": [],
+      "storyProgress": 10,
+      "completedTasks": [
+        "ch1-q1",
+        "ch1-q2",
+        "ch1-q3",
+        "ch1-q4",
+        "ch1-q5",
+        "ch1-q6",
+        "ch1-q7",
+        "ch1-q8",
+        "ch1-q9",
+        "ch1-q10",
+        "ch1-quiz"
+      ],
+      "solvedChapters": [
+        1
+      ],
       "unlockedLocations": {
         "byersHouse": true,
         "forest": false,
@@ -52,9 +66,21 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-21T13:54:05.095Z",
-      "updatedAt": "2026-10-25T08:59:34.289Z",
-      "taskScores": {},
-      "lastScoreAchievedAt": "2026-10-25T08:49:42.428Z"
+      "updatedAt": "2026-10-25T11:41:09.050Z",
+      "taskScores": {
+        "ch1-q1": 10,
+        "ch1-q2": 10,
+        "ch1-q3": 20,
+        "ch1-q4": 20,
+        "ch1-q5": 20,
+        "ch1-q6": 0,
+        "ch1-q7": 10,
+        "ch1-q8": 0,
+        "ch1-q9": 0,
+        "ch1-q10": 10,
+        "ch1-quiz": 0
+      },
+      "lastScoreAchievedAt": "2026-10-25T11:03:09.601Z"
     },
     "T02": {
       "id": "T02",
@@ -4777,7 +4803,110 @@
   ],
   "activeSabotages": {},
   "vecnaProgress": {},
-  "playerSubmissions": {},
+  "playerSubmissions": {
+    "T01": {
+      "ch1-q1": {
+        "roundId": 1,
+        "questionCode": "ch1-q1",
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T10:55:11.197Z"
+      },
+      "ch1-q2": {
+        "roundId": 1,
+        "questionCode": "ch1-q2",
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T10:55:29.925Z"
+      },
+      "ch1-q3": {
+        "roundId": 1,
+        "questionCode": "ch1-q3",
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T10:55:37.842Z"
+      },
+      "ch1-q4": {
+        "roundId": 1,
+        "questionCode": "ch1-q4",
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "A",
+        "attemptNumber": 1,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T10:57:05.119Z"
+      },
+      "ch1-q5": {
+        "roundId": 1,
+        "questionCode": "ch1-q5",
+        "status": "solved",
+        "earnedPoints": 20,
+        "chosenAnswer": "C",
+        "attemptNumber": 1,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T10:57:10.956Z"
+      },
+      "ch1-q6": {
+        "roundId": 1,
+        "questionCode": "ch1-q6",
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T10:59:51.197Z"
+      },
+      "ch1-q7": {
+        "roundId": 1,
+        "questionCode": "ch1-q7",
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:02:36.505Z"
+      },
+      "ch1-q8": {
+        "roundId": 1,
+        "questionCode": "ch1-q8",
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:02:41.630Z"
+      },
+      "ch1-q9": {
+        "roundId": 1,
+        "questionCode": "ch1-q9",
+        "status": "failed",
+        "earnedPoints": 0,
+        "chosenAnswer": "A",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:02:53.175Z"
+      },
+      "ch1-q10": {
+        "roundId": 1,
+        "questionCode": "ch1-q10",
+        "status": "solved",
+        "earnedPoints": 10,
+        "chosenAnswer": "B",
+        "attemptNumber": 2,
+        "isLocked": true,
+        "submittedAt": "2026-10-25T11:03:07.590Z"
+      }
+    }
+  },
   "eventHistory": [
     {
       "eventId": 1,
@@ -17797,6 +17926,11 @@
     }
   ],
   "unlockedStages": [
-    1
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
   ]
 }

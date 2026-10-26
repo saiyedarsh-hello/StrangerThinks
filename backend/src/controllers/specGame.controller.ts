@@ -18,6 +18,7 @@ export const SpecGameController = {
    */
   async getEventState(_req: Request, res: Response) {
     const event = await EventControlService.getEventState();
+    const unlockedStages = event.unlockedStages || db.getUnlockedStages();
     return res.json({
       success: true,
       event: {
@@ -28,7 +29,19 @@ export const SpecGameController = {
         submissionsOpen: event.submissionsOpen,
         isPaused: event.isPaused,
         startedAt: event.startedAt,
+        unlockedStages,
       },
+      unlockedStages,
+    });
+  },
+
+  /**
+   * GET /api/stages — Public endpoint to read authorized stages
+   */
+  async getStages(_req: Request, res: Response) {
+    return res.json({
+      success: true,
+      unlockedStages: db.getUnlockedStages(),
     });
   },
 
@@ -107,7 +120,7 @@ export const SpecGameController = {
       roundNumber: c.id,
       roundCode: `R${c.id}`,
       roundName: c.archiveTitle,
-      status: c.id === 1 ? "unlocked" : "locked",
+      status: db.isStageUnlocked(c.id) ? "unlocked" : "locked",
     }));
 
     return res.json({ success: true, rounds });

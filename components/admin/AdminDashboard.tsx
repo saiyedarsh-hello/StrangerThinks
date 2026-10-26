@@ -54,7 +54,7 @@ import {
   AdminLogItem,
   ConnectionStatus,
 } from "@/lib/tidbService";
-import { authenticateSocket, publish, getSocket } from "@/lib/realtime";
+import { authenticateSocket, publish, getSocket, subscribe } from "@/lib/realtime";
 import { sfx } from "@/lib/audio";
 import { getStoredSession, clearSession } from "@/lib/config";
 
@@ -69,7 +69,7 @@ export default function AdminDashboard() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Dashboard state
-  const [activeTab, setActiveTab] = useState<"dashboard" | "questions" | "logs">("dashboard");
+  const [activeTab, setActiveTab] = useState<"leaderboard" | "stages" | "questions" | "logs">("leaderboard");
   const [selectedChapterId, setSelectedChapterId] = useState<number>(1);
   const [leaderboard, setLeaderboard] = useState<AdminLeaderboardItem[]>([]);
   const [recentlyUpdated, setRecentlyUpdated] = useState<Record<string, { delta: string; timestamp: number }>>({});
@@ -281,9 +281,12 @@ export default function AdminDashboard() {
 
     if (liveServerTeams.length > 0) {
       const finalLb = liveServerTeams
-        .filter((t: any) => t.role !== "ADMIN" && t.teamName?.toLowerCase() !== "admin bolte")
+        .filter((t: any) => t.role !== "ADMIN" && (t.teamName || "")?.toLowerCase() !== "admin bolte")
         .map((t) => ({
           ...t,
+          teamName: t.teamName || (t as any).team_name || "Squad",
+          leaderName: t.leaderName || (t as any).squad_leader || (t as any).leader_name || "Squad Leader",
+          completedTasks: Array.isArray(t.completedTasks) ? t.completedTasks : [],
           score: typeof t.score === "number" && !isNaN(t.score) ? t.score : (typeof (t as any).totalScore === "number" ? (t as any).totalScore : 0),
           isOnline: Boolean(t.isOnline),
         }))
@@ -335,7 +338,7 @@ export default function AdminDashboard() {
       ]);
       if (evRes.success && evRes.eventState) {
         setEventState(evRes.eventState);
-        if (Array.isArray(evRes.eventState.unlockedStages)) {
+        if (Array.isArray(evRes.eventState.unlockedStages) && evRes.eventState.unlockedStages.length > 0) {
           setUnlockedStages(evRes.eventState.unlockedStages);
         }
       }
@@ -380,7 +383,7 @@ export default function AdminDashboard() {
         const updated = prev.map((item) => {
           const isMatch =
             item.teamId === payload.teamId ||
-            (payload.teamName && item.teamName.toLowerCase() === payload.teamName.toLowerCase());
+            (payload.teamName && (item.teamName || "").toLowerCase() === payload.teamName.toLowerCase());
 
           if (isMatch) {
             found = true;
@@ -457,7 +460,7 @@ export default function AdminDashboard() {
         if (
           prev &&
           (prev.teamId === payload.teamId ||
-            (payload.teamName && prev.teamName.toLowerCase() === payload.teamName.toLowerCase()))
+            (payload.teamName && (prev.teamName || "").toLowerCase() === payload.teamName.toLowerCase()))
         ) {
           const newCompleted =
             payload.chapterId && !prev.completedTasks.includes(`ch${payload.chapterId}`)
@@ -537,7 +540,25 @@ export default function AdminDashboard() {
       );
     });
 
-    // 4. Automated background refresh cycle (controllable interval & pause/resume)
+    // 4. Subscribe to stage unlocking across tabs and socket
+    const unsubRealtime = subscribe((m: any) => {
+      if (m.type === "stage_unlocked" && Array.isArray(m.unlockedStages) && m.unlockedStages.length > 0) {
+        setUnlockedStages(m.unlockedStages);
+      }
+      if (m.type === "event_reset") {
+        setUnlockedStages([1]);
+      }
+    });
+
+    const sock = getSocket();
+    const handleStageUnlocked = (d: any) => {
+      if (d?.unlockedStages && Array.isArray(d.unlockedStages) && d.unlockedStages.length > 0) {
+        setUnlockedStages(d.unlockedStages);
+      }
+    };
+    sock?.on("stage:unlocked", handleStageUnlocked);
+
+    // 5. Automated background refresh cycle (controllable interval & pause/resume)
     const autoRefreshTimer = setInterval(() => {
       setAutoRefreshSec((prev) => {
         if (!autoRefreshEnabled) return prev;
@@ -555,6 +576,8 @@ export default function AdminDashboard() {
       unsubLiveScores();
       unsubscribeLb();
       unsubPresence();
+      unsubRealtime();
+      sock?.off("stage:unlocked", handleStageUnlocked);
     };
   }, [loadData, autoRefreshEnabled, autoRefreshInterval, token]);
 
@@ -707,6 +730,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success && Array.isArray(data.unlockedStages)) {
         setUnlockedStages(data.unlockedStages);
+        publish({ type: "stage_unlocked", unlockedStages: data.unlockedStages });
         setStatusMessage(`Stage ${stageNum} access updated: ${!currentUnlocked ? "UNLOCKED / AUTHORIZED" : "LOCKED / RESTRICTED"}`);
         sfx("ok");
       } else {
@@ -1119,10 +1143,11 @@ export default function AdminDashboard() {
 
   // Filtered leaderboard with text search and presence filter
   const filteredLeaderboard = leaderboard.filter((t) => {
-    const matchesSearch =
-      t.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.teamId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.leaderName.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = (searchQuery || "").trim().toLowerCase();
+    const teamName = (t.teamName || "").toLowerCase();
+    const teamId = (t.teamId || "").toLowerCase();
+    const leaderName = (t.leaderName || "").toLowerCase();
+    const matchesSearch = !q || teamName.includes(q) || teamId.includes(q) || leaderName.includes(q);
     if (!matchesSearch) return false;
 
     if (presenceFilter === "online") return t.isOnline;
@@ -1144,18 +1169,44 @@ export default function AdminDashboard() {
           alignItems: "center",
           justifyContent: "center",
           padding: "24px",
-          backgroundColor: "#07070a",
-          color: "#d0d0d8",
-          fontFamily: "var(--font-mono), monospace",
+          backgroundColor: "#f8fafc",
+          color: "#0f172a",
+          fontFamily:
+            '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif',
           textAlign: "center",
         }}
       >
-        <div style={{ maxWidth: 460 }}>
-          <div style={{ color: "#ff2d3a", letterSpacing: ".2em", fontSize: 12, marginBottom: 12 }}>
-            ADMIN SESSION REQUIRED
+        <div
+          style={{
+            maxWidth: 440,
+            backgroundColor: "#ffffff",
+            padding: "36px 32px",
+            borderRadius: 12,
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02)",
+          }}
+        >
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              backgroundColor: "#fee2e2",
+              color: "#dc2626",
+              marginBottom: 16,
+              fontSize: 20,
+            }}
+          >
+            🔒
           </div>
-          <p style={{ fontSize: 13, lineHeight: 1.6, color: "#888899" }}>
-            Return to the shared entry page and sign in with an Admin identity and clearance password.
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: "0 0 8px 0" }}>
+            Admin Session Required
+          </h2>
+          <p style={{ fontSize: 13, lineHeight: 1.6, color: "#64748b", margin: "0 0 24px 0" }}>
+            Please return to the main entry page and authenticate with your Admin credentials to access this console.
           </p>
           <button
             type="button"
@@ -1169,18 +1220,19 @@ export default function AdminDashboard() {
               window.location.href = "/";
             }}
             style={{
-              marginTop: 16,
+              width: "100%",
               padding: "10px 20px",
-              backgroundColor: "#ff2d3a",
+              backgroundColor: "#0f172a",
               border: "none",
-              borderRadius: 4,
-              color: "#000000",
-              fontWeight: 700,
-              letterSpacing: ".12em",
+              borderRadius: 6,
+              color: "#ffffff",
+              fontWeight: 600,
+              fontSize: 13,
               cursor: "pointer",
+              transition: "background-color 0.15s ease",
             }}
           >
-            RETURN TO ENTRY
+            Return to Login
           </button>
         </div>
       </div>
@@ -1197,101 +1249,157 @@ export default function AdminDashboard() {
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "#08080c",
-        color: "#d0d0d8",
-        fontFamily: "var(--font-mono), monospace",
+        backgroundColor: "#f8fafc",
+        color: "#0f172a",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif',
         display: "flex",
         flexDirection: "column",
         overflowY: "auto",
         overflowX: "hidden",
+        WebkitFontSmoothing: "antialiased",
       }}
     >
-      {/* ── TOP NAVIGATION BAR: Dashboard, Questions, Logs, Refresh ── */}
+      {/* ── TOP NAVIGATION BAR ── */}
       <header
         style={{
-          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-          backgroundColor: "#0d0d14",
+          borderBottom: "1px solid #e2e8f0",
+          backgroundColor: "#ffffff",
           padding: "12px 28px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: 12,
+          gap: 16,
           position: "sticky",
           top: 0,
           zIndex: 100,
+          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.04)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => {
-              sfx("click");
-              setActiveTab("dashboard");
-            }}
-            style={{
-              padding: "7px 18px",
-              fontSize: 13,
-              letterSpacing: ".06em",
-              borderRadius: 4,
-              border: activeTab === "dashboard" ? "1px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.08)",
-              cursor: "pointer",
-              backgroundColor: activeTab === "dashboard" ? "#ff2d3a" : "transparent",
-              color: activeTab === "dashboard" ? "#000000" : "#d0d0d8",
-              fontWeight: "bold",
-              transition: "all 0.15s ease",
-            }}
-          >
-            Dashboard
-          </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          {/* Brand identifier */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              style={{
+                width: 9,
+                height: 9,
+                borderRadius: "50%",
+                backgroundColor: "#dc2626",
+                boxShadow: "0 0 8px rgba(220, 38, 38, 0.35)",
+                display: "inline-block",
+              }}
+            />
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  color: "#0f172a",
+                  textTransform: "uppercase",
+                }}
+              >
+                Hawkins Protocol
+              </span>
+              <span
+                style={{
+                  fontSize: 10,
+                  color: "#64748b",
+                  fontFamily: "var(--font-mono), monospace",
+                  letterSpacing: "0.06em",
+                  fontWeight: 500,
+                }}
+              >
+                ADMIN COMMAND
+              </span>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              sfx("click");
-              setActiveTab("questions");
-            }}
+          {/* Segmented Navigation Tabs */}
+          <div
             style={{
-              padding: "7px 18px",
-              fontSize: 13,
-              letterSpacing: ".06em",
-              borderRadius: 4,
-              border: activeTab === "questions" ? "1px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.08)",
-              cursor: "pointer",
-              backgroundColor: activeTab === "questions" ? "#ff2d3a" : "transparent",
-              color: activeTab === "questions" ? "#000000" : "#d0d0d8",
-              fontWeight: "bold",
-              transition: "all 0.15s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              backgroundColor: "#f1f5f9",
+              padding: 3,
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
             }}
           >
-            Questions
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              sfx("click");
-              setActiveTab("logs");
-            }}
-            style={{
-              padding: "7px 18px",
-              fontSize: 13,
-              letterSpacing: ".06em",
-              borderRadius: 4,
-              border: activeTab === "logs" ? "1px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.08)",
-              cursor: "pointer",
-              backgroundColor: activeTab === "logs" ? "#ff2d3a" : "transparent",
-              color: activeTab === "logs" ? "#000000" : "#d0d0d8",
-              fontWeight: "bold",
-              transition: "all 0.15s ease",
-            }}
-          >
-            Logs
-          </button>
+            {[
+              { id: "leaderboard", label: "Leaderboard", count: leaderboard.length },
+              { id: "stages", label: "Unlock Chapters", badge: `${unlockedStages.length}/6 Open` },
+              { id: "questions", label: "Questions", count: chapters.length },
+              { id: "logs", label: "System Logs" },
+            ].map((tab) => {
+              const isActive =
+                activeTab === tab.id || (tab.id === "leaderboard" && activeTab === ("dashboard" as any));
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    sfx("click");
+                    setActiveTab(tab.id as any);
+                  }}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 12,
+                    fontWeight: isActive ? 600 : 500,
+                    borderRadius: 6,
+                    border: "none",
+                    cursor: "pointer",
+                    backgroundColor: isActive ? "#ffffff" : "transparent",
+                    color: isActive ? "#0f172a" : "#64748b",
+                    boxShadow: isActive ? "0 1px 3px rgba(0, 0, 0, 0.08)" : "none",
+                    transition: "all 0.15s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  {tab.count !== undefined && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "1px 6px",
+                        borderRadius: 10,
+                        backgroundColor: isActive ? "#fee2e2" : "#e2e8f0",
+                        color: isActive ? "#991b1b" : "#475569",
+                        fontFamily: "var(--font-mono), monospace",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {tab.count}
+                    </span>
+                  )}
+                  {tab.badge !== undefined && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "1px 6px",
+                        borderRadius: 10,
+                        backgroundColor: isActive ? "#dcfce7" : "#e2e8f0",
+                        color: isActive ? "#166534" : "#475569",
+                        fontFamily: "var(--font-mono), monospace",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
+        {/* Right side controls */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          {/* 1. REFRESH NOW BUTTON */}
+          {/* Refresh / Sync Button */}
           <button
             type="button"
             id="admin-refresh-now-btn"
@@ -1301,22 +1409,21 @@ export default function AdminDashboard() {
             }}
             disabled={loading}
             style={{
-              padding: "7px 18px",
+              padding: "6px 12px",
               fontSize: 12,
-              letterSpacing: ".08em",
-              backgroundColor: loading ? "rgba(255, 45, 58, 0.25)" : "rgba(255, 45, 58, 0.15)",
-              border: "1px solid #ff2d3a",
-              color: "#ff4d58",
-              borderRadius: 4,
+              backgroundColor: loading ? "#f1f5f9" : "#ffffff",
+              border: "1px solid #cbd5e1",
+              color: loading ? "#94a3b8" : "#1e293b",
+              borderRadius: 6,
               cursor: loading ? "not-allowed" : "pointer",
-              fontWeight: 800,
+              fontWeight: 500,
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 6,
               transition: "all 0.15s ease",
-              boxShadow: "0 0 12px rgba(255, 45, 58, 0.25)",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
             }}
-            title="Force instant live update of all squads, scores, and presence from TiDB"
+            title="Force instant live update from database"
           >
             <span
               style={{
@@ -1328,19 +1435,20 @@ export default function AdminDashboard() {
             >
               ⟳
             </span>
-            <span>{loading ? "SYNCING..." : "REFRESH NOW"}</span>
+            <span>{loading ? "Syncing..." : "Sync"}</span>
           </button>
 
-          {/* 2. AUTO-REFRESH TOGGLE & INTERVAL SELECTION */}
+          {/* Auto-Refresh Toggle & Interval */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              backgroundColor: "rgba(13, 13, 20, 0.95)",
-              border: autoRefreshEnabled ? "1px solid rgba(54, 224, 196, 0.45)" : "1px solid rgba(255, 255, 255, 0.12)",
-              borderRadius: 4,
-              padding: "2px 6px",
-              gap: 4,
+              backgroundColor: "#ffffff",
+              border: "1px solid #cbd5e1",
+              borderRadius: 6,
+              padding: "2px 4px",
+              gap: 2,
+              boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
             }}
           >
             <button
@@ -1353,33 +1461,32 @@ export default function AdminDashboard() {
               style={{
                 background: "none",
                 border: "none",
-                color: autoRefreshEnabled ? "#36e0c4" : "#777788",
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: ".06em",
+                color: autoRefreshEnabled ? "#059669" : "#64748b",
+                fontSize: 11,
+                fontWeight: 600,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
-                padding: "5px 8px",
+                gap: 5,
+                padding: "4px 8px",
+                borderRadius: 4,
               }}
-              title={autoRefreshEnabled ? "Auto-refresh is ON. Click to pause." : "Auto-refresh is PAUSED. Click to resume."}
+              title={autoRefreshEnabled ? "Auto-refresh is active. Click to pause." : "Auto-refresh is paused. Click to resume."}
             >
               <span
                 style={{
-                  width: 7,
-                  height: 7,
+                  width: 6,
+                  height: 6,
                   borderRadius: "50%",
-                  backgroundColor: autoRefreshEnabled ? "#36e0c4" : "#555566",
-                  boxShadow: autoRefreshEnabled ? "0 0 8px #36e0c4" : "none",
+                  backgroundColor: autoRefreshEnabled ? "#10b981" : "#94a3b8",
+                  boxShadow: autoRefreshEnabled ? "0 0 6px #10b981" : "none",
                   display: "inline-block",
                 }}
               />
-              <span>AUTO: {autoRefreshEnabled ? `ON (${autoRefreshSec}s)` : "PAUSED"}</span>
+              <span>{autoRefreshEnabled ? `Live (${autoRefreshSec}s)` : "Paused"}</span>
             </button>
 
-            {/* Quick interval presets: 5s, 10s, 30s */}
-            <div style={{ display: "flex", gap: 2, borderLeft: "1px solid rgba(255, 255, 255, 0.12)", paddingLeft: 4 }}>
+            <div style={{ display: "flex", gap: 1, borderLeft: "1px solid #e2e8f0", paddingLeft: 3 }}>
               {[5, 10, 30].map((sec) => (
                 <button
                   key={sec}
@@ -1391,16 +1498,15 @@ export default function AdminDashboard() {
                     setAutoRefreshEnabled(true);
                   }}
                   style={{
-                    background: autoRefreshInterval === sec && autoRefreshEnabled ? "rgba(54, 224, 196, 0.25)" : "transparent",
+                    background: autoRefreshInterval === sec && autoRefreshEnabled ? "#0f172a" : "transparent",
                     border: "none",
-                    borderRadius: 2,
-                    color: autoRefreshInterval === sec && autoRefreshEnabled ? "#36e0c4" : "#666677",
+                    borderRadius: 3,
+                    color: autoRefreshInterval === sec && autoRefreshEnabled ? "#ffffff" : "#64748b",
                     fontSize: 10,
-                    fontWeight: 800,
-                    padding: "2px 5px",
+                    fontWeight: 600,
+                    padding: "3px 6px",
                     cursor: "pointer",
                   }}
-                  title={`Auto-refresh every ${sec} seconds`}
                 >
                   {sec}s
                 </button>
@@ -1408,55 +1514,51 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* 3. FULLSCREEN TOGGLE BUTTON */}
+          {/* Fullscreen Toggle */}
           <button
             id="admin-fullscreen-btn"
             type="button"
             onClick={toggleFullscreen}
             style={{
-              padding: "7px 14px",
+              padding: "6px 10px",
               fontSize: 12,
-              letterSpacing: ".08em",
-              backgroundColor: isFullscreen ? "rgba(255, 45, 58, 0.3)" : "rgba(255, 45, 58, 0.12)",
-              border: isFullscreen ? "1px solid #ff4d58" : "1px solid rgba(255, 45, 58, 0.6)",
-              color: "#ffffff",
-              borderRadius: 4,
+              backgroundColor: isFullscreen ? "#fee2e2" : "#ffffff",
+              border: isFullscreen ? "1px solid #fca5a5" : "1px solid #cbd5e1",
+              color: isFullscreen ? "#dc2626" : "#475569",
+              borderRadius: 6,
               cursor: "pointer",
-              fontWeight: 800,
+              fontWeight: 500,
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: 5,
               transition: "all 0.15s ease",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
             }}
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
           >
-            <span style={{ fontSize: 13 }}>{isFullscreen ? "✖" : "⛶"}</span>
-            <span>{isFullscreen ? "EXIT FS" : "FULLSCREEN"}</span>
+            <span>{isFullscreen ? "✖" : "⛶"}</span>
           </button>
 
-          {/* 4. LOGOUT BUTTON */}
+          {/* Logout */}
           <button
             id="admin-logout-btn"
             type="button"
             onClick={handleLogout}
             style={{
-              padding: "7px 14px",
+              padding: "6px 12px",
               fontSize: 12,
-              letterSpacing: ".08em",
-              backgroundColor: "rgba(255, 255, 255, 0.05)",
-              border: "1px solid rgba(255, 255, 255, 0.18)",
-              color: "#d0d0d8",
-              borderRadius: 4,
+              backgroundColor: "#ffffff",
+              border: "1px solid #fecaca",
+              color: "#dc2626",
+              borderRadius: 6,
               cursor: "pointer",
-              fontWeight: 800,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
+              fontWeight: 500,
               transition: "all 0.15s ease",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
             }}
             title="Log out of Admin Console"
           >
-            <span>LOGOUT</span>
+            Sign Out
           </button>
         </div>
       </header>
@@ -1465,14 +1567,15 @@ export default function AdminDashboard() {
       {statusMessage && (
         <div
           style={{
-            backgroundColor: "#0e1814",
-            borderBottom: "1px solid #36e0c4",
-            padding: "10px 28px",
+            backgroundColor: "#ecfdf5",
+            borderBottom: "1px solid #a7f3d0",
+            padding: "9px 28px",
             fontSize: 13,
-            color: "#36e0c4",
+            color: "#065f46",
             display: "flex",
             alignItems: "center",
-            gap: 10,
+            gap: 8,
+            fontWeight: 500,
           }}
         >
           <span>✓</span>
@@ -1480,99 +1583,136 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── MAIN SCROLLABLE CONTENT AREA ── */}
+      {/* ── MAIN CONTENT AREA ── */}
       <main
         style={{
           flex: 1,
-          padding: "24px 32px 80px 32px",
-          maxWidth: "1400px",
+          padding: "24px 28px 80px 28px",
+          maxWidth: "1480px",
           width: "100%",
           margin: "0 auto",
           boxSizing: "border-box",
         }}
       >
         {/* ─────────────────────────────────────────────────────────────────── */}
-        {/* TAB 1: LIVE LEADERBOARD (DASHBOARD) */}
+        {/* TAB 1: UNLOCK CHAPTERS & STAGE CONTROLS */}
         {/* ─────────────────────────────────────────────────────────────────── */}
-        {activeTab === "dashboard" && (
-          <div>
+        {activeTab === "stages" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Header intro */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 12,
+              }}
+            >
+              <div>
+                <h2 style={{ fontSize: 18, color: "#0f172a", margin: "0 0 4px 0", fontWeight: 700, letterSpacing: "-0.01em" }}>
+                  Tournament Stages &amp; Access Controls
+                </h2>
+                <div style={{ fontSize: 13, color: "#64748b" }}>
+                  Dual-condition stage authorization switchboard, submission gates, and live tournament lifecycle state.
+                </div>
+              </div>
+            </div>
+
             {/* ── EVENT LIFECYCLE & GLOBAL CONTROLS COMMAND BAR ── */}
             <div
               style={{
-                backgroundColor: "#0d0d14",
-                border: "1px solid rgba(255, 45, 58, 0.35)",
+                backgroundColor: "#ffffff",
+                border: "1px solid #e2e8f0",
                 borderRadius: 8,
                 padding: "16px 20px",
-                marginBottom: 24,
                 display: "flex",
                 flexWrap: "wrap",
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 16,
-                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
               }}
             >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13, fontWeight: "bold", color: "#888899", letterSpacing: ".08em" }}>
-                    EVENT LIFECYCLE CONTROLS
-                  </span>
+              {/* Status Overview */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  Event Status
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 10px",
+                    borderRadius: 20,
+                    fontWeight: 600,
+                    backgroundColor:
+                      eventState.status === "active"
+                        ? "#ecfdf5"
+                        : eventState.status === "paused"
+                        ? "#fffbeb"
+                        : "#fef2f2",
+                    color:
+                      eventState.status === "active"
+                        ? "#047857"
+                        : eventState.status === "paused"
+                        ? "#b45309"
+                        : "#b91c1c",
+                    border: `1px solid ${
+                      eventState.status === "active"
+                        ? "#a7f3d0"
+                        : eventState.status === "paused"
+                        ? "#fde68a"
+                        : "#fecaca"
+                    }`,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
                   <span
                     style={{
-                      fontSize: 11,
-                      padding: "2px 8px",
-                      borderRadius: 3,
-                      fontWeight: "bold",
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
                       backgroundColor:
                         eventState.status === "active"
-                          ? "rgba(54, 224, 196, 0.2)"
+                          ? "#10b981"
                           : eventState.status === "paused"
-                          ? "rgba(255, 180, 84, 0.2)"
-                          : "rgba(255, 45, 58, 0.2)",
-                      color:
-                        eventState.status === "active"
-                          ? "#36e0c4"
-                          : eventState.status === "paused"
-                          ? "#ffb454"
-                          : "#ff2d3a",
-                      border: "1px solid currentColor",
+                          ? "#f59e0b"
+                          : "#ef4444",
                     }}
-                  >
-                    ● {eventState.status.toUpperCase()}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      padding: "2px 8px",
-                      borderRadius: 3,
-                      fontWeight: "bold",
-                      backgroundColor: eventState.submissions_open
-                        ? "rgba(54, 224, 196, 0.15)"
-                        : "rgba(255, 45, 58, 0.2)",
-                      color: eventState.submissions_open ? "#36e0c4" : "#ff2d3a",
-                      border: "1px solid currentColor",
-                    }}
-                  >
-                    SUBMISSIONS: {eventState.submissions_open ? "OPEN" : "STOPPED"}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      padding: "2px 8px",
-                      borderRadius: 3,
-                      fontWeight: "bold",
-                      backgroundColor: eventState.login_open
-                        ? "rgba(54, 224, 196, 0.15)"
-                        : "rgba(255, 45, 58, 0.2)",
-                      color: eventState.login_open ? "#36e0c4" : "#ff2d3a",
-                      border: "1px solid currentColor",
-                    }}
-                  >
-                    LOGIN: {eventState.login_open ? "OPEN" : "CLOSED"}
-                  </span>
-                </div>
+                  />
+                  {eventState.status.toUpperCase()}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 9px",
+                    borderRadius: 6,
+                    fontWeight: 500,
+                    backgroundColor: eventState.submissions_open ? "#ecfdf5" : "#fef2f2",
+                    color: eventState.submissions_open ? "#047857" : "#b91c1c",
+                    border: `1px solid ${eventState.submissions_open ? "#a7f3d0" : "#fecaca"}`,
+                  }}
+                >
+                  Submissions: {eventState.submissions_open ? "Open" : "Closed"}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    padding: "4px 9px",
+                    borderRadius: 6,
+                    fontWeight: 500,
+                    backgroundColor: eventState.login_open ? "#ecfdf5" : "#fef2f2",
+                    color: eventState.login_open ? "#047857" : "#b91c1c",
+                    border: `1px solid ${eventState.login_open ? "#a7f3d0" : "#fecaca"}`,
+                  }}
+                >
+                  Login: {eventState.login_open ? "Open" : "Closed"}
+                </span>
               </div>
 
+              {/* Action Buttons */}
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 {eventState.status === "not_started" ? (
                   <button
@@ -1580,24 +1720,21 @@ export default function AdminDashboard() {
                     disabled={isUpdatingEvent}
                     onClick={handleStartFreshEvent}
                     style={{
-                      padding: "8px 22px",
+                      padding: "6px 14px",
                       fontSize: 12,
-                      fontWeight: 900,
-                      letterSpacing: ".1em",
-                      backgroundColor: "#ff2d3a",
-                      border: "2px solid #ff5964",
+                      fontWeight: 600,
+                      backgroundColor: "#0f172a",
+                      border: "none",
                       color: "#ffffff",
-                      borderRadius: 4,
+                      borderRadius: 6,
                       cursor: "pointer",
-                      boxShadow: "0 0 20px rgba(255, 45, 58, 0.7), inset 0 0 10px rgba(0,0,0,0.4)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 6,
                     }}
-                    title="Initiate Hawkins Tournament: players can begin answering challenges"
                   >
                     <span>▶</span>
-                    <span>START EVENT</span>
+                    <span>Start Event</span>
                   </button>
                 ) : eventState.status === "paused" ? (
                   <button
@@ -1605,18 +1742,21 @@ export default function AdminDashboard() {
                     disabled={isUpdatingEvent}
                     onClick={() => updateEventStateAction({ status: "active", submissionsOpen: true, loginOpen: true })}
                     style={{
-                      padding: "7px 16px",
-                      fontSize: 11,
-                      fontWeight: "bold",
-                      letterSpacing: ".06em",
-                      backgroundColor: "rgba(54, 224, 196, 0.2)",
-                      border: "1px solid #36e0c4",
-                      color: "#36e0c4",
-                      borderRadius: 4,
+                      padding: "6px 14px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      backgroundColor: "#ecfdf5",
+                      border: "1px solid #a7f3d0",
+                      color: "#047857",
+                      borderRadius: 6,
                       cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
                     }}
                   >
-                    ▶ RESUME EVENT
+                    <span>▶</span>
+                    <span>Resume Event</span>
                   </button>
                 ) : eventState.status === "active" ? (
                   <button
@@ -1624,68 +1764,87 @@ export default function AdminDashboard() {
                     disabled={isUpdatingEvent}
                     onClick={() => updateEventStateAction({ status: "paused" })}
                     style={{
-                      padding: "7px 16px",
-                      fontSize: 11,
-                      fontWeight: "bold",
-                      letterSpacing: ".06em",
-                      backgroundColor: "rgba(255, 180, 84, 0.2)",
-                      border: "1px solid #ffb454",
-                      color: "#ffb454",
-                      borderRadius: 4,
+                      padding: "6px 14px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      backgroundColor: "#fffbeb",
+                      border: "1px solid #fde68a",
+                      color: "#b45309",
+                      borderRadius: 6,
                       cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
                     }}
                   >
-                    ⏸ PAUSE EVENT
+                    <span>⏸</span>
+                    <span>Pause Event</span>
                   </button>
                 ) : (
-                  <>
-                    <div
-                      style={{
-                        padding: "7px 16px",
-                        fontSize: 11,
-                        fontWeight: "bold",
-                        letterSpacing: ".06em",
-                        backgroundColor: "rgba(255, 45, 58, 0.1)",
-                        border: "1px solid #ff2d3a",
-                        color: "#ff2d3a",
-                        borderRadius: 4,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <span>⏹</span>
-                      <span>EVENT CONCLUDED</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={isUpdatingEvent}
-                      onClick={handleStartFreshEvent}
-                      style={{
-                        padding: "8px 22px",
-                        fontSize: 12,
-                        fontWeight: 900,
-                        letterSpacing: ".1em",
-                        backgroundColor: "#ff2d3a",
-                        border: "2px solid #ff5964",
-                        color: "#ffffff",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                        boxShadow: "0 0 20px rgba(255, 45, 58, 0.7), inset 0 0 10px rgba(0,0,0,0.4)",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                      title="Initiate fresh Hawkins Tournament: all squad scores initialize to 0 PTS with past results preserved in history"
-                    >
-                      <span>▶</span>
-                      <span>START EVENT</span>
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    disabled={isUpdatingEvent}
+                    onClick={handleStartFreshEvent}
+                    style={{
+                      padding: "6px 14px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      backgroundColor: "#0f172a",
+                      border: "none",
+                      color: "#ffffff",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <span>▶</span>
+                    <span>Start New Event</span>
+                  </button>
                 )}
 
-                {/* Reset all scores utility button */}
+                {/* Submissions Toggle */}
+                <button
+                  type="button"
+                  disabled={isUpdatingEvent || eventState.status === "ended"}
+                  onClick={() => updateEventStateAction({ submissionsOpen: !eventState.submissions_open })}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    color: eventState.status === "ended" ? "#94a3b8" : "#1e293b",
+                    borderRadius: 6,
+                    cursor: eventState.status === "ended" ? "not-allowed" : "pointer",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                  }}
+                >
+                  {eventState.submissions_open ? "Stop Submissions" : "Open Submissions"}
+                </button>
+
+                {/* Login Toggle */}
+                <button
+                  type="button"
+                  disabled={isUpdatingEvent || eventState.status === "ended"}
+                  onClick={() => updateEventStateAction({ loginOpen: !eventState.login_open })}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    color: eventState.status === "ended" ? "#94a3b8" : "#1e293b",
+                    borderRadius: 6,
+                    cursor: eventState.status === "ended" ? "not-allowed" : "pointer",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                  }}
+                >
+                  {eventState.login_open ? "Close Login" : "Open Login"}
+                </button>
+
+                {/* Reset all scores */}
                 <button
                   type="button"
                   disabled={isUpdatingEvent}
@@ -1709,75 +1868,21 @@ export default function AdminDashboard() {
                     }
                   }}
                   style={{
-                    padding: "7px 14px",
-                    fontSize: 11,
-                    fontWeight: "bold",
-                    letterSpacing: ".06em",
-                    backgroundColor: "rgba(255, 45, 58, 0.12)",
-                    border: "1px solid rgba(255, 45, 58, 0.4)",
-                    color: "#ff8088",
-                    borderRadius: 4,
+                    padding: "6px 12px",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    backgroundColor: "#fff1f2",
+                    border: "1px solid #fecdd3",
+                    color: "#e11d48",
+                    borderRadius: 6,
                     cursor: "pointer",
                   }}
-                  title="Reset all team scores and progress to 0 PTS in TiDB"
+                  title="Reset all team scores and progress to 0 PTS"
                 >
-                  ↺ RESET ALL SCORES TO 0
+                  ↺ Reset Scores
                 </button>
 
-                <button
-                  type="button"
-                  disabled={isUpdatingEvent || eventState.status === "ended"}
-                  onClick={() => updateEventStateAction({ submissionsOpen: !eventState.submissions_open })}
-                  style={{
-                    padding: "7px 14px",
-                    fontSize: 11,
-                    fontWeight: "bold",
-                    letterSpacing: ".06em",
-                    backgroundColor: eventState.status === "ended"
-                      ? "rgba(100, 100, 100, 0.15)"
-                      : eventState.submissions_open
-                      ? "rgba(255, 45, 58, 0.15)"
-                      : "rgba(54, 224, 196, 0.15)",
-                    border: eventState.status === "ended"
-                      ? "1px solid #555555"
-                      : eventState.submissions_open
-                      ? "1px solid #ff2d3a"
-                      : "1px solid #36e0c4",
-                    color: eventState.status === "ended" ? "#777777" : eventState.submissions_open ? "#ff2d3a" : "#36e0c4",
-                    borderRadius: 4,
-                    cursor: eventState.status === "ended" ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {eventState.submissions_open ? "⛔ STOP SUBMISSIONS" : "✓ OPEN SUBMISSIONS"}
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isUpdatingEvent || eventState.status === "ended"}
-                  onClick={() => updateEventStateAction({ loginOpen: !eventState.login_open })}
-                  style={{
-                    padding: "7px 14px",
-                    fontSize: 11,
-                    fontWeight: "bold",
-                    letterSpacing: ".06em",
-                    backgroundColor: eventState.status === "ended"
-                      ? "rgba(100, 100, 100, 0.15)"
-                      : eventState.login_open
-                      ? "rgba(255, 45, 58, 0.15)"
-                      : "rgba(54, 224, 196, 0.15)",
-                    border: eventState.status === "ended"
-                      ? "1px solid #555555"
-                      : eventState.login_open
-                      ? "1px solid #ff2d3a"
-                      : "1px solid #36e0c4",
-                    color: eventState.status === "ended" ? "#777777" : eventState.login_open ? "#ff2d3a" : "#36e0c4",
-                    borderRadius: 4,
-                    cursor: eventState.status === "ended" ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {eventState.login_open ? "🔒 CLOSE LOGIN" : "🔓 OPEN LOGIN"}
-                </button>
-
+                {/* End Event */}
                 <button
                   type="button"
                   disabled={isUpdatingEvent || eventState.status === "ended"}
@@ -1792,7 +1897,7 @@ export default function AdminDashboard() {
                       const d = await res.json();
                       if (d.success) {
                         sfx("ok");
-                        setStatusMessage("Tournament event successfully ended: All active sessions terminated. Final results archived into history.");
+                        setStatusMessage("Tournament event ended: Sessions terminated, results archived.");
                         setEventState((prev) => ({
                           ...prev,
                           status: "ended",
@@ -1812,31 +1917,29 @@ export default function AdminDashboard() {
                     }
                   }}
                   style={{
-                    padding: "7px 14px",
-                    fontSize: 11,
-                    fontWeight: "bold",
-                    letterSpacing: ".06em",
-                    backgroundColor: eventState.status === "ended" ? "rgba(255, 45, 58, 0.05)" : "rgba(255, 45, 58, 0.2)",
-                    border: "1px solid #ff2d3a",
-                    color: eventState.status === "ended" ? "#883338" : "#ff2d3a",
-                    borderRadius: 4,
+                    padding: "6px 12px",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    backgroundColor: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    color: eventState.status === "ended" ? "#94a3b8" : "#dc2626",
+                    borderRadius: 6,
                     cursor: eventState.status === "ended" ? "not-allowed" : "pointer",
                   }}
                 >
-                  {eventState.status === "ended" ? "⏹ EVENT ENDED" : "⏹ END EVENT"}
+                  {eventState.status === "ended" ? "⏹ Concluded" : "⏹ End Event"}
                 </button>
               </div>
             </div>
 
-            {/* TOURNAMENT STAGE ACCESS SWITCHBOARD (STAGES 1 - 6) */}
+            {/* ── TOURNAMENT STAGE ACCESS SWITCHBOARD ── */}
             <div
               style={{
-                marginBottom: 24,
-                padding: "16px 20px",
-                background: "rgba(10, 10, 18, 0.9)",
-                border: "1px solid rgba(54, 224, 196, 0.3)",
-                borderRadius: 6,
-                boxShadow: "0 4px 20px rgba(0, 0, 0, 0.45)",
+                padding: "20px",
+                background: "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
               }}
             >
               <div
@@ -1844,43 +1947,43 @@ export default function AdminDashboard() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: 12,
+                  marginBottom: 16,
                   flexWrap: "wrap",
                   gap: 10,
                 }}
               >
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        backgroundColor: "#36e0c4",
-                        boxShadow: "0 0 8px #36e0c4",
-                      }}
-                    />
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: 13,
-                        fontWeight: "bold",
-                        letterSpacing: "0.12em",
-                        color: "#36e0c4",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Tournament Stage Access Switchboard (Dual-Condition Locking)
-                    </h3>
-                  </div>
-                  <p style={{ margin: "4px 0 0 0", fontSize: 11, color: "#888899", letterSpacing: "0.04em" }}>
-                    Stages unlock for participant squads only when <strong>Condition A</strong> (prior stage cleared) AND <strong>Condition B</strong> (authorized below by Admin) are both TRUE.
+                  <h3
+                    style={{
+                      margin: 0,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      letterSpacing: "0.04em",
+                      color: "#0f172a",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Stage Access Switchboard (Dual-Condition Locking)
+                  </h3>
+                  <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                    Configure authorized stages. Squads unlock stages only when Condition A (prior stage cleared) AND Condition B (authorized below) are both TRUE.
                   </p>
                 </div>
-                <div style={{ fontSize: 11, color: "#aaaabb", fontFamily: '"Share Tech Mono", monospace' }}>
-                  AUTHORIZED STAGES:{" "}
-                  <span style={{ color: "#36e0c4", fontWeight: "bold" }}>
-                    {unlockedStages.slice().sort((a, b) => a - b).join(", ") || "NONE"}
+                <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>Authorized Stages:</span>
+                  <span
+                    style={{
+                      color: "#047857",
+                      fontWeight: 600,
+                      fontFamily: "var(--font-mono), monospace",
+                      backgroundColor: "#ecfdf5",
+                      padding: "3px 10px",
+                      borderRadius: 4,
+                      border: "1px solid #a7f3d0",
+                      fontSize: 11,
+                    }}
+                  >
+                    {unlockedStages.slice().sort((a, b) => a - b).map((s) => `STAGE ${s}`).join(", ") || "None"}
                   </span>
                 </div>
               </div>
@@ -1888,31 +1991,35 @@ export default function AdminDashboard() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-                  gap: 10,
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: 12,
                 }}
               >
                 {[
-                  { num: 1, title: "STAGE 1", name: "Hawkins Lab Breach", type: "Quiz Questions" },
-                  { num: 2, title: "STAGE 2", name: "The Void & Upside Down", type: "Connection Questions" },
-                  { num: 3, title: "STAGE 3", name: "Creel House Finale", type: "Rearrange Questions" },
-                  { num: 4, title: "STAGE 4", name: "Forensic Dossier", type: "Case Study Questions" },
-                  { num: 5, title: "STAGE 5", name: "Radio Transmission", type: "Signal Decryption" },
-                  { num: 6, title: "STAGE 6", name: "System Override", type: "Lab-Type Tasks" },
+                  { num: 1, title: "STAGE 1", name: "Hawkins Lab Breach", type: "Quiz Questions", points: 100 },
+                  { num: 2, title: "STAGE 2", name: "The Void & Upside Down", type: "Connection Questions", points: 150 },
+                  { num: 3, title: "STAGE 3", name: "Creel House Finale", type: "Rearrange Questions", points: 200 },
+                  { num: 4, title: "STAGE 4", name: "Forensic Dossier", type: "Case Study Questions", points: 250 },
+                  { num: 5, title: "STAGE 5", name: "Radio Transmission", type: "Signal Decryption", points: 300 },
+                  { num: 6, title: "STAGE 6", name: "System Override", type: "Lab-Type Tasks", points: 350 },
                 ].map((stg) => {
                   const isUnlocked = unlockedStages.includes(stg.num);
+                  const squadsOnStage = leaderboard.filter((t) => (t.currentStage || 1) === stg.num).length;
+                  const squadsSolved = leaderboard.filter((t) => t.solvedCount >= stg.num).length;
+
                   return (
                     <div
                       key={stg.num}
                       style={{
-                        background: isUnlocked ? "rgba(54, 224, 196, 0.06)" : "rgba(255, 45, 58, 0.05)",
-                        border: isUnlocked ? "1px solid rgba(54, 224, 196, 0.35)" : "1px solid rgba(255, 45, 58, 0.3)",
-                        borderRadius: 4,
-                        padding: "10px 12px",
+                        background: isUnlocked ? "#f0fdf4" : "#f8fafc",
+                        border: isUnlocked ? "1px solid #86efac" : "1px solid #e2e8f0",
+                        borderRadius: 8,
+                        padding: "14px 16px",
                         display: "flex",
                         flexDirection: "column",
                         justifyContent: "space-between",
-                        gap: 8,
+                        gap: 12,
+                        transition: "all 0.15s ease",
                       }}
                     >
                       <div>
@@ -1920,32 +2027,38 @@ export default function AdminDashboard() {
                           <span
                             style={{
                               fontSize: 11,
-                              fontWeight: "bold",
-                              color: isUnlocked ? "#36e0c4" : "#ff4d58",
-                              letterSpacing: "0.08em",
+                              fontWeight: 700,
+                              color: isUnlocked ? "#15803d" : "#64748b",
+                              letterSpacing: "0.06em",
+                              fontFamily: "var(--font-mono), monospace",
                             }}
                           >
                             {stg.title}
                           </span>
                           <span
                             style={{
-                              fontSize: 9,
-                              fontWeight: "bold",
-                              padding: "2px 6px",
-                              borderRadius: 2,
-                              background: isUnlocked ? "rgba(54, 224, 196, 0.2)" : "rgba(255, 45, 58, 0.2)",
-                              color: isUnlocked ? "#36e0c4" : "#ff6b72",
-                              letterSpacing: "0.08em",
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "2px 7px",
+                              borderRadius: 4,
+                              background: isUnlocked ? "#dcfce7" : "#e2e8f0",
+                              color: isUnlocked ? "#166534" : "#475569",
+                              border: `1px solid ${isUnlocked ? "#86efac" : "#cbd5e1"}`,
                             }}
                           >
                             {isUnlocked ? "OPEN" : "LOCKED"}
                           </span>
                         </div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#ffffff", marginTop: 4 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginTop: 6 }}>
                           {stg.name}
                         </div>
-                        <div style={{ fontSize: 10, color: "#777788", marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
                           {stg.type}
+                        </div>
+
+                        <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px dashed rgba(0,0,0,0.08)", display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b" }}>
+                          <span>Solves: <strong style={{ color: "#0f172a" }}>{squadsSolved}</strong></span>
+                          <span>Active here: <strong style={{ color: "#0f172a" }}>{squadsOnStage}</strong></span>
                         </div>
                       </div>
 
@@ -1955,320 +2068,395 @@ export default function AdminDashboard() {
                         onClick={() => handleToggleStage(stg.num, isUnlocked)}
                         style={{
                           width: "100%",
-                          padding: "6px 8px",
-                          fontSize: 10,
-                          fontWeight: "bold",
-                          letterSpacing: "0.08em",
-                          borderRadius: 3,
+                          padding: "6px 10px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          borderRadius: 6,
                           cursor: isUpdatingStage ? "not-allowed" : "pointer",
-                          background: isUnlocked ? "rgba(255, 45, 58, 0.15)" : "rgba(54, 224, 196, 0.15)",
-                          border: isUnlocked ? "1px solid #ff2d3a" : "1px solid #36e0c4",
-                          color: isUnlocked ? "#ff6b72" : "#36e0c4",
+                          background: isUnlocked ? "#ffffff" : "#0f172a",
+                          border: isUnlocked ? "1px solid #fca5a5" : "none",
+                          color: isUnlocked ? "#b91c1c" : "#ffffff",
                           transition: "all 0.15s ease",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
                         }}
                       >
-                        {isUnlocked ? "🔒 LOCK STAGE" : "🔓 UNLOCK STAGE"}
+                        {isUnlocked ? "Lock Stage" : "Unlock Stage"}
                       </button>
                     </div>
                   );
                 })}
               </div>
             </div>
+          </div>
+        )}
 
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* TAB 2: ACTIVE TOURNAMENT STANDINGS (LEADERBOARD) */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {(activeTab === "leaderboard" || activeTab === ("dashboard" as any)) && (
+          <div>
+            {/* ── TOURNAMENT STANDINGS TOOLBAR ── */}
             <div
               style={{
+                marginBottom: 16,
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 20,
-                flexWrap: "wrap",
-                gap: 14,
+                flexDirection: "column",
+                gap: 12,
               }}
             >
-              <div>
-                <h2 style={{ fontSize: 20, color: "#ffffff", margin: "0 0 4px 0", letterSpacing: ".04em" }}>
-                  Active Tournament Standings
-                </h2>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12 }}>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#36e0c4" }}>
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        backgroundColor: "#36e0c4",
-                        display: "inline-block",
-                        boxShadow: "0 0 8px #36e0c4",
-                      }}
-                    />
-                    <span style={{ fontWeight: 600 }}>LIVE REALTIME SYNC</span>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <h2 style={{ fontSize: 18, color: "#0f172a", margin: "0 0 2px 0", fontWeight: 700 }}>
+                    Tournament Standings
+                  </h2>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#64748b" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#047857", fontWeight: 500 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#10b981", boxShadow: "0 0 6px #10b981" }} />
+                      Realtime Sync
+                    </span>
+                    <span>·</span>
+                    <span>{leaderboard.length} squads registered</span>
+                    <span>·</span>
+                    <span style={{ color: "#047857", fontWeight: 600 }}>{leaderboard.filter((t) => t.isOnline).length} online</span>
                   </div>
-                  <span style={{ color: "#777788" }}>
-                    · Scores update and standings re-rank dynamically as teams solve or points are overridden.
-                  </span>
-                  <span
+                </div>
+
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddTeamModal(true)}
                     style={{
-                      fontSize: 11,
-                      padding: "2px 8px",
-                      borderRadius: 3,
-                      backgroundColor: autoRefreshEnabled ? "rgba(54, 224, 196, 0.1)" : "rgba(255, 255, 255, 0.05)",
-                      border: autoRefreshEnabled ? "1px solid rgba(54, 224, 196, 0.25)" : "1px solid rgba(255, 255, 255, 0.1)",
-                      color: autoRefreshEnabled ? "#36e0c4" : "#888899",
-                      fontWeight: "bold",
+                      padding: "7px 14px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      backgroundColor: "#0f172a",
+                      border: "none",
+                      color: "#ffffff",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                     }}
                   >
-                    ⏱ AUTO-REFRESH: {autoRefreshEnabled ? `${autoRefreshSec}s` : "PAUSED"}
-                  </span>
-                  <span style={{ color: "#555566", fontSize: 11 }}>
-                    (Total squads: {leaderboard.length})
-                  </span>
+                    <span>＋</span>
+                    <span>Register Squad</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowImportModal(true)}
+                    style={{
+                      padding: "7px 12px",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      color: "#1e293b",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+                    }}
+                  >
+                    <span>📁</span>
+                    <span>Import Squads</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (confirm("⚠️ FORCE RESET ALL ACTIVE SESSIONS?\n\nThis will invalidate all current participant login sessions and immediately unlock all squads across the event.\n\nAre you sure you want to proceed?")) {
+                        const res = await fetch("/api/admin/teams/reset-all-sessions", {
+                          method: "POST",
+                          headers: { Authorization: `Bearer ${token || ""}` },
+                        });
+                        const d = await res.json();
+                        if (d.success) {
+                          alert("✅ All active squad sessions have been purged. All accounts are now available.");
+                          loadData();
+                        } else {
+                          alert("Failed to reset sessions: " + (d.error || "Unknown error"));
+                        }
+                      }
+                    }}
+                    style={{
+                      padding: "7px 12px",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      backgroundColor: "#fff1f2",
+                      border: "1px solid #fecdd3",
+                      color: "#e11d48",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <span>🔓</span>
+                    <span>Reset Sessions</span>
+                  </button>
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  id="admin-standings-refresh-btn"
-                  onClick={() => {
-                    sfx("blip");
-                    loadData(true);
-                  }}
-                  disabled={loading}
+              {/* Filter Tabs & Search Row */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 12,
+                }}
+              >
+                {/* Segmented Filter Pills */}
+                <div
                   style={{
-                    padding: "8px 14px",
-                    fontSize: 12,
-                    letterSpacing: ".08em",
-                    backgroundColor: "rgba(255, 45, 58, 0.15)",
-                    border: "1px solid #ff2d3a",
-                    color: "#ff4d58",
-                    borderRadius: 4,
-                    cursor: loading ? "not-allowed" : "pointer",
-                    fontWeight: "bold",
                     display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    boxShadow: "0 0 10px rgba(255, 45, 58, 0.2)",
-                  }}
-                  title="Force instant sync of squad standings and online status from TiDB"
-                >
-                  <span style={{ display: "inline-block", transform: loading ? "rotate(360deg)" : "none", transition: loading ? "transform 0.8s linear infinite" : "none" }}>⟳</span>
-                  <span>{loading ? "SYNCING..." : "REFRESH STANDINGS"}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowImportModal(true)}
-                  style={{
-                    padding: "8px 14px",
-                    fontSize: 12,
-                    letterSpacing: ".08em",
-                    backgroundColor: "rgba(255, 180, 84, 0.15)",
-                    border: "1px solid #ffb454",
-                    color: "#ffb454",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
+                    gap: 2,
+                    backgroundColor: "#f1f5f9",
+                    padding: 3,
+                    borderRadius: 6,
+                    border: "1px solid #e2e8f0",
                   }}
                 >
-                  <span>📁</span>
-                  <span>IMPORT SQUADS (CSV/EXCEL)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowAddTeamModal(true)}
-                  style={{
-                    padding: "8px 14px",
-                    fontSize: 12,
-                    letterSpacing: ".08em",
-                    backgroundColor: "rgba(54, 224, 196, 0.15)",
-                    border: "1px solid #36e0c4",
-                    color: "#36e0c4",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <span>＋</span>
-                  <span>REGISTER SQUAD</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (confirm("⚠️ FORCE RESET ALL ACTIVE SESSIONS?\n\nThis will invalidate all current participant login sessions and immediately unlock all squads across the event.\n\nAre you sure you want to proceed?")) {
-                      const res = await fetch("/api/admin/teams/reset-all-sessions", {
-                        method: "POST",
-                        headers: { Authorization: `Bearer ${token || ""}` },
-                      });
-                      const d = await res.json();
-                      if (d.success) {
-                        alert("✅ All active squad sessions have been purged. All accounts are now available.");
-                        loadData();
-                      } else {
-                        alert("Failed to reset sessions: " + (d.error || "Unknown error"));
-                      }
-                    }
-                  }}
-                  style={{
-                    padding: "8px 14px",
-                    fontSize: 12,
-                    letterSpacing: ".08em",
-                    backgroundColor: "rgba(255, 45, 58, 0.15)",
-                    border: "1px solid #ff2d3a",
-                    color: "#ff2d3a",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  <span>🔓</span>
-                  <span>RESET ALL SESSIONS</span>
-                </button>
-
-                {/* Standings Filter Tabs: ALL, ONLINE, OFFLINE, VECNA */}
-                <div style={{ display: "flex", gap: 4, backgroundColor: "#07070a", padding: 2, borderRadius: 4, border: "1px solid rgba(255, 255, 255, 0.08)", flexWrap: "wrap" }}>
                   {[
-                    { id: "all", label: `ALL (${leaderboard.length})` },
-                    { id: "online", label: `ONLINE (${leaderboard.filter((t) => t.isOnline).length})` },
-                    { id: "offline", label: `OFFLINE (${leaderboard.filter((t) => !t.isOnline).length})` },
-                    { id: "vecna", label: `VECNA (${leaderboard.filter((t) => t.role === "VECNA").length})` },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => {
-                        sfx("click");
-                        setPresenceFilter(tab.id as any);
-                      }}
-                      style={{
-                        padding: "5px 10px",
-                        fontSize: 11,
-                        fontFamily: "var(--font-mono), monospace",
-                        fontWeight: 700,
-                        letterSpacing: ".06em",
-                        borderRadius: 3,
-                        border: "none",
-                        cursor: "pointer",
-                        backgroundColor: presenceFilter === tab.id ? (tab.id === "online" ? "#2e7d32" : tab.id === "vecna" ? "#b71c1c" : "#ff2d3a") : "transparent",
-                        color: presenceFilter === tab.id ? "#ffffff" : "#888899",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+                    { id: "all", label: "All", count: leaderboard.length },
+                    { id: "online", label: "Online", count: leaderboard.filter((t) => t.isOnline).length },
+                    { id: "offline", label: "Offline", count: leaderboard.filter((t) => !t.isOnline).length },
+                    { id: "vecna", label: "Vecna", count: leaderboard.filter((t) => t.role === "VECNA").length },
+                  ].map((tab) => {
+                    const isSelected = presenceFilter === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => {
+                          sfx("click");
+                          setPresenceFilter(tab.id as any);
+                        }}
+                        style={{
+                          padding: "5px 12px",
+                          fontSize: 12,
+                          fontWeight: isSelected ? 600 : 500,
+                          borderRadius: 4,
+                          border: "none",
+                          cursor: "pointer",
+                          backgroundColor: isSelected ? "#ffffff" : "transparent",
+                          color: isSelected ? "#0f172a" : "#64748b",
+                          boxShadow: isSelected ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                          transition: "all 0.15s ease",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span>{tab.label}</span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontFamily: "var(--font-mono), monospace",
+                            fontWeight: 600,
+                            color: isSelected ? "#0f172a" : "#94a3b8",
+                          }}
+                        >
+                          {tab.count}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
-                <input
-                  type="text"
-                  placeholder="Filter by team or leader..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    padding: "8px 14px",
-                    fontSize: 13,
-                    backgroundColor: "#0d0d14",
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                    borderRadius: 4,
-                    color: "#ffffff",
-                    width: "240px",
-                    fontFamily: "var(--font-mono), monospace",
-                  }}
-                />
+                {/* Search Input */}
+                <div style={{ position: "relative", minWidth: 260 }}>
+                  <input
+                    type="text"
+                    placeholder="Search squad, leader, or ID..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px 8px 32px",
+                      fontSize: 12,
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 6,
+                      color: "#0f172a",
+                      outline: "none",
+                      boxSizing: "border-box",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                    }}
+                  />
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 10,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      fontSize: 12,
+                      color: "#94a3b8",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    🔍
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Scrollable Leaderboard Table Container */}
+            {/* ── LEADERBOARD TABLE ── */}
             <div
               className="admin-scrollable"
               style={{
-                backgroundColor: "#0d0d14",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                borderRadius: 6,
+                backgroundColor: "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
                 overflowX: "auto",
                 overflowY: "auto",
                 maxHeight: "75vh",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
               }}
             >
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
                 <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
-                  <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.12)", backgroundColor: "#0b0b12", color: "#888899" }}>
-                    <th style={{ padding: "12px 16px", width: 60, backgroundColor: "#0b0b12" }}>RANK</th>
-                    <th style={{ padding: "12px 16px", backgroundColor: "#0b0b12" }}>SQUAD (NAME / LEADER)</th>
-                    <th style={{ padding: "12px 16px", backgroundColor: "#0b0b12", width: 120 }}>ROLE</th>
-                    <th style={{ padding: "12px 16px", backgroundColor: "#0b0b12", color: "#36e0c4" }}>USERNAME</th>
-                    <th style={{ padding: "12px 16px", backgroundColor: "#0b0b12", color: "#ffb454" }}>PASSWORD (RECOVERY)</th>
-                    <th style={{ padding: "12px 16px", backgroundColor: "#0b0b12" }}>STAGE / SOLVED</th>
-                    <th style={{ padding: "12px 16px", backgroundColor: "#0b0b12" }}>PRESENCE</th>
-                    <th style={{ padding: "12px 16px", textAlign: "right", backgroundColor: "#0b0b12" }}>SCORE</th>
-                    <th style={{ padding: "12px 16px", textAlign: "center", backgroundColor: "#0b0b12" }}>ACTIONS</th>
+                  <tr style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc" }}>
+                    <th style={{ padding: "11px 14px", width: 60, color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>RANK</th>
+                    <th style={{ padding: "11px 14px", color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>SQUAD</th>
+                    <th style={{ padding: "11px 14px", width: 110, color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>ROLE</th>
+                    <th style={{ padding: "11px 14px", width: 110, color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>USERNAME</th>
+                    <th style={{ padding: "11px 14px", width: 190, color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>PASSWORD RECOVERY</th>
+                    <th style={{ padding: "11px 14px", width: 160, color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>PROGRESS</th>
+                    <th style={{ padding: "11px 14px", width: 100, color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>STATUS</th>
+                    <th style={{ padding: "11px 14px", width: 100, textAlign: "right", color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>SCORE</th>
+                    <th style={{ padding: "11px 14px", width: 220, textAlign: "center", color: "#475569", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLeaderboard.map((item, idx) => {
                     const recent = recentlyUpdated[item.teamId];
                     const isRecent = recent && Date.now() - recent.timestamp < 4500;
+                    const stageNum = eventState?.status === "not_started" ? 1 : (item.currentStage || 1);
+                    const progressPercent = Math.min(100, Math.max(0, (stageNum / 6) * 100));
 
                     return (
                       <tr
                         key={item.teamId}
                         style={{
-                          borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
+                          borderBottom: "1px solid #f1f5f9",
                           backgroundColor: isRecent
-                            ? "rgba(54, 224, 196, 0.09)"
+                            ? "#ecfdf5"
                             : idx % 2 === 0
-                            ? "transparent"
-                            : "rgba(255, 255, 255, 0.015)",
-                          borderLeft: isRecent ? "3px solid #36e0c4" : "3px solid transparent",
-                          transition: "all 0.3s ease",
+                            ? "#ffffff"
+                            : "#fafafa",
+                          borderLeft: isRecent ? "3px solid #10b981" : "3px solid transparent",
+                          transition: "all 0.15s ease",
                         }}
                       >
-                        <td
-                          style={{
-                            padding: "14px 16px",
-                            fontWeight: "bold",
-                            color: isRecent ? "#36e0c4" : item.rank <= 3 ? "#ff2d3a" : "#777",
-                          }}
-                        >
-                          #{String(item.rank).padStart(2, "0")}
+                        {/* Rank */}
+                        <td style={{ padding: "12px 14px" }}>
+                          {item.rank === 1 ? (
+                            <span
+                              style={{
+                                padding: "2px 7px",
+                                borderRadius: 4,
+                                backgroundColor: "#fef3c7",
+                                color: "#92400e",
+                                border: "1px solid #fde68a",
+                                fontFamily: "var(--font-mono), monospace",
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                              }}
+                            >
+                              #01 🥇
+                            </span>
+                          ) : item.rank === 2 ? (
+                            <span
+                              style={{
+                                padding: "2px 7px",
+                                borderRadius: 4,
+                                backgroundColor: "#f1f5f9",
+                                color: "#334155",
+                                border: "1px solid #cbd5e1",
+                                fontFamily: "var(--font-mono), monospace",
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                              }}
+                            >
+                              #02 🥈
+                            </span>
+                          ) : item.rank === 3 ? (
+                            <span
+                              style={{
+                                padding: "2px 7px",
+                                borderRadius: 4,
+                                backgroundColor: "#ffedd5",
+                                color: "#9a3412",
+                                border: "1px solid #fed7aa",
+                                fontFamily: "var(--font-mono), monospace",
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                              }}
+                            >
+                              #03 🥉
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                fontFamily: "var(--font-mono), monospace",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "#64748b",
+                              }}
+                            >
+                              #{String(item.rank).padStart(2, "0")}
+                            </span>
+                          )}
                         </td>
-                        <td style={{ padding: "14px 16px" }}>
+
+                        {/* Squad */}
+                        <td style={{ padding: "12px 14px" }}>
                           <div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ fontWeight: 600, color: item.role === "VECNA" ? "#ff4d58" : "#ffffff", fontSize: 14 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontWeight: 600, color: item.role === "VECNA" ? "#dc2626" : "#0f172a", fontSize: 13.5 }}>
                                 {item.teamName}
                               </span>
                               {item.role === "VECNA" && (
                                 <span
                                   style={{
-                                    fontSize: 9.5,
-                                    padding: "2px 6px",
+                                    fontSize: 9,
+                                    padding: "2px 5px",
                                     borderRadius: 3,
-                                    backgroundColor: "rgba(255, 45, 58, 0.2)",
-                                    border: "1px solid #ff2d3a",
-                                    color: "#ff2d3a",
-                                    fontWeight: 900,
-                                    letterSpacing: "0.1em",
+                                    backgroundColor: "#fee2e2",
+                                    border: "1px solid #fca5a5",
+                                    color: "#b91c1c",
+                                    fontWeight: 700,
+                                    letterSpacing: "0.06em",
                                   }}
                                 >
                                   VECNA OPS
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: 11, color: "#666677" }}>Leader: {item.leaderName} · ID: {item.teamId}</div>
+                            <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2 }}>
+                              Leader: {item.leaderName} · ID: <span style={{ fontFamily: "var(--font-mono), monospace" }}>{item.teamId}</span>
+                            </div>
                           </div>
                         </td>
-                        <td style={{ padding: "14px 16px" }}>
+
+                        {/* Role */}
+                        <td style={{ padding: "12px 14px" }}>
                           <select
                             value={item.role === "VECNA" ? "VECNA" : "PLAYER"}
                             disabled={eventState.status === "active"}
@@ -2277,28 +2465,31 @@ export default function AdminDashboard() {
                             style={{
                               padding: "4px 8px",
                               fontSize: 11,
-                              fontWeight: "bold",
-                              letterSpacing: "0.05em",
-                              backgroundColor: item.role === "VECNA" ? "rgba(255, 45, 58, 0.15)" : "rgba(54, 224, 196, 0.15)",
-                              border: item.role === "VECNA" ? "1px solid #ff2d3a" : "1px solid #36e0c4",
-                              color: item.role === "VECNA" ? "#ff4d58" : "#36e0c4",
+                              fontWeight: 600,
+                              backgroundColor: "#ffffff",
+                              border: "1px solid #cbd5e1",
+                              color: item.role === "VECNA" ? "#dc2626" : "#0284c7",
                               borderRadius: 4,
                               cursor: eventState.status === "active" ? "not-allowed" : "pointer",
                               outline: "none",
                             }}
                           >
-                            <option value="PLAYER" style={{ backgroundColor: "#0b0b12", color: "#36e0c4" }}>
+                            <option value="PLAYER" style={{ color: "#0284c7" }}>
                               HAWKINS
                             </option>
-                            <option value="VECNA" style={{ backgroundColor: "#0b0b12", color: "#ff4d58" }}>
+                            <option value="VECNA" style={{ color: "#dc2626" }}>
                               VECNA
                             </option>
                           </select>
                         </td>
-                        <td style={{ padding: "14px 16px", fontFamily: "var(--font-mono)", color: item.role === "VECNA" ? "#ff4d58" : "#36e0c4", fontWeight: "bold" }}>
+
+                        {/* Username */}
+                        <td style={{ padding: "12px 14px", fontFamily: "var(--font-mono), monospace", color: item.role === "VECNA" ? "#dc2626" : "#334155", fontSize: 12, fontWeight: 500 }}>
                           {item.username || item.teamId}
                         </td>
-                        <td style={{ padding: "14px 16px" }}>
+
+                        {/* Password Recovery */}
+                        <td style={{ padding: "12px 14px" }}>
                           <span
                             onClick={() => {
                               const pass = item.password || (item.role === "VECNA" ? "HAWKINS1986" : "hawkins83_01");
@@ -2307,78 +2498,112 @@ export default function AdminDashboard() {
                             }}
                             title="Click to copy password"
                             style={{
-                              padding: "4px 8px",
-                              backgroundColor: item.role === "VECNA" ? "rgba(255, 45, 58, 0.15)" : "rgba(255, 180, 84, 0.12)",
-                              border: item.role === "VECNA" ? "1px solid rgba(255, 45, 58, 0.35)" : "1px solid rgba(255, 180, 84, 0.35)",
-                              color: item.role === "VECNA" ? "#ff8a80" : "#ffb454",
+                              padding: "3px 8px",
+                              backgroundColor: "#f8fafc",
+                              border: "1px solid #e2e8f0",
+                              color: "#334155",
                               borderRadius: 4,
-                              fontFamily: "var(--font-mono)",
-                              fontSize: 12,
+                              fontFamily: "var(--font-mono), monospace",
+                              fontSize: 11.5,
                               cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
                             }}
                           >
-                            {item.password || (item.role === "VECNA" ? "HAWKINS1986" : "hawkins83_01")} 📋
+                            <span>{item.password || (item.role === "VECNA" ? "HAWKINS1986" : "hawkins83_01")}</span>
+                            <span style={{ fontSize: 10, color: "#64748b" }}>⧉</span>
                           </span>
                         </td>
-                        <td style={{ padding: "14px 16px" }}>
+
+                        {/* Progress */}
+                        <td style={{ padding: "12px 14px" }}>
                           {item.role === "VECNA" ? (
-                            <span style={{ color: "#ff4d58", fontWeight: "bold", fontSize: 12 }}>Omniscient Control</span>
+                            <span style={{ color: "#dc2626", fontWeight: 500, fontSize: 12 }}>Omniscient Control</span>
                           ) : (
-                            <>
-                              <span style={{ color: "#36e0c4", fontWeight: "bold" }}>
-                                Stage {eventState?.status === "not_started" ? 1 : (item.currentStage || 1)}/6
-                              </span>
-                              <span style={{ color: "#555566", fontSize: 12, marginLeft: 6 }}>
-                                ({eventState?.status === "not_started" ? 0 : item.solvedCount} solves)
-                              </span>
-                            </>
+                            <div style={{ maxWidth: 140 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                                <span style={{ color: "#0f172a", fontWeight: 600 }}>
+                                  Stage {stageNum}/6
+                                </span>
+                                <span style={{ color: "#64748b", fontSize: 11 }}>
+                                  {eventState?.status === "not_started" ? 0 : item.solvedCount} solved
+                                </span>
+                              </div>
+                              <div
+                                style={{
+                                  width: "100%",
+                                  height: 4,
+                                  backgroundColor: "#e2e8f0",
+                                  borderRadius: 2,
+                                  marginTop: 4,
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: `${progressPercent}%`,
+                                    height: "100%",
+                                    backgroundColor: progressPercent >= 100 ? "#10b981" : "#0284c7",
+                                    borderRadius: 2,
+                                  }}
+                                />
+                              </div>
+                            </div>
                           )}
                         </td>
-                        <td style={{ padding: "14px 16px" }}>
+
+                        {/* Presence */}
+                        <td style={{ padding: "12px 14px" }}>
                           {item.isOnline ? (
                             <span
                               style={{
                                 fontSize: 11,
-                                padding: "4px 10px",
+                                padding: "3px 8px",
                                 borderRadius: 4,
-                                fontWeight: "bold",
-                                backgroundColor: "rgba(54, 224, 196, 0.15)",
-                                color: "#36e0c4",
-                                border: "1px solid rgba(54, 224, 196, 0.4)",
+                                fontWeight: 600,
+                                backgroundColor: "#ecfdf5",
+                                color: "#047857",
+                                border: "1px solid #a7f3d0",
                                 display: "inline-flex",
                                 alignItems: "center",
-                                gap: 6,
+                                gap: 5,
                               }}
                             >
-                              <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#36e0c4", boxShadow: "0 0 6px #36e0c4" }} />
-                              ONLINE
+                              <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#10b981" }} />
+                              Online
                             </span>
                           ) : (
                             <span
                               style={{
                                 fontSize: 11,
-                                padding: "4px 10px",
+                                padding: "3px 8px",
                                 borderRadius: 4,
-                                fontWeight: "bold",
-                                backgroundColor: "rgba(255, 255, 255, 0.04)",
-                                color: "#666677",
-                                border: "1px solid rgba(255, 255, 255, 0.08)",
+                                fontWeight: 500,
+                                backgroundColor: "#f1f5f9",
+                                color: "#64748b",
+                                border: "1px solid #e2e8f0",
                                 display: "inline-flex",
                                 alignItems: "center",
-                                gap: 6,
+                                gap: 5,
                               }}
                             >
-                              <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#555566" }} />
-                              OFFLINE
+                              <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#94a3b8" }} />
+                              Offline
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                          <span style={{ fontSize: 16, fontWeight: "bold", color: "#ffb454" }}>
-                            {eventState?.status === "not_started" ? 0 : (typeof item.score === "number" && !isNaN(item.score) ? item.score : 0)} PTS
+
+                        {/* Score */}
+                        <td style={{ padding: "12px 14px", textAlign: "right" }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", fontFamily: "var(--font-mono), monospace" }}>
+                            {eventState?.status === "not_started" ? 0 : (typeof item.score === "number" && !isNaN(item.score) ? item.score : 0)}
                           </span>
+                          <span style={{ fontSize: 11, color: "#64748b", marginLeft: 3 }}>pts</span>
                         </td>
-                        <td style={{ padding: "14px 16px", textAlign: "center" }}>
+
+                        {/* Actions */}
+                        <td style={{ padding: "12px 14px", textAlign: "center" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
                             <button
                               type="button"
@@ -2386,16 +2611,16 @@ export default function AdminDashboard() {
                               style={{
                                 padding: "4px 8px",
                                 fontSize: 11,
-                                fontWeight: "bold",
-                                backgroundColor: "rgba(255, 45, 58, 0.15)",
-                                border: "1px solid rgba(255, 45, 58, 0.4)",
-                                color: "#ff4d58",
+                                fontWeight: 500,
+                                backgroundColor: "#ffffff",
+                                border: "1px solid #cbd5e1",
+                                color: "#1e293b",
                                 borderRadius: 4,
                                 cursor: "pointer",
-                                letterSpacing: ".04em",
+                                transition: "all 0.15s ease",
                               }}
                             >
-                              VIEW PERFORMANCE
+                              Performance
                             </button>
                             <button
                               type="button"
@@ -2403,12 +2628,13 @@ export default function AdminDashboard() {
                               style={{
                                 padding: "4px 8px",
                                 fontSize: 11,
-                                fontWeight: "bold",
-                                backgroundColor: "rgba(54, 224, 196, 0.12)",
-                                border: "1px solid rgba(54, 224, 196, 0.35)",
-                                color: "#36e0c4",
+                                fontWeight: 500,
+                                backgroundColor: "#f8fafc",
+                                border: "1px solid #e2e8f0",
+                                color: "#475569",
                                 borderRadius: 4,
                                 cursor: "pointer",
+                                transition: "all 0.15s ease",
                               }}
                             >
                               Dossier
@@ -2417,10 +2643,8 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={async () => {
                                 if (confirm(`Force logout squad "${item.teamName}"?`)) {
-                                  // 1. Instant local/socket revocation dispatch
                                   publish({ type: "force_logout", target: item.teamId });
                                   publish({ type: "force_logout", target: item.teamName });
-                                  // 2. Authoritative backend termination
                                   await fetch("/api/admin/teams/force-logout", {
                                     method: "POST",
                                     headers: {
@@ -2429,7 +2653,6 @@ export default function AdminDashboard() {
                                     },
                                     body: JSON.stringify({ teamId: item.teamId }),
                                   });
-                                  // 3. Immediately reflect in local state without delay
                                   setLeaderboard((prev) =>
                                     prev.map((t) => (t.teamId === item.teamId ? { ...t, isOnline: false, status: "OFFLINE", hasSession: false } : t))
                                   );
@@ -2439,12 +2662,13 @@ export default function AdminDashboard() {
                               style={{
                                 padding: "4px 8px",
                                 fontSize: 11,
-                                fontWeight: "bold",
-                                backgroundColor: "rgba(255, 45, 58, 0.12)",
-                                border: "1px solid rgba(255, 45, 58, 0.35)",
-                                color: "#ff2d3a",
+                                fontWeight: 500,
+                                backgroundColor: "#fff1f2",
+                                border: "1px solid #fecdd3",
+                                color: "#dc2626",
                                 borderRadius: 4,
                                 cursor: "pointer",
+                                transition: "all 0.15s ease",
                               }}
                             >
                               Force Out
@@ -2456,8 +2680,8 @@ export default function AdminDashboard() {
                   })}
                   {filteredLeaderboard.length === 0 && (
                     <tr>
-                      <td colSpan={9} style={{ padding: "32px", textAlign: "center", color: "#666" }}>
-                        {loading ? "Loading tournament data..." : "No teams match the filter criteria."}
+                      <td colSpan={9} style={{ padding: "32px", textAlign: "center", color: "#64748b" }}>
+                        {loading ? "Loading tournament data..." : "No squads match the filter criteria."}
                       </td>
                     </tr>
                   )}
@@ -2468,26 +2692,26 @@ export default function AdminDashboard() {
         )}
 
         {/* ─────────────────────────────────────────────────────────────────── */}
-        {/* TAB 2: QUESTIONS CONFIGURATION (CHAPTER-WISE CARDS) */}
+        {/* TAB 3: QUESTIONS CONFIGURATION (CHAPTER-WISE CARDS) */}
         {/* ─────────────────────────────────────────────────────────────────── */}
         {activeTab === "questions" && (
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Header & Actions */}
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: 20,
                 flexWrap: "wrap",
                 gap: 12,
               }}
             >
               <div>
-                <h2 style={{ fontSize: 20, color: "#ffffff", margin: "0 0 4px 0", fontWeight: "bold" }}>
-                  Chapters & Questions ({chapters.length})
+                <h2 style={{ fontSize: 18, color: "#0f172a", margin: "0 0 4px 0", fontWeight: 700, letterSpacing: "-0.01em" }}>
+                  Chapters &amp; Challenges ({chapters.length})
                 </h2>
-                <div style={{ fontSize: 12, color: "#777788" }}>
-                  Select a chapter card below to view its question, options, and answer key.
+                <div style={{ fontSize: 13, color: "#64748b" }}>
+                  Select a chapter below to inspect question prompts, multiple-choice options, and archive lore configuration.
                 </div>
               </div>
 
@@ -2495,16 +2719,19 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={handleResetDefaults}
                 style={{
-                  padding: "6px 14px",
+                  padding: "7px 14px",
                   fontSize: 12,
-                  backgroundColor: "transparent",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  color: "#aaaaaa",
-                  borderRadius: 4,
+                  fontWeight: 500,
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#334155",
+                  borderRadius: 6,
                   cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
                 }}
               >
-                Reset Defaults
+                Reset to Defaults
               </button>
             </div>
 
@@ -2512,9 +2739,8 @@ export default function AdminDashboard() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
-                gap: 12,
-                marginBottom: 24,
+                gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                gap: 10,
               }}
             >
               {chapters.map((ch) => {
@@ -2528,11 +2754,11 @@ export default function AdminDashboard() {
                     }}
                     style={{
                       padding: "14px 16px",
-                      borderRadius: 6,
+                      borderRadius: 8,
                       cursor: "pointer",
-                      backgroundColor: isSelected ? "rgba(255, 45, 58, 0.1)" : "#0d0d14",
-                      border: isSelected ? "1px solid #ff2d3a" : "1px solid rgba(255, 255, 255, 0.08)",
-                      boxShadow: isSelected ? "0 4px 16px rgba(255, 45, 58, 0.18)" : "none",
+                      backgroundColor: isSelected ? "#fef2f2" : "#ffffff",
+                      border: isSelected ? "2px solid #ef4444" : "1px solid #e2e8f0",
+                      boxShadow: isSelected ? "0 4px 12px rgba(239, 68, 68, 0.12)" : "0 1px 2px rgba(0,0,0,0.03)",
                       transition: "all 0.15s ease",
                       display: "flex",
                       flexDirection: "column",
@@ -2543,31 +2769,33 @@ export default function AdminDashboard() {
                       <span
                         style={{
                           fontSize: 11,
-                          fontWeight: "bold",
-                          letterSpacing: ".1em",
-                          color: isSelected ? "#ff2d3a" : "#888899",
+                          fontWeight: 700,
+                          letterSpacing: "0.06em",
+                          color: isSelected ? "#dc2626" : "#64748b",
                         }}
                       >
-                        CHAPTER {ch.id}
+                        STAGE {ch.id}
                       </span>
                       <span
                         style={{
                           fontSize: 10,
                           padding: "2px 6px",
-                          borderRadius: 3,
-                          backgroundColor: "rgba(255, 255, 255, 0.05)",
-                          color: "#aaaaaa",
+                          borderRadius: 4,
+                          backgroundColor: isSelected ? "#fee2e2" : "#f1f5f9",
+                          color: isSelected ? "#991b1b" : "#475569",
+                          fontFamily: "var(--font-mono), monospace",
+                          fontWeight: 600,
                         }}
                       >
-                        {ch.points || 100} PTS
+                        {ch.points || 100} pts
                       </span>
                     </div>
 
                     <div
                       style={{
                         fontSize: 13,
-                        fontWeight: 600,
-                        color: isSelected ? "#ffffff" : "#cccccc",
+                        fontWeight: 700,
+                        color: isSelected ? "#0f172a" : "#334155",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -2579,14 +2807,15 @@ export default function AdminDashboard() {
                     <div
                       style={{
                         fontSize: 11,
-                        color: isSelected ? "#ff2d3a" : "#666677",
+                        color: isSelected ? "#dc2626" : "#94a3b8",
                         display: "flex",
                         alignItems: "center",
-                        gap: 4,
-                        marginTop: 4,
+                        gap: 5,
+                        marginTop: 2,
                       }}
                     >
-                      {isSelected ? "● Viewing" : "Click to view"}
+                      <span style={{ fontSize: 8 }}>{isSelected ? "●" : "○"}</span>
+                      <span>{isSelected ? "Active View" : "Click to inspect"}</span>
                     </div>
                   </div>
                 );
@@ -2597,13 +2826,14 @@ export default function AdminDashboard() {
             {activeChapter ? (
               <div
                 style={{
-                  backgroundColor: "#0d0d14",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  borderRadius: 6,
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
                   padding: "24px",
                   display: "flex",
                   flexDirection: "column",
                   gap: 20,
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
                 }}
               >
                 {/* Header row with Chapter Title and Action buttons */}
@@ -2614,48 +2844,53 @@ export default function AdminDashboard() {
                     alignItems: "center",
                     flexWrap: "wrap",
                     gap: 12,
-                    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+                    borderBottom: "1px solid #e2e8f0",
                     paddingBottom: 16,
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span
                       style={{
-                        fontSize: 12,
-                        fontWeight: "bold",
-                        letterSpacing: ".1em",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: "0.06em",
                         padding: "4px 10px",
-                        borderRadius: 3,
-                        backgroundColor: "rgba(255, 45, 58, 0.15)",
-                        color: "#ff2d3a",
+                        borderRadius: 6,
+                        backgroundColor: "#fee2e2",
+                        color: "#b91c1c",
+                        border: "1px solid #fca5a5",
                       }}
                     >
-                      CHAPTER {activeChapter.id}
+                      STAGE {activeChapter.id}
                     </span>
                     <div>
-                      <h3 style={{ fontSize: 18, color: "#ffffff", margin: 0, fontWeight: 600 }}>
+                      <h3 style={{ fontSize: 17, color: "#0f172a", margin: 0, fontWeight: 700 }}>
                         {activeChapter.archiveTitle || `Chapter ${activeChapter.id}`}
                       </h3>
-                      <div style={{ fontSize: 12, color: "#777788", marginTop: 2 }}>
-                        Points: <span style={{ color: "#36e0c4", fontWeight: "bold" }}>{activeChapter.points || 100} PTS</span>
+                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                        Points Awarded:{" "}
+                        <span style={{ color: "#0284c7", fontWeight: 700, fontFamily: "var(--font-mono), monospace" }}>
+                          {activeChapter.points || 100} pts
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <button
                       type="button"
                       onClick={() => openEditModal(activeChapter)}
                       style={{
-                        padding: "8px 16px",
+                        padding: "7px 14px",
                         fontSize: 12,
-                        letterSpacing: ".06em",
-                        backgroundColor: "rgba(255, 255, 255, 0.08)",
-                        border: "1px solid rgba(255, 255, 255, 0.2)",
-                        color: "#ffffff",
-                        borderRadius: 4,
-                        cursor: "pointer",
                         fontWeight: 600,
+                        backgroundColor: "#0f172a",
+                        border: "none",
+                        color: "#ffffff",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                       }}
                     >
                       Edit Question
@@ -2665,14 +2900,15 @@ export default function AdminDashboard() {
                       type="button"
                       onClick={() => handleDeleteChapter(activeChapter.id)}
                       style={{
-                        padding: "8px 12px",
+                        padding: "7px 12px",
                         fontSize: 12,
-                        letterSpacing: ".06em",
-                        backgroundColor: "transparent",
-                        border: "1px solid rgba(255, 45, 58, 0.3)",
-                        color: "#ff2d3a",
-                        borderRadius: 4,
+                        fontWeight: 500,
+                        backgroundColor: "#fff1f2",
+                        border: "1px solid #fecdd3",
+                        color: "#dc2626",
+                        borderRadius: 6,
                         cursor: "pointer",
+                        transition: "all 0.15s ease",
                       }}
                     >
                       Delete
@@ -2685,23 +2921,24 @@ export default function AdminDashboard() {
                   <div
                     style={{
                       fontSize: 11,
-                      letterSpacing: ".15em",
-                      color: "#888899",
+                      letterSpacing: "0.08em",
+                      color: "#64748b",
                       marginBottom: 8,
-                      fontWeight: "bold",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
                     }}
                   >
-                    QUESTION PROMPT
+                    Question Prompt
                   </div>
                   <div
                     style={{
-                      fontSize: 15,
+                      fontSize: 14,
                       lineHeight: 1.6,
-                      color: "#ffffff",
-                      backgroundColor: "#060609",
+                      color: "#0f172a",
+                      backgroundColor: "#f8fafc",
                       padding: "16px 20px",
-                      borderRadius: 4,
-                      border: "1px solid rgba(255, 255, 255, 0.06)",
+                      borderRadius: 8,
+                      border: "1px solid #e2e8f0",
                     }}
                   >
                     {activeChapter.questionPrompt || "Question not yet configured for this chapter."}
@@ -2714,19 +2951,20 @@ export default function AdminDashboard() {
                     <div
                       style={{
                         fontSize: 11,
-                        letterSpacing: ".15em",
-                        color: "#888899",
+                        letterSpacing: "0.08em",
+                        color: "#64748b",
                         marginBottom: 10,
-                        fontWeight: "bold",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
                       }}
                     >
-                      OPTIONS & ANSWER KEY
+                      Options &amp; Secret Key
                     </div>
                     <div
                       style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                        gap: 12,
+                        gap: 10,
                       }}
                     >
                       {activeChapter.options.map((opt) => {
@@ -2736,35 +2974,38 @@ export default function AdminDashboard() {
                             key={opt.id}
                             style={{
                               padding: "12px 16px",
-                              borderRadius: 4,
-                              backgroundColor: isCorrect ? "rgba(54, 224, 196, 0.08)" : "#07070b",
-                              border: isCorrect ? "1px solid #36e0c4" : "1px solid rgba(255, 255, 255, 0.06)",
-                              color: isCorrect ? "#36e0c4" : "#cccccc",
+                              borderRadius: 8,
+                              backgroundColor: isCorrect ? "#ecfdf5" : "#ffffff",
+                              border: isCorrect ? "1px solid #86efac" : "1px solid #e2e8f0",
+                              color: isCorrect ? "#065f46" : "#334155",
                               fontSize: 13,
                               display: "flex",
                               alignItems: "center",
-                              gap: 12,
+                              gap: 10,
+                              boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
                             }}
                           >
                             <span
                               style={{
-                                fontWeight: "bold",
-                                fontSize: 13,
-                                color: isCorrect ? "#36e0c4" : "#888899",
+                                fontWeight: 700,
+                                fontSize: 12,
+                                color: isCorrect ? "#047857" : "#64748b",
+                                fontFamily: "var(--font-mono), monospace",
                               }}
                             >
                               [{opt.id}]
                             </span>
-                            <span style={{ flex: 1, lineHeight: 1.4 }}>{opt.text}</span>
+                            <span style={{ flex: 1, lineHeight: 1.4, fontWeight: isCorrect ? 600 : 400 }}>{opt.text}</span>
                             {isCorrect && (
                               <span
                                 style={{
-                                  fontSize: 11,
-                                  fontWeight: "bold",
-                                  color: "#36e0c4",
-                                  backgroundColor: "rgba(54, 224, 196, 0.15)",
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: "#166534",
+                                  backgroundColor: "#dcfce7",
+                                  border: "1px solid #86efac",
                                   padding: "2px 8px",
-                                  borderRadius: 3,
+                                  borderRadius: 4,
                                 }}
                               >
                                 ✓ Answer
@@ -2783,22 +3024,23 @@ export default function AdminDashboard() {
                     <div
                       style={{
                         fontSize: 11,
-                        letterSpacing: ".15em",
-                        color: "#888899",
+                        letterSpacing: "0.08em",
+                        color: "#64748b",
                         marginBottom: 8,
-                        fontWeight: "bold",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
                       }}
                     >
-                      ARCHIVE LORE & BRIEFING
+                      Archive Lore &amp; Dossier Notes
                     </div>
                     <div
                       style={{
-                        backgroundColor: "#060609",
+                        backgroundColor: "#f8fafc",
                         padding: "14px 18px",
-                        borderRadius: 4,
-                        border: "1px solid rgba(255, 255, 255, 0.04)",
-                        fontSize: 12,
-                        color: "#8888aa",
+                        borderRadius: 8,
+                        border: "1px solid #e2e8f0",
+                        fontSize: 13,
+                        color: "#475569",
                         lineHeight: 1.6,
                         fontStyle: "italic",
                       }}
@@ -2811,34 +3053,34 @@ export default function AdminDashboard() {
                 )}
               </div>
             ) : (
-              <div style={{ padding: "40px", textAlign: "center", color: "#666" }}>
-                {loading ? "Loading chapters..." : "No chapters found. Click 'Reset Defaults' to populate the 7 chapters."}
+              <div style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>
+                {loading ? "Loading chapters..." : "No chapters found. Click 'Reset Defaults' to populate the chapters."}
               </div>
             )}
           </div>
         )}
 
         {/* ─────────────────────────────────────────────────────────────────── */}
-        {/* TAB 3: SYSTEM & SUBMISSION LOGS (WITH CONNECTION TOPOLOGY) */}
+        {/* TAB 4: SYSTEM & SUBMISSION LOGS (WITH CONNECTION TOPOLOGY) */}
         {/* ─────────────────────────────────────────────────────────────────── */}
         {activeTab === "logs" && (
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Header & Re-sync */}
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: 20,
                 flexWrap: "wrap",
                 gap: 12,
               }}
             >
               <div>
-                <h2 style={{ fontSize: 20, color: "#ffffff", margin: "0 0 4px 0", fontWeight: "bold" }}>
-                  System &amp; Connection Telemetry
+                <h2 style={{ fontSize: 18, color: "#0f172a", margin: "0 0 4px 0", fontWeight: 700, letterSpacing: "-0.01em" }}>
+                  System Telemetry &amp; Network Bridges
                 </h2>
-                <div style={{ fontSize: 12, color: "#777788" }}>
-                  Live status tracking: Main Page ↔ Admin Console ↔ TiDB Serverless &amp; Socket.IO Leaderboard.
+                <div style={{ fontSize: 13, color: "#64748b" }}>
+                  Live infrastructure telemetry: Main Game Client ↔ Admin Console ↔ TiDB Serverless &amp; Socket.IO Leaderboard.
                 </div>
               </div>
 
@@ -2848,15 +3090,17 @@ export default function AdminDashboard() {
                 style={{
                   padding: "7px 16px",
                   fontSize: 12,
-                  fontWeight: "bold",
-                  backgroundColor: "rgba(54, 224, 196, 0.15)",
-                  border: "1px solid #36e0c4",
-                  color: "#36e0c4",
-                  borderRadius: 4,
+                  fontWeight: 600,
+                  backgroundColor: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  color: "#1d4ed8",
+                  borderRadius: 6,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  gap: 6,
+                  gap: 8,
+                  transition: "all 0.15s ease",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
                 }}
               >
                 <span>⚡</span>
@@ -2869,48 +3113,51 @@ export default function AdminDashboard() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                gap: 14,
-                marginBottom: 24,
+                gap: 12,
               }}
             >
               {/* CARD 1: MAIN PAGE CLIENT */}
               <div
                 style={{
-                  backgroundColor: "#0d0d14",
-                  border: "1px solid rgba(54, 224, 196, 0.3)",
-                  borderRadius: 6,
-                  padding: "16px 18px",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  padding: "18px 20px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 8,
+                  gap: 10,
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 11, letterSpacing: ".1em", color: "#888899", fontWeight: "bold" }}>
-                    MAIN GAME CLIENT
+                  <span style={{ fontSize: 11, letterSpacing: "0.08em", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+                    Main Game Client
                   </span>
                   <span
                     style={{
-                      fontSize: 11,
-                      fontWeight: "bold",
+                      fontSize: 10,
+                      fontWeight: 700,
                       padding: "2px 8px",
-                      borderRadius: 3,
-                      backgroundColor: "rgba(54, 224, 196, 0.15)",
-                      color: "#36e0c4",
-                      border: "1px solid rgba(54, 224, 196, 0.4)",
+                      borderRadius: 12,
+                      backgroundColor: "#ecfdf5",
+                      color: "#047857",
+                      border: "1px solid #a7f3d0",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
                     }}
                   >
-                    ● CONNECTED
+                    <span style={{ fontSize: 7 }}>●</span> CONNECTED
                   </span>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
                   Bridge: Main Page ↔ Admin Console
                 </div>
-                <div style={{ fontSize: 12, color: "#8888aa" }}>
+                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
                   {connStatus.mainPage.details}
                 </div>
-                <div style={{ fontSize: 11, color: "#36e0c4", display: "flex", gap: 8, marginTop: 4 }}>
-                  <span>Latency: {connStatus.mainPage.latency}</span>
+                <div style={{ fontSize: 11, color: "#64748b", display: "flex", gap: 8, marginTop: 4, fontFamily: "var(--font-mono), monospace" }}>
+                  <span style={{ color: "#0284c7", fontWeight: 600 }}>Latency: {connStatus.mainPage.latency}</span>
                   <span>·</span>
                   <span>{connStatus.mainPage.lastPing}</span>
                 </div>
@@ -2919,41 +3166,45 @@ export default function AdminDashboard() {
               {/* CARD 2: LEADERBOARD REAL-TIME */}
               <div
                 style={{
-                  backgroundColor: "#0d0d14",
-                  border: "1px solid rgba(54, 224, 196, 0.3)",
-                  borderRadius: 6,
-                  padding: "16px 18px",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  padding: "18px 20px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 8,
+                  gap: 10,
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 11, letterSpacing: ".1em", color: "#888899", fontWeight: "bold" }}>
-                    LEADERBOARD REAL-TIME
+                  <span style={{ fontSize: 11, letterSpacing: "0.08em", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+                    Leaderboard Broadcast
                   </span>
                   <span
                     style={{
-                      fontSize: 11,
-                      fontWeight: "bold",
+                      fontSize: 10,
+                      fontWeight: 700,
                       padding: "2px 8px",
-                      borderRadius: 3,
-                      backgroundColor: "rgba(54, 224, 196, 0.15)",
-                      color: "#36e0c4",
-                      border: "1px solid rgba(54, 224, 196, 0.4)",
+                      borderRadius: 12,
+                      backgroundColor: "#ecfdf5",
+                      color: "#047857",
+                      border: "1px solid #a7f3d0",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
                     }}
                   >
-                    ● SYNCHRONIZED
+                    <span style={{ fontSize: 7 }}>●</span> SYNCHRONIZED
                   </span>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
                   Channel: {connStatus.leaderboard.channel}
                 </div>
-                <div style={{ fontSize: 12, color: "#8888aa" }}>
-                  Postgres real-time change stream active on table &apos;teams&apos;
+                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+                  Live broadcast stream active across all connected squads
                 </div>
-                <div style={{ fontSize: 11, color: "#36e0c4", display: "flex", gap: 8, marginTop: 4 }}>
-                  <span>Roster: {leaderboard.length} Squads Active</span>
+                <div style={{ fontSize: 11, color: "#64748b", display: "flex", gap: 8, marginTop: 4, fontFamily: "var(--font-mono), monospace" }}>
+                  <span style={{ color: "#0284c7", fontWeight: 600 }}>Roster: {leaderboard.length} Squads Active</span>
                   <span>·</span>
                   <span>Live Push Enabled</span>
                 </div>
@@ -2962,41 +3213,45 @@ export default function AdminDashboard() {
               {/* CARD 3: ADMIN COMMAND BRIDGE */}
               <div
                 style={{
-                  backgroundColor: "#0d0d14",
-                  border: "1px solid rgba(255, 45, 58, 0.3)",
-                  borderRadius: 6,
-                  padding: "16px 18px",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  padding: "18px 20px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 8,
+                  gap: 10,
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 11, letterSpacing: ".1em", color: "#888899", fontWeight: "bold" }}>
-                    ADMIN COMMAND BRIDGE
+                  <span style={{ fontSize: 11, letterSpacing: "0.08em", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+                    Admin Command Bridge
                   </span>
                   <span
                     style={{
-                      fontSize: 11,
-                      fontWeight: "bold",
+                      fontSize: 10,
+                      fontWeight: 700,
                       padding: "2px 8px",
-                      borderRadius: 3,
-                      backgroundColor: "rgba(255, 45, 58, 0.15)",
-                      color: "#ff2d3a",
-                      border: "1px solid rgba(255, 45, 58, 0.4)",
+                      borderRadius: 12,
+                      backgroundColor: "#eff6ff",
+                      color: "#1d4ed8",
+                      border: "1px solid #bfdbfe",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
                     }}
                   >
-                    ● ONLINE
+                    <span style={{ fontSize: 7 }}>●</span> ONLINE
                   </span>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>
-                  TiDB Serverless Distributed SQL &amp; Port {connStatus.adminBridge.backendPort}
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
+                  Database: Port {connStatus.adminBridge.backendPort}
                 </div>
-                <div style={{ fontSize: 12, color: "#8888aa" }}>
-                  Master clearance authenticated (Full R/W)
+                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>
+                  Master clearance authenticated (Full R/W privileges)
                 </div>
-                <div style={{ fontSize: 11, color: "#ffb454", display: "flex", gap: 8, marginTop: 4 }}>
-                  <span>Latency: {connStatus.adminBridge.latency}</span>
+                <div style={{ fontSize: 11, color: "#64748b", display: "flex", gap: 8, marginTop: 4, fontFamily: "var(--font-mono), monospace" }}>
+                  <span style={{ color: "#0284c7", fontWeight: 600 }}>Latency: {connStatus.adminBridge.latency}</span>
                   <span>·</span>
                   <span>Source: {dataSource.toUpperCase()}</span>
                 </div>
@@ -3006,24 +3261,29 @@ export default function AdminDashboard() {
             {/* Filter Buttons */}
             <div
               style={{
-                display: "flex",
-                gap: 8,
-                marginBottom: 14,
-                flexWrap: "wrap",
+                display: "inline-flex",
+                backgroundColor: "#f1f5f9",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: 3,
+                gap: 2,
+                width: "fit-content",
               }}
             >
               <button
                 type="button"
                 onClick={() => setLogFilter("all")}
                 style={{
-                  padding: "6px 12px",
+                  padding: "6px 14px",
                   fontSize: 12,
-                  borderRadius: 4,
-                  border: logFilter === "all" ? "1px solid #36e0c4" : "1px solid rgba(255,255,255,0.08)",
-                  backgroundColor: logFilter === "all" ? "rgba(54, 224, 196, 0.15)" : "transparent",
-                  color: logFilter === "all" ? "#36e0c4" : "#888899",
-                  cursor: "pointer",
                   fontWeight: 600,
+                  borderRadius: 6,
+                  border: "none",
+                  backgroundColor: logFilter === "all" ? "#ffffff" : "transparent",
+                  color: logFilter === "all" ? "#0f172a" : "#64748b",
+                  boxShadow: logFilter === "all" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
                 }}
               >
                 All Activity ({logs.length})
@@ -3032,14 +3292,16 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => setLogFilter("connections")}
                 style={{
-                  padding: "6px 12px",
+                  padding: "6px 14px",
                   fontSize: 12,
-                  borderRadius: 4,
-                  border: logFilter === "connections" ? "1px solid #36e0c4" : "1px solid rgba(255,255,255,0.08)",
-                  backgroundColor: logFilter === "connections" ? "rgba(54, 224, 196, 0.15)" : "transparent",
-                  color: logFilter === "connections" ? "#36e0c4" : "#888899",
-                  cursor: "pointer",
                   fontWeight: 600,
+                  borderRadius: 6,
+                  border: "none",
+                  backgroundColor: logFilter === "connections" ? "#ffffff" : "transparent",
+                  color: logFilter === "connections" ? "#0f172a" : "#64748b",
+                  boxShadow: logFilter === "connections" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
                 }}
               >
                 Connections &amp; Handshakes ({logs.filter((l) => l.type === "connection" || l.status === "CONNECTED" || l.status === "SYNCED").length})
@@ -3048,39 +3310,43 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => setLogFilter("submissions")}
                 style={{
-                  padding: "6px 12px",
+                  padding: "6px 14px",
                   fontSize: 12,
-                  borderRadius: 4,
-                  border: logFilter === "submissions" ? "1px solid #36e0c4" : "1px solid rgba(255,255,255,0.08)",
-                  backgroundColor: logFilter === "submissions" ? "rgba(54, 224, 196, 0.15)" : "transparent",
-                  color: logFilter === "submissions" ? "#36e0c4" : "#888899",
-                  cursor: "pointer",
                   fontWeight: 600,
+                  borderRadius: 6,
+                  border: "none",
+                  backgroundColor: logFilter === "submissions" ? "#ffffff" : "transparent",
+                  color: logFilter === "submissions" ? "#0f172a" : "#64748b",
+                  boxShadow: logFilter === "submissions" ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
                 }}
               >
                 Submissions ({logs.filter((l) => l.type === "submission" || l.status === "SUCCESS" || l.status === "FAILED").length})
               </button>
             </div>
 
+            {/* Log Table */}
             <div
               className="admin-scrollable"
               style={{
-                backgroundColor: "#0d0d14",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                borderRadius: 6,
+                backgroundColor: "#ffffff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
                 overflowX: "auto",
                 overflowY: "auto",
                 maxHeight: "65vh",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
               }}
             >
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
                 <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
-                  <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.12)", backgroundColor: "#0b0b12", color: "#888899" }}>
-                    <th style={{ padding: "12px 16px", width: 110, backgroundColor: "#0b0b12" }}>TIME</th>
-                    <th style={{ padding: "12px 16px", width: 170, backgroundColor: "#0b0b12" }}>COMPONENT / SQUAD</th>
-                    <th style={{ padding: "12px 16px", backgroundColor: "#0b0b12" }}>EVENT / ACTION</th>
-                    <th style={{ padding: "12px 16px", width: 130, backgroundColor: "#0b0b12" }}>STATUS</th>
-                    <th style={{ padding: "12px 16px", width: 90, textAlign: "right", backgroundColor: "#0b0b12" }}>LATENCY</th>
+                  <tr style={{ borderBottom: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569" }}>
+                    <th style={{ padding: "12px 16px", width: 110, fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Time</th>
+                    <th style={{ padding: "12px 16px", width: 170, fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Component / Squad</th>
+                    <th style={{ padding: "12px 16px", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Event / Action</th>
+                    <th style={{ padding: "12px 16px", width: 130, fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Status</th>
+                    <th style={{ padding: "12px 16px", width: 90, textAlign: "right", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Latency</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3099,50 +3365,50 @@ export default function AdminDashboard() {
                         <tr
                           key={log.id}
                           style={{
-                            borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
-                            backgroundColor: isSynced ? "rgba(255, 180, 84, 0.03)" : isConn ? "rgba(54, 224, 196, 0.02)" : "transparent",
+                            borderBottom: "1px solid #f1f5f9",
+                            transition: "background-color 0.1s ease",
                           }}
                         >
-                          <td style={{ padding: "12px 16px", color: "#888899", fontSize: 12 }}>{log.timestamp}</td>
-                          <td style={{ padding: "12px 16px", fontWeight: 600, color: isConn ? "#36e0c4" : isSynced ? "#ffb454" : "#ffffff" }}>
+                          <td style={{ padding: "12px 16px", color: "#64748b", fontSize: 12, fontFamily: "var(--font-mono), monospace" }}>{log.timestamp}</td>
+                          <td style={{ padding: "12px 16px", fontWeight: 600, color: "#0f172a" }}>
                             {log.team}
                           </td>
-                          <td style={{ padding: "12px 16px", color: "#d0d0d8" }}>{log.action}</td>
+                          <td style={{ padding: "12px 16px", color: "#334155" }}>{log.action}</td>
                           <td style={{ padding: "12px 16px" }}>
                             <span
                               style={{
                                 display: "inline-block",
-                                padding: "2px 8px",
-                                borderRadius: 3,
+                                padding: "3px 9px",
+                                borderRadius: 4,
                                 fontSize: 11,
-                                fontWeight: "bold",
+                                fontWeight: 700,
                                 backgroundColor: isConn
-                                  ? "rgba(54, 224, 196, 0.12)"
+                                  ? "#ecfdf5"
                                   : isSynced
-                                  ? "rgba(255, 180, 84, 0.15)"
+                                  ? "#fffbeb"
                                   : isSuccess
-                                  ? "rgba(54, 224, 196, 0.12)"
-                                  : "rgba(255, 45, 58, 0.12)",
+                                  ? "#ecfdf5"
+                                  : "#fef2f2",
                                 color: isConn
-                                  ? "#36e0c4"
+                                  ? "#047857"
                                   : isSynced
-                                  ? "#ffb454"
+                                  ? "#b45309"
                                   : isSuccess
-                                  ? "#36e0c4"
-                                  : "#ff2d3a",
+                                  ? "#047857"
+                                  : "#dc2626",
                                 border: isConn
-                                  ? "1px solid rgba(54, 224, 196, 0.4)"
+                                  ? "1px solid #a7f3d0"
                                   : isSynced
-                                  ? "1px solid rgba(255, 180, 84, 0.4)"
+                                  ? "1px solid #fde68a"
                                   : isSuccess
-                                  ? "1px solid rgba(54, 224, 196, 0.3)"
-                                  : "1px solid rgba(255, 45, 58, 0.3)",
+                                  ? "1px solid #a7f3d0"
+                                  : "1px solid #fecaca",
                               }}
                             >
                               {log.status}
                             </span>
                           </td>
-                          <td style={{ padding: "12px 16px", textAlign: "right", color: "#777788", fontSize: 12 }}>
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "#64748b", fontSize: 12, fontFamily: "var(--font-mono), monospace" }}>
                             {log.latency || "24ms"}
                           </td>
                         </tr>
@@ -3150,7 +3416,7 @@ export default function AdminDashboard() {
                     })}
                   {logs.length === 0 && (
                     <tr>
-                      <td colSpan={5} style={{ padding: "32px", textAlign: "center", color: "#666" }}>
+                      <td colSpan={5} style={{ padding: "32px", textAlign: "center", color: "#64748b" }}>
                         No audit logs recorded yet.
                       </td>
                     </tr>
@@ -3165,13 +3431,16 @@ export default function AdminDashboard() {
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 3. EDIT QUESTION MODAL (Scrollable) */}
       {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 3. EDIT QUESTION MODAL (Scrollable) */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
       {editingChapter && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.88)",
-            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            backdropFilter: "blur(4px)",
             zIndex: 1000,
             display: "flex",
             alignItems: "center",
@@ -3183,25 +3452,25 @@ export default function AdminDashboard() {
           <div
             className="admin-scrollable"
             style={{
-              backgroundColor: "#0d0d14",
-              border: "1px solid rgba(255, 45, 58, 0.4)",
-              borderRadius: 6,
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
               width: "100%",
-              maxWidth: "760px",
-              maxHeight: "90vh",
+              maxWidth: "720px",
+              maxHeight: "88vh",
               overflowY: "auto",
               padding: "28px",
-              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.95)",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
               <div>
-                <span style={{ fontSize: 11, letterSpacing: ".15em", color: "#ff2d3a", fontWeight: "bold" }}>
-                  VAULT CONFIGURATION · TIDB DISTRIBUTED SQL SYNC
+                <span style={{ fontSize: 11, letterSpacing: "0.08em", color: "#e11d48", fontWeight: 700, textTransform: "uppercase" }}>
+                  Stage Configuration · Challenge Editor
                 </span>
-                <h3 style={{ fontSize: 19, color: "#ffffff", margin: "4px 0 0 0" }}>
-                  Edit Chapter {editingChapter.id} : {editingChapter.archiveTitle}
+                <h3 style={{ fontSize: 18, color: "#0f172a", margin: "4px 0 0 0", fontWeight: 700 }}>
+                  Edit Stage {editingChapter.id} : {editingChapter.archiveTitle}
                 </h3>
               </div>
 
@@ -3209,11 +3478,17 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => setEditingChapter(null)}
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#888899",
-                  fontSize: 18,
+                  background: "#f1f5f9",
+                  border: "1px solid #e2e8f0",
+                  color: "#64748b",
+                  fontSize: 14,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 ✕
@@ -3221,9 +3496,9 @@ export default function AdminDashboard() {
             </div>
 
             {/* Question Prompt Field */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 6 }}>
-                QUESTION PROMPT TEXT
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>
+                Question Prompt Text
               </label>
               <textarea
                 value={editPrompt}
@@ -3231,24 +3506,25 @@ export default function AdminDashboard() {
                 rows={3}
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
-                  fontSize: 14,
-                  backgroundColor: "#050508",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  borderRadius: 4,
-                  color: "#ffffff",
+                  padding: "12px 14px",
+                  fontSize: 13,
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 6,
+                  color: "#0f172a",
                   boxSizing: "border-box",
-                  fontFamily: "var(--font-mono), monospace",
+                  fontFamily: "inherit",
                   resize: "vertical",
+                  lineHeight: 1.5,
                 }}
               />
             </div>
 
             {/* Points & Answer Key Row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
               <div>
-                <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 6 }}>
-                  POINTS AWARDED
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>
+                  Points Awarded
                 </label>
                 <input
                   type="number"
@@ -3256,12 +3532,12 @@ export default function AdminDashboard() {
                   onChange={(e) => setEditPoints(Number(e.target.value))}
                   style={{
                     width: "100%",
-                    padding: "10px 12px",
-                    fontSize: 14,
-                    backgroundColor: "#050508",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    borderRadius: 4,
-                    color: "#ffffff",
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    color: "#0f172a",
                     boxSizing: "border-box",
                     fontFamily: "var(--font-mono), monospace",
                   }}
@@ -3269,8 +3545,8 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 6 }}>
-                  SECRET ANSWER KEY
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>
+                  Secret Answer Key
                 </label>
                 <input
                   type="text"
@@ -3279,13 +3555,13 @@ export default function AdminDashboard() {
                   placeholder="e.g. A or 14.285_MHZ"
                   style={{
                     width: "100%",
-                    padding: "10px 12px",
-                    fontSize: 14,
-                    backgroundColor: "#050508",
-                    border: "1px solid rgba(255, 45, 58, 0.4)",
-                    borderRadius: 4,
-                    color: "#ff2d3a",
-                    fontWeight: "bold",
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    backgroundColor: "#fff1f2",
+                    border: "1px solid #fecdd3",
+                    borderRadius: 6,
+                    color: "#e11d48",
+                    fontWeight: 700,
                     boxSizing: "border-box",
                     fontFamily: "var(--font-mono), monospace",
                   }}
@@ -3295,11 +3571,11 @@ export default function AdminDashboard() {
 
             {/* Multiple Choice Options Configuration */}
             {editOptions.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 8 }}>
-                  MULTIPLE CHOICE OPTIONS
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", marginBottom: 10, textTransform: "uppercase" }}>
+                  Multiple Choice Options
                 </label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {editOptions.map((opt, idx) => (
                     <div key={opt.id} style={{ display: "flex", gap: 10, alignItems: "center" }}>
                       <span
@@ -3307,8 +3583,9 @@ export default function AdminDashboard() {
                           width: 32,
                           textAlign: "center",
                           fontSize: 12,
-                          fontWeight: "bold",
-                          color: opt.id === editAnswer ? "#36e0c4" : "#888",
+                          fontWeight: 700,
+                          color: opt.id === editAnswer ? "#059669" : "#64748b",
+                          fontFamily: "var(--font-mono), monospace",
                         }}
                       >
                         [{opt.id}]
@@ -3323,13 +3600,13 @@ export default function AdminDashboard() {
                         }}
                         style={{
                           flex: 1,
-                          padding: "8px 12px",
+                          padding: "10px 14px",
                           fontSize: 13,
-                          backgroundColor: "#050508",
-                          border: "1px solid rgba(255, 255, 255, 0.12)",
-                          borderRadius: 4,
-                          color: "#ffffff",
-                          fontFamily: "var(--font-mono), monospace",
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 6,
+                          color: "#0f172a",
+                          fontFamily: "inherit",
                         }}
                       />
                     </div>
@@ -3340,8 +3617,8 @@ export default function AdminDashboard() {
 
             {/* Lore Lines Configuration */}
             <div style={{ marginBottom: 24 }}>
-              <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 6 }}>
-                CHARACTER LORE & BRIEFING LINES (One per line)
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>
+                Archive Lore &amp; Dossier Notes (One per line)
               </label>
               <textarea
                 value={editLoreText}
@@ -3349,35 +3626,36 @@ export default function AdminDashboard() {
                 rows={3}
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
+                  padding: "12px 14px",
                   fontSize: 13,
-                  backgroundColor: "#050508",
-                  border: "1px solid rgba(255, 255, 255, 0.12)",
-                  borderRadius: 4,
-                  color: "#d0d0d8",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 6,
+                  color: "#334155",
                   boxSizing: "border-box",
-                  fontFamily: "var(--font-mono), monospace",
+                  fontFamily: "inherit",
+                  lineHeight: 1.5,
                 }}
               />
             </div>
 
             {/* Modal Actions */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button
                 type="button"
                 onClick={() => setEditingChapter(null)}
                 style={{
-                  padding: "10px 18px",
+                  padding: "8px 16px",
                   fontSize: 12,
-                  letterSpacing: ".1em",
-                  backgroundColor: "transparent",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  color: "#888899",
-                  borderRadius: 4,
+                  fontWeight: 600,
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#475569",
+                  borderRadius: 6,
                   cursor: "pointer",
                 }}
               >
-                CANCEL
+                Cancel
               </button>
 
               <button
@@ -3385,18 +3663,18 @@ export default function AdminDashboard() {
                 onClick={handleSaveChapter}
                 disabled={isSaving}
                 style={{
-                  padding: "10px 22px",
+                  padding: "8px 20px",
                   fontSize: 12,
-                  fontWeight: "bold",
-                  letterSpacing: ".15em",
-                  backgroundColor: "#ff2d3a",
+                  fontWeight: 600,
+                  backgroundColor: "#e11d48",
                   border: "none",
-                  borderRadius: 4,
-                  color: "#000000",
+                  borderRadius: 6,
+                  color: "#ffffff",
                   cursor: "pointer",
+                  transition: "all 0.15s ease",
                 }}
               >
-                {isSaving ? "SAVING TO TIDB..." : "SAVE CHANGES"}
+                {isSaving ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>
@@ -3406,13 +3684,16 @@ export default function AdminDashboard() {
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 3.5. BULK SQUAD IMPORT MODAL (CSV / TSV / EXCEL / ROSTER) */}
       {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 3.5. BULK SQUAD IMPORT MODAL (CSV / TSV / EXCEL / ROSTER) */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
       {showImportModal && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.88)",
-            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            backdropFilter: "blur(4px)",
             zIndex: 1000,
             display: "flex",
             alignItems: "center",
@@ -3427,26 +3708,29 @@ export default function AdminDashboard() {
           <div
             className="admin-scrollable"
             style={{
-              backgroundColor: "#0d0d14",
-              border: "1px solid #ffb454",
-              borderRadius: 6,
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
               width: "100%",
-              maxWidth: "840px",
-              maxHeight: "90vh",
+              maxWidth: "820px",
+              maxHeight: "88vh",
               overflowY: "auto",
               padding: "28px",
               boxSizing: "border-box",
-              boxShadow: "0 10px 40px rgba(255, 180, 84, 0.15)",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
-                <h3 style={{ margin: "0 0 4px 0", fontSize: 18, color: "#ffffff", letterSpacing: ".05em" }}>
-                  BULK SQUAD IMPORT &amp; SPREADSHEET VALIDATOR
+                <span style={{ fontSize: 11, letterSpacing: "0.08em", color: "#d97706", fontWeight: 700, textTransform: "uppercase" }}>
+                  Tournament Roster Import
+                </span>
+                <h3 style={{ margin: "4px 0 2px 0", fontSize: 18, color: "#0f172a", fontWeight: 700 }}>
+                  Bulk Squad Import &amp; Spreadsheet Validator
                 </h3>
-                <span style={{ fontSize: 12, color: "#888899" }}>
-                  Supports CSV, TSV, and Excel (.xlsx, .xls) files or direct copy-paste. Validates before database commit.
+                <span style={{ fontSize: 12, color: "#64748b" }}>
+                  Upload CSV, TSV, or Excel (.xlsx) files or paste squad data directly.
                 </span>
               </div>
               <button
@@ -3456,11 +3740,17 @@ export default function AdminDashboard() {
                   setImportPreview(null);
                 }}
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#888899",
-                  fontSize: 18,
+                  background: "#f1f5f9",
+                  border: "1px solid #e2e8f0",
+                  color: "#64748b",
+                  fontSize: 14,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 ✕
@@ -3470,10 +3760,10 @@ export default function AdminDashboard() {
             {/* File Upload Shortcut */}
             <div
               style={{
-                padding: "12px 16px",
-                backgroundColor: "rgba(255, 180, 84, 0.08)",
-                border: "1px dashed rgba(255, 180, 84, 0.4)",
-                borderRadius: 4,
+                padding: "14px 18px",
+                backgroundColor: "#f8fafc",
+                border: "1px dashed #cbd5e1",
+                borderRadius: 8,
                 marginBottom: 16,
                 display: "flex",
                 alignItems: "center",
@@ -3482,44 +3772,47 @@ export default function AdminDashboard() {
               }}
             >
               <div>
-                <div style={{ fontSize: 12, color: "#ffb454", fontWeight: 600 }}>Choose CSV, TSV, or Excel (.xlsx / .xls) file:</div>
-                <div style={{ fontSize: 11, color: "#888899", marginTop: 2 }}>Recognizes headers: Team Name, Team Leader, Score, Role</div>
+                <div style={{ fontSize: 13, color: "#0f172a", fontWeight: 600 }}>Choose file from disk (.xlsx, .csv, .tsv):</div>
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Expected columns: Team Name, Team Leader, Score, Role</div>
               </div>
               <input
                 type="file"
                 accept=".csv,.txt,.tsv,.xlsx,.xls"
                 onChange={handleFileUpload}
-                style={{ fontSize: 12, color: "#d0d0d8" }}
+                style={{ fontSize: 12, color: "#475569" }}
               />
             </div>
 
             {/* Paste format explanation */}
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: "#888899" }}>Roster text / spreadsheet content:</span>
-                <span style={{ fontSize: 11, color: "#36e0c4" }}>
-                  CSV / TSV / Colon: Team Name, Leader Name, Score, Role
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", textTransform: "uppercase" }}>
+                  Paste Roster Text / Raw Data
+                </span>
+                <span style={{ fontSize: 11, color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>
+                  Team Name, Leader Name, Score, Role
                 </span>
               </div>
               <textarea
-                rows={importPreview ? 4 : 7}
+                rows={importPreview ? 4 : 6}
                 value={importText}
                 onChange={(e) => {
                   setImportText(e.target.value);
                   if (importPreview) setImportPreview(null);
                 }}
-                placeholder={`Team Name, Leader Name, Score, Role\nNull Pointers, Aarav Sharma, 0, PLAYER\nByte Byters, Dustin Henderson, 0, PLAYER\nShadow Walkers, Mike Wheeler, 0, PLAYER`}
+                placeholder={`Null Pointers, Aarav Sharma, 0, PLAYER\nByte Byters, Dustin Henderson, 0, PLAYER\nShadow Walkers, Mike Wheeler, 0, PLAYER`}
                 style={{
                   width: "100%",
-                  padding: "12px",
+                  padding: "12px 14px",
                   fontSize: 12,
                   fontFamily: "var(--font-mono), monospace",
-                  backgroundColor: "#08080c",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  borderRadius: 4,
-                  color: "#ffffff",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                  color: "#0f172a",
                   boxSizing: "border-box",
                   resize: "vertical",
+                  lineHeight: 1.5,
                 }}
               />
             </div>
@@ -3529,33 +3822,35 @@ export default function AdminDashboard() {
               <div style={{ marginBottom: 20 }}>
                 {/* Summary stat tiles */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 16 }}>
-                  <div style={{ padding: "10px", backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 4, textAlign: "center", border: "1px solid rgba(255,255,255,0.1)" }}>
-                    <div style={{ fontSize: 11, color: "#888899" }}>TOTAL ROWS</div>
-                    <div style={{ fontSize: 18, fontWeight: "bold", color: "#ffffff", marginTop: 2 }}>{importPreview.totalRows}</div>
+                  <div style={{ padding: "10px", backgroundColor: "#f8fafc", borderRadius: 6, textAlign: "center", border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700 }}>TOTAL ROWS</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginTop: 2, fontFamily: "var(--font-mono), monospace" }}>{importPreview.totalRows}</div>
                   </div>
-                  <div style={{ padding: "10px", backgroundColor: "rgba(54,224,196,0.08)", borderRadius: 4, textAlign: "center", border: "1px solid rgba(54,224,196,0.3)" }}>
-                    <div style={{ fontSize: 11, color: "#36e0c4" }}>VALID READY</div>
-                    <div style={{ fontSize: 18, fontWeight: "bold", color: "#36e0c4", marginTop: 2 }}>{importPreview.validCount}</div>
+                  <div style={{ padding: "10px", backgroundColor: "#f0fdf4", borderRadius: 6, textAlign: "center", border: "1px solid #bbf7d0" }}>
+                    <div style={{ fontSize: 10, color: "#059669", fontWeight: 700 }}>VALID READY</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#059669", marginTop: 2, fontFamily: "var(--font-mono), monospace" }}>{importPreview.validCount}</div>
                   </div>
-                  <div style={{ padding: "10px", backgroundColor: "rgba(255,180,84,0.08)", borderRadius: 4, textAlign: "center", border: "1px solid rgba(255,180,84,0.3)" }}>
-                    <div style={{ fontSize: 11, color: "#ffb454" }}>DUPLICATES</div>
-                    <div style={{ fontSize: 18, fontWeight: "bold", color: "#ffb454", marginTop: 2 }}>{importPreview.duplicateCount}</div>
+                  <div style={{ padding: "10px", backgroundColor: "#fffbeb", borderRadius: 6, textAlign: "center", border: "1px solid #fde68a" }}>
+                    <div style={{ fontSize: 10, color: "#d97706", fontWeight: 700 }}>DUPLICATES</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#d97706", marginTop: 2, fontFamily: "var(--font-mono), monospace" }}>{importPreview.duplicateCount}</div>
                   </div>
-                  <div style={{ padding: "10px", backgroundColor: "rgba(255,45,58,0.08)", borderRadius: 4, textAlign: "center", border: "1px solid rgba(255,45,58,0.3)" }}>
-                    <div style={{ fontSize: 11, color: "#ff2d3a" }}>MISSING FIELDS</div>
-                    <div style={{ fontSize: 18, fontWeight: "bold", color: "#ff2d3a", marginTop: 2 }}>{importPreview.missingCount}</div>
+                  <div style={{ padding: "10px", backgroundColor: "#fef2f2", borderRadius: 6, textAlign: "center", border: "1px solid #fecaca" }}>
+                    <div style={{ fontSize: 10, color: "#dc2626", fontWeight: 700 }}>MISSING</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#dc2626", marginTop: 2, fontFamily: "var(--font-mono), monospace" }}>{importPreview.missingCount}</div>
                   </div>
-                  <div style={{ padding: "10px", backgroundColor: "rgba(255,45,58,0.08)", borderRadius: 4, textAlign: "center", border: "1px solid rgba(255,45,58,0.3)" }}>
-                    <div style={{ fontSize: 11, color: "#ff2d3a" }}>MALFORMED</div>
-                    <div style={{ fontSize: 18, fontWeight: "bold", color: "#ff2d3a", marginTop: 2 }}>{importPreview.malformedCount}</div>
+                  <div style={{ padding: "10px", backgroundColor: "#fef2f2", borderRadius: 6, textAlign: "center", border: "1px solid #fecaca" }}>
+                    <div style={{ fontSize: 10, color: "#dc2626", fontWeight: 700 }}>MALFORMED</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#dc2626", marginTop: 2, fontFamily: "var(--font-mono), monospace" }}>{importPreview.malformedCount}</div>
                   </div>
                 </div>
 
                 {/* Conflict Resolution Selector */}
-                <div style={{ padding: "12px 16px", backgroundColor: "rgba(255, 255, 255, 0.03)", borderRadius: 4, border: "1px solid rgba(255, 255, 255, 0.1)", marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#d0d0d8", marginBottom: 8 }}>CONFLICT RESOLUTION FOR DUPLICATE SQUADS:</div>
+                <div style={{ padding: "12px 16px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Duplicate Squad Conflict Strategy:
+                  </div>
                   <div style={{ display: "flex", gap: 20 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: importMode === "skip" ? "#36e0c4" : "#888899" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: importMode === "skip" ? "#0f172a" : "#64748b" }}>
                       <input
                         type="radio"
                         name="importMode"
@@ -3565,7 +3860,7 @@ export default function AdminDashboard() {
                       />
                       Skip duplicates (insert new squads only)
                     </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: importMode === "overwrite" ? "#ffb454" : "#888899" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: importMode === "overwrite" ? "#0f172a" : "#64748b" }}>
                       <input
                         type="radio"
                         name="importMode"
@@ -3579,42 +3874,45 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Parsed Rows Preview Table */}
-                <div style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: 4 }}>
+                <div style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, textAlign: "left" }}>
-                    <thead>
-                      <tr style={{ backgroundColor: "#14141e", color: "#888899", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                        <th style={{ padding: "6px 10px" }}>#</th>
-                        <th style={{ padding: "6px 10px" }}>TEAM NAME</th>
-                        <th style={{ padding: "6px 10px" }}>LEADER NAME</th>
-                        <th style={{ padding: "6px 10px" }}>SCORE</th>
-                        <th style={{ padding: "6px 10px" }}>ROLE</th>
-                        <th style={{ padding: "6px 10px" }}>VALIDATION STATUS</th>
+                    <thead style={{ position: "sticky", top: 0 }}>
+                      <tr style={{ backgroundColor: "#f8fafc", color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>
+                        <th style={{ padding: "8px 10px" }}>#</th>
+                        <th style={{ padding: "8px 10px" }}>TEAM NAME</th>
+                        <th style={{ padding: "8px 10px" }}>LEADER NAME</th>
+                        <th style={{ padding: "8px 10px" }}>SCORE</th>
+                        <th style={{ padding: "8px 10px" }}>ROLE</th>
+                        <th style={{ padding: "8px 10px" }}>VALIDATION STATUS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {importPreview.rows.slice(0, 30).map((r: any, idx: number) => {
-                        let statusColor = "#36e0c4";
-                        let statusBg = "rgba(54, 224, 196, 0.1)";
+                        let statusColor = "#059669";
+                        let statusBg = "#f0fdf4";
+                        let statusBorder = "#bbf7d0";
                         if (r.status === "DUPLICATE") {
-                          statusColor = "#ffb454";
-                          statusBg = "rgba(255, 180, 84, 0.1)";
+                          statusColor = "#d97706";
+                          statusBg = "#fffbeb";
+                          statusBorder = "#fde68a";
                         } else if (r.status === "MISSING_REQUIRED" || r.status === "MALFORMED") {
-                          statusColor = "#ff2d3a";
-                          statusBg = "rgba(255, 45, 58, 0.1)";
+                          statusColor = "#dc2626";
+                          statusBg = "#fef2f2";
+                          statusBorder = "#fecaca";
                         }
 
                         return (
-                          <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                            <td style={{ padding: "6px 10px", color: "#666677" }}>{r.row}</td>
-                            <td style={{ padding: "6px 10px", color: "#ffffff", fontWeight: 600 }}>{r.teamName || "(empty)"}</td>
-                            <td style={{ padding: "6px 10px", color: "#d0d0d8" }}>{r.leaderName || "(empty)"}</td>
-                            <td style={{ padding: "6px 10px", color: "#ffb454" }}>{r.initialScore ?? 0}</td>
-                            <td style={{ padding: "6px 10px", color: r.role === "VECNA" ? "#ff2d3a" : "#36e0c4" }}>{r.role || "PLAYER"}</td>
+                          <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                            <td style={{ padding: "6px 10px", color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>{r.row}</td>
+                            <td style={{ padding: "6px 10px", color: "#0f172a", fontWeight: 600 }}>{r.teamName || "(empty)"}</td>
+                            <td style={{ padding: "6px 10px", color: "#475569" }}>{r.leaderName || "(empty)"}</td>
+                            <td style={{ padding: "6px 10px", color: "#0f172a", fontFamily: "var(--font-mono), monospace" }}>{r.initialScore ?? 0}</td>
+                            <td style={{ padding: "6px 10px", color: r.role === "VECNA" ? "#dc2626" : "#2563eb", fontWeight: 600 }}>{r.role || "PLAYER"}</td>
                             <td style={{ padding: "6px 10px" }}>
-                              <span style={{ padding: "2px 6px", borderRadius: 3, fontSize: 10, fontWeight: "bold", color: statusColor, backgroundColor: statusBg }}>
+                              <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, color: statusColor, backgroundColor: statusBg, border: `1px solid ${statusBorder}` }}>
                                 {r.status}
                               </span>
-                              {r.error && <span style={{ color: "#888899", marginLeft: 6, fontSize: 10 }}>({r.error})</span>}
+                              {r.error && <span style={{ color: "#64748b", marginLeft: 6, fontSize: 10 }}>({r.error})</span>}
                             </td>
                           </tr>
                         );
@@ -3627,7 +3925,7 @@ export default function AdminDashboard() {
 
             {/* Feedback Message */}
             {importMessage && (
-              <div style={{ marginBottom: 16, padding: "10px 14px", backgroundColor: "rgba(54, 224, 196, 0.12)", border: "1px solid #36e0c4", borderRadius: 4, color: "#36e0c4", fontSize: 12, fontWeight: 600 }}>
+              <div style={{ marginBottom: 16, padding: "10px 14px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, color: "#059669", fontSize: 12, fontWeight: 600 }}>
                 {importMessage}
               </div>
             )}
@@ -3641,22 +3939,23 @@ export default function AdminDashboard() {
                     disabled={isAnalyzing || !importText.trim()}
                     onClick={() => runImportPreview()}
                     style={{
-                      padding: "10px 18px",
+                      padding: "8px 16px",
                       fontSize: 12,
                       fontWeight: 600,
-                      backgroundColor: "rgba(54, 224, 196, 0.15)",
-                      border: "1px solid rgba(54, 224, 196, 0.4)",
-                      color: "#36e0c4",
-                      borderRadius: 4,
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #cbd5e1",
+                      color: "#334155",
+                      borderRadius: 6,
                       cursor: "pointer",
+                      transition: "all 0.15s ease",
                     }}
                   >
-                    {isAnalyzing ? "ANALYZING SPREADSHEET..." : "PREVIEW & VALIDATE"}
+                    {isAnalyzing ? "Analyzing spreadsheet..." : "Preview & Validate"}
                   </button>
                 )}
               </div>
 
-              <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ display: "flex", gap: 10 }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -3664,33 +3963,35 @@ export default function AdminDashboard() {
                     setImportPreview(null);
                   }}
                   style={{
-                    padding: "10px 18px",
+                    padding: "8px 16px",
                     fontSize: 12,
-                    backgroundColor: "transparent",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    color: "#888899",
-                    borderRadius: 4,
+                    fontWeight: 600,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    color: "#475569",
+                    borderRadius: 6,
                     cursor: "pointer",
                   }}
                 >
-                  CANCEL
+                  Cancel
                 </button>
                 <button
                   type="button"
                   disabled={isImporting || !importText.trim()}
                   onClick={handleBulkImport}
                   style={{
-                    padding: "10px 22px",
+                    padding: "8px 20px",
                     fontSize: 12,
-                    fontWeight: "bold",
-                    backgroundColor: "#ffb454",
+                    fontWeight: 600,
+                    backgroundColor: "#e11d48",
                     border: "none",
-                    borderRadius: 4,
-                    color: "#000000",
+                    borderRadius: 6,
+                    color: "#ffffff",
                     cursor: "pointer",
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  {isImporting ? "IMPORTING SQUADS..." : (importPreview ? "CONFIRM & COMMIT IMPORT" : "EXECUTE IMPORT")}
+                  {isImporting ? "Importing squads..." : (importPreview ? "Confirm & Commit Import" : "Execute Import")}
                 </button>
               </div>
             </div>
@@ -3701,13 +4002,16 @@ export default function AdminDashboard() {
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 4. REGISTER SQUAD MODAL (TIDB) */}
       {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 4. REGISTER SQUAD MODAL (TIDB) */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
       {showAddTeamModal && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.88)",
-            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            backdropFilter: "blur(4px)",
             zIndex: 1000,
             display: "flex",
             alignItems: "center",
@@ -3719,23 +4023,23 @@ export default function AdminDashboard() {
           <div
             className="admin-scrollable"
             style={{
-              backgroundColor: "#0d0d14",
-              border: "1px solid rgba(54, 224, 196, 0.4)",
-              borderRadius: 6,
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
               width: "100%",
-              maxWidth: "520px",
+              maxWidth: "500px",
               padding: "28px",
-              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.95)",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
               <div>
-                <span style={{ fontSize: 11, letterSpacing: ".15em", color: "#36e0c4", fontWeight: "bold" }}>
-                  TIDB DISTRIBUTED SQL · SQUAD ROSTER
+                <span style={{ fontSize: 11, letterSpacing: "0.08em", color: "#2563eb", fontWeight: 700, textTransform: "uppercase" }}>
+                  Tournament Roster · New Entry
                 </span>
-                <h3 style={{ fontSize: 19, color: "#ffffff", margin: "4px 0 0 0" }}>
-                  Register New Tournament Squad
+                <h3 style={{ fontSize: 18, color: "#0f172a", margin: "4px 0 0 0", fontWeight: 700 }}>
+                  Register Tournament Squad
                 </h3>
               </div>
 
@@ -3743,11 +4047,17 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => setShowAddTeamModal(false)}
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#888899",
-                  fontSize: 18,
+                  background: "#f1f5f9",
+                  border: "1px solid #e2e8f0",
+                  color: "#64748b",
+                  fontSize: 14,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
                   cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 ✕
@@ -3756,8 +4066,8 @@ export default function AdminDashboard() {
 
             <form onSubmit={handleCreateTeam}>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 6 }}>
-                  SQUAD / TEAM NAME
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>
+                  Squad / Team Name
                 </label>
                 <input
                   type="text"
@@ -3767,21 +4077,21 @@ export default function AdminDashboard() {
                   onChange={(e) => setNewTeamName(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "10px 12px",
-                    fontSize: 14,
-                    backgroundColor: "#050508",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    borderRadius: 4,
-                    color: "#ffffff",
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    color: "#0f172a",
                     boxSizing: "border-box",
-                    fontFamily: "var(--font-mono), monospace",
+                    fontFamily: "inherit",
                   }}
                 />
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 6 }}>
-                  SQUAD LEADER CALLSIGN
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>
+                  Squad Leader Callsign
                 </label>
                 <input
                   type="text"
@@ -3791,45 +4101,45 @@ export default function AdminDashboard() {
                   onChange={(e) => setNewLeaderName(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "10px 12px",
-                    fontSize: 14,
-                    backgroundColor: "#050508",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    borderRadius: 4,
-                    color: "#ffffff",
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    color: "#0f172a",
                     boxSizing: "border-box",
-                    fontFamily: "var(--font-mono), monospace",
+                    fontFamily: "inherit",
                   }}
                 />
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 6 }}>
-                  SQUAD ROLE
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>
+                  Squad Role
                 </label>
                 <select
                   value={newTeamRole}
                   onChange={(e) => setNewTeamRole(e.target.value === "VECNA" ? "VECNA" : "PLAYER")}
                   style={{
                     width: "100%",
-                    padding: "10px 12px",
-                    fontSize: 14,
-                    backgroundColor: "#050508",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    borderRadius: 4,
-                    color: "#ffffff",
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    color: "#0f172a",
                     boxSizing: "border-box",
-                    fontFamily: "var(--font-mono), monospace",
+                    fontFamily: "inherit",
                   }}
                 >
-                  <option value="PLAYER">HAWKINS PLAYER</option>
-                  <option value="VECNA">VECNA</option>
+                  <option value="PLAYER">Hawkins Participant</option>
+                  <option value="VECNA">Vecna / Infiltrator</option>
                 </select>
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ display: "block", fontSize: 11, letterSpacing: ".1em", color: "#aaaaaa", marginBottom: 6 }}>
-                  STARTING POINTS
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: "#475569", marginBottom: 8, textTransform: "uppercase" }}>
+                  Starting Points
                 </label>
                 <input
                   type="number"
@@ -3837,52 +4147,52 @@ export default function AdminDashboard() {
                   onChange={(e) => setNewTeamScore(Number(e.target.value))}
                   style={{
                     width: "100%",
-                    padding: "10px 12px",
-                    fontSize: 14,
-                    backgroundColor: "#050508",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    borderRadius: 4,
-                    color: "#ffffff",
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    color: "#0f172a",
                     boxSizing: "border-box",
                     fontFamily: "var(--font-mono), monospace",
                   }}
                 />
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button
                   type="button"
                   onClick={() => setShowAddTeamModal(false)}
                   style={{
-                    padding: "10px 18px",
+                    padding: "8px 16px",
                     fontSize: 12,
-                    letterSpacing: ".1em",
-                    backgroundColor: "transparent",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    color: "#888899",
-                    borderRadius: 4,
+                    fontWeight: 600,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    color: "#475569",
+                    borderRadius: 6,
                     cursor: "pointer",
                   }}
                 >
-                  CANCEL
+                  Cancel
                 </button>
 
                 <button
                   type="submit"
                   disabled={isCreatingTeam}
                   style={{
-                    padding: "10px 22px",
+                    padding: "8px 20px",
                     fontSize: 12,
-                    fontWeight: "bold",
-                    letterSpacing: ".15em",
-                    backgroundColor: "#36e0c4",
+                    fontWeight: 600,
+                    backgroundColor: "#e11d48",
                     border: "none",
-                    borderRadius: 4,
-                    color: "#000000",
+                    borderRadius: 6,
+                    color: "#ffffff",
                     cursor: "pointer",
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  {isCreatingTeam ? "SAVING TO TIDB..." : "REGISTER TO DATABASE"}
+                  {isCreatingTeam ? "Registering..." : "Register Squad"}
                 </button>
               </div>
             </form>
@@ -3893,13 +4203,16 @@ export default function AdminDashboard() {
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 5. TEAM DETAILS & POINTS EDITOR MODAL (TIDB) */}
       {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 5. TEAM DETAILS & POINTS EDITOR MODAL (TIDB) */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
       {detailTeam && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.88)",
-            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            backdropFilter: "blur(4px)",
             zIndex: 1000,
             display: "flex",
             alignItems: "center",
@@ -3911,29 +4224,29 @@ export default function AdminDashboard() {
           <div
             className="admin-scrollable"
             style={{
-              backgroundColor: "#0d0d14",
-              border: "1px solid rgba(54, 224, 196, 0.4)",
-              borderRadius: 6,
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
               width: "100%",
-              maxWidth: "680px",
-              maxHeight: "90vh",
+              maxWidth: "640px",
+              maxHeight: "88vh",
               overflowY: "auto",
               padding: "28px",
-              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.95)",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
-                <div style={{ fontSize: 11, letterSpacing: ".15em", color: "#36e0c4", fontWeight: "bold" }}>
-                  SQUAD DOSSIER · TIDB DISTRIBUTED SQL
+                <div style={{ fontSize: 11, letterSpacing: "0.08em", color: "#2563eb", fontWeight: 700, textTransform: "uppercase" }}>
+                  Squad Dossier &amp; Status
                 </div>
-                <h3 style={{ fontSize: 22, color: "#ffffff", margin: "4px 0 0 0", fontWeight: 700 }}>
+                <h3 style={{ fontSize: 20, color: "#0f172a", margin: "4px 0 0 0", fontWeight: 700 }}>
                   {detailTeam.teamName}
                 </h3>
-                <div style={{ fontSize: 12, color: "#888899", marginTop: 4 }}>
-                  Squad Leader: <span style={{ color: "#ffffff" }}>{detailTeam.leaderName}</span> · ID: <span style={{ color: "#8888aa" }}>{detailTeam.teamId}</span>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  Leader: <span style={{ color: "#0f172a", fontWeight: 600 }}>{detailTeam.leaderName}</span> · ID: <span style={{ color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>{detailTeam.teamId}</span>
                 </div>
               </div>
 
@@ -3941,12 +4254,17 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => setDetailTeam(null)}
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#888899",
-                  fontSize: 20,
+                  background: "#f1f5f9",
+                  border: "1px solid #e2e8f0",
+                  color: "#64748b",
+                  fontSize: 14,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
                   cursor: "pointer",
-                  padding: 4,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 ✕
@@ -3958,32 +4276,32 @@ export default function AdminDashboard() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 10,
-                marginBottom: 24,
+                gap: 8,
+                marginBottom: 20,
               }}
             >
-              <div style={{ padding: "12px", backgroundColor: "#060609", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#777788", letterSpacing: ".08em" }}>RANK</div>
-                <div style={{ fontSize: 18, fontWeight: "bold", color: detailTeam.rank <= 3 ? "#ff2d3a" : "#ffffff", marginTop: 4 }}>
+              <div style={{ padding: "12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.05em" }}>RANK</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: detailTeam.rank <= 3 ? "#d97706" : "#0f172a", marginTop: 4, fontFamily: "var(--font-mono), monospace" }}>
                   #{detailTeam.rank}
                 </div>
               </div>
-              <div style={{ padding: "12px", backgroundColor: "#060609", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#777788", letterSpacing: ".08em" }}>TOTAL SCORE</div>
-                <div style={{ fontSize: 18, fontWeight: "bold", color: "#ffb454", marginTop: 4 }}>
-                  {detailTeam.score} PTS
+              <div style={{ padding: "12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.05em" }}>TOTAL SCORE</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#2563eb", marginTop: 4, fontFamily: "var(--font-mono), monospace" }}>
+                  {detailTeam.score} pts
                 </div>
               </div>
-              <div style={{ padding: "12px", backgroundColor: "#060609", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#777788", letterSpacing: ".08em" }}>SOLVED</div>
-                <div style={{ fontSize: 18, fontWeight: "bold", color: "#36e0c4", marginTop: 4 }}>
+              <div style={{ padding: "12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.05em" }}>SOLVED</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#059669", marginTop: 4, fontFamily: "var(--font-mono), monospace" }}>
                   {detailTeam.solvedCount} / 7
                 </div>
               </div>
-              <div style={{ padding: "12px", backgroundColor: "#060609", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#777788", letterSpacing: ".08em" }}>STATUS</div>
-                <div style={{ fontSize: 13, fontWeight: "bold", color: detailTeam.status === "COMPLETED" ? "#36e0c4" : "#ffb454", marginTop: 7 }}>
-                  {detailTeam.status}
+              <div style={{ padding: "12px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.05em" }}>PRESENCE</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: detailTeam.isOnline ? "#059669" : "#64748b", marginTop: 8 }}>
+                  {detailTeam.isOnline ? "ONLINE" : "OFFLINE"}
                 </div>
               </div>
             </div>
@@ -3991,59 +4309,59 @@ export default function AdminDashboard() {
             {/* Admin Points Editor Section */}
             <div
               style={{
-                backgroundColor: "rgba(255, 180, 84, 0.04)",
-                border: "1px solid rgba(255, 180, 84, 0.25)",
-                borderRadius: 6,
-                padding: "18px 20px",
-                marginBottom: 24,
+                backgroundColor: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: "16px 18px",
+                marginBottom: 20,
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <div style={{ fontSize: 11, letterSpacing: ".12em", color: "#ffb454", fontWeight: "bold" }}>
-                  ADMIN SCORE OVERRIDE · TIDB
+                <div style={{ fontSize: 11, letterSpacing: "0.06em", color: "#475569", fontWeight: 700, textTransform: "uppercase" }}>
+                  Score Adjustment
                 </div>
-                <span style={{ fontSize: 11, color: "#888899" }}>Direct live database update</span>
+                <span style={{ fontSize: 11, color: "#64748b" }}>Live update</span>
               </div>
 
-              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <input
                   type="number"
                   value={editTeamPoints}
                   onChange={(e) => setEditTeamPoints(Number(e.target.value))}
                   style={{
                     flex: 1,
-                    minWidth: "140px",
-                    padding: "10px 14px",
-                    fontSize: 16,
-                    fontWeight: "bold",
-                    backgroundColor: "#050508",
-                    border: "1px solid rgba(255, 180, 84, 0.4)",
-                    borderRadius: 4,
-                    color: "#ffb454",
+                    minWidth: "120px",
+                    padding: "8px 12px",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 6,
+                    color: "#0f172a",
                     boxSizing: "border-box",
                     fontFamily: "var(--font-mono), monospace",
                   }}
                 />
 
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 4 }}>
                   <button
                     type="button"
                     onClick={() => setEditTeamPoints((prev) => prev + 50)}
-                    style={{ padding: "8px 12px", fontSize: 11, backgroundColor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#ffffff", borderRadius: 4, cursor: "pointer" }}
+                    style={{ padding: "8px 10px", fontSize: 11, fontWeight: 600, backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", borderRadius: 6, cursor: "pointer" }}
                   >
                     +50
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditTeamPoints((prev) => prev + 100)}
-                    style={{ padding: "8px 12px", fontSize: 11, backgroundColor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#ffffff", borderRadius: 4, cursor: "pointer" }}
+                    style={{ padding: "8px 10px", fontSize: 11, fontWeight: 600, backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", borderRadius: 6, cursor: "pointer" }}
                   >
                     +100
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditTeamPoints((prev) => Math.max(0, prev - 50))}
-                    style={{ padding: "8px 12px", fontSize: 11, backgroundColor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#ffffff", borderRadius: 4, cursor: "pointer" }}
+                    style={{ padding: "8px 10px", fontSize: 11, fontWeight: 600, backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", borderRadius: 6, cursor: "pointer" }}
                   >
                     -50
                   </button>
@@ -4054,40 +4372,40 @@ export default function AdminDashboard() {
                   onClick={handleSaveTeamPoints}
                   disabled={isUpdatingTeamPoints}
                   style={{
-                    padding: "10px 18px",
+                    padding: "8px 16px",
                     fontSize: 12,
-                    fontWeight: "bold",
-                    letterSpacing: ".08em",
-                    backgroundColor: "#ffb454",
-                    color: "#000000",
+                    fontWeight: 600,
+                    backgroundColor: "#e11d48",
+                    color: "#ffffff",
                     border: "none",
-                    borderRadius: 4,
+                    borderRadius: 6,
                     cursor: "pointer",
                     whiteSpace: "nowrap",
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  {isUpdatingTeamPoints ? "SAVING..." : "SAVE POINTS"}
+                  {isUpdatingTeamPoints ? "Saving..." : "Save Points"}
                 </button>
               </div>
             </div>
 
             {/* Questions / Chapters Solved by this team */}
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontSize: 11, letterSpacing: ".12em", color: "#888899", fontWeight: "bold" }}>
-                  QUESTIONS &amp; CHAPTERS PROGRESS ({detailTeam.solvedCount} / 7 SOLVED)
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div style={{ fontSize: 11, letterSpacing: "0.06em", color: "#475569", fontWeight: 700, textTransform: "uppercase" }}>
+                  Stages Progress ({detailTeam.solvedCount} / 7 Solved)
                 </div>
                 {detailTeam.lastSubmissionTime && (
-                  <span style={{ fontSize: 11, color: "#666677" }}>
+                  <span style={{ fontSize: 11, color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>
                     Last solve: {new Date(detailTeam.lastSubmissionTime).toLocaleTimeString()}
                   </span>
                 )}
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {[1, 2, 3, 4, 5, 6, 7].map((chNum) => {
                   const chObj = chapters.find((c) => c.id === chNum);
-                  const isSolved = detailTeam.completedTasks.some(
+                  const isSolved = (detailTeam.completedTasks || []).some(
                     (t) =>
                       t === `ch${chNum}` ||
                       t === `ch${chNum}-quiz` ||
@@ -4099,46 +4417,46 @@ export default function AdminDashboard() {
                     <div
                       key={chNum}
                       style={{
-                        padding: "10px 14px",
-                        borderRadius: 4,
-                        backgroundColor: isSolved ? "rgba(54, 224, 196, 0.08)" : "#07070b",
-                        border: isSolved ? "1px solid rgba(54, 224, 196, 0.4)" : "1px solid rgba(255, 255, 255, 0.05)",
+                        padding: "8px 12px",
+                        borderRadius: 6,
+                        backgroundColor: isSolved ? "#f0fdf4" : "#f8fafc",
+                        border: isSolved ? "1px solid #bbf7d0" : "1px solid #e2e8f0",
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span
                           style={{
                             fontSize: 11,
-                            fontWeight: "bold",
-                            color: isSolved ? "#36e0c4" : "#666677",
+                            fontWeight: 700,
+                            color: isSolved ? "#059669" : "#64748b",
                           }}
                         >
-                          CHAPTER {chNum}
+                          STAGE {chNum}
                         </span>
-                        <span style={{ fontSize: 13, color: isSolved ? "#ffffff" : "#888899" }}>
+                        <span style={{ fontSize: 12, color: isSolved ? "#0f172a" : "#64748b", fontWeight: isSolved ? 600 : 400 }}>
                           {chObj ? chObj.archiveTitle : `Chapter ${chNum} Challenge`}
                         </span>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 11, color: "#666677" }}>
-                          {chObj?.points || 100} PTS
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 11, color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>
+                          {chObj?.points || 100} pts
                         </span>
                         <span
                           style={{
                             fontSize: 10,
-                            padding: "2px 8px",
-                            borderRadius: 3,
-                            fontWeight: "bold",
-                            backgroundColor: isSolved ? "rgba(54, 224, 196, 0.15)" : "rgba(255, 255, 255, 0.04)",
-                            color: isSolved ? "#36e0c4" : "#666677",
-                            border: isSolved ? "1px solid rgba(54, 224, 196, 0.3)" : "1px solid rgba(255, 255, 255, 0.08)",
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                            fontWeight: 700,
+                            backgroundColor: isSolved ? "#dcfce7" : "#f1f5f9",
+                            color: isSolved ? "#15803d" : "#64748b",
+                            border: isSolved ? "1px solid #bbf7d0" : "1px solid #e2e8f0",
                           }}
                         >
-                          {isSolved ? "✓ SOLVED" : "○ PENDING"}
+                          {isSolved ? "✓ Solved" : "○ Pending"}
                         </span>
                       </div>
                     </div>
@@ -4148,22 +4466,22 @@ export default function AdminDashboard() {
             </div>
 
             {/* Modal footer close */}
-            <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
+            <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
               <button
                 type="button"
                 onClick={() => setDetailTeam(null)}
                 style={{
                   padding: "8px 18px",
                   fontSize: 12,
-                  letterSpacing: ".08em",
-                  backgroundColor: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  color: "#d0d0d8",
-                  borderRadius: 4,
+                  fontWeight: 600,
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#475569",
+                  borderRadius: 6,
                   cursor: "pointer",
                 }}
               >
-                CLOSE DOSSIER
+                Close Dossier
               </button>
             </div>
           </div>
@@ -4173,13 +4491,16 @@ export default function AdminDashboard() {
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* 6. TEAM PERFORMANCE DRAWER / MODAL (6-STAGE BREAKDOWN & HISTORY) */}
       {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* 6. TEAM PERFORMANCE DRAWER / MODAL (6-STAGE BREAKDOWN & HISTORY) */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
       {performanceTeam && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.9)",
-            backdropFilter: "blur(10px)",
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            backdropFilter: "blur(4px)",
             zIndex: 1000,
             display: "flex",
             alignItems: "center",
@@ -4194,33 +4515,30 @@ export default function AdminDashboard() {
           <div
             className="admin-scrollable"
             style={{
-              backgroundColor: "#0b0b12",
-              border: "1px solid #ff2d3a",
-              borderRadius: 6,
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 12,
               width: "100%",
-              maxWidth: "1000px",
-              maxHeight: "92vh",
+              maxWidth: "960px",
+              maxHeight: "90vh",
               overflowY: "auto",
               padding: "28px",
               boxSizing: "border-box",
-              boxShadow: "0 14px 50px rgba(255, 45, 58, 0.2)",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#ff2d3a" }} />
-                  <span style={{ fontSize: 11, letterSpacing: ".2em", color: "#ff2d3a", fontWeight: "bold" }}>
-                    HAWKINS PROTOCOL // SQUAD PERFORMANCE TELEMETRY
-                  </span>
+                <div style={{ fontSize: 11, letterSpacing: "0.08em", color: "#e11d48", fontWeight: 700, textTransform: "uppercase", marginBottom: 4 }}>
+                  Squad Telemetry · 6-Stage Progression
                 </div>
-                <h2 style={{ margin: "0 0 6px 0", fontSize: 24, fontWeight: 800, color: "#ffffff", letterSpacing: ".04em" }}>
+                <h2 style={{ margin: "0 0 4px 0", fontSize: 22, fontWeight: 700, color: "#0f172a" }}>
                   {performanceTeam.teamName}
                 </h2>
-                <div style={{ fontSize: 13, color: "#888899" }}>
-                  Squad Leader: <span style={{ color: "#ffffff", fontWeight: 600 }}>{performanceTeam.leaderName}</span> · Team ID: <span style={{ color: "#36e0c4" }}>{performanceTeam.teamId}</span> · Role: <span style={{ color: performanceTeam.role === "VECNA" ? "#ff2d3a" : "#36e0c4", fontWeight: 600 }}>{performanceTeam.role || "HAWKINS SQUAD"}</span>
+                <div style={{ fontSize: 13, color: "#64748b" }}>
+                  Leader: <span style={{ color: "#0f172a", fontWeight: 600 }}>{performanceTeam.leaderName}</span> · Team ID: <span style={{ color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>{performanceTeam.teamId}</span> · Role: <span style={{ color: performanceTeam.role === "VECNA" ? "#dc2626" : "#2563eb", fontWeight: 600 }}>{performanceTeam.role || "Hawkins Squad"}</span>
                 </div>
               </div>
 
@@ -4231,12 +4549,17 @@ export default function AdminDashboard() {
                   setPerformanceData(null);
                 }}
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#888899",
-                  fontSize: 22,
+                  background: "#f1f5f9",
+                  border: "1px solid #e2e8f0",
+                  color: "#64748b",
+                  fontSize: 14,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
                   cursor: "pointer",
-                  padding: "4px 8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 ✕
@@ -4244,41 +4567,39 @@ export default function AdminDashboard() {
             </div>
 
             {isLoadingPerformance && (
-              <div style={{ padding: "40px 0", textAlign: "center", color: "#ffb454", fontSize: 14 }}>
-                ANALYZING 6-STAGE HISTORICAL TELEMETRY FROM TIDB...
+              <div style={{ padding: "40px 0", textAlign: "center", color: "#64748b", fontSize: 13 }}>
+                Analyzing 6-stage telemetry from database...
               </div>
             )}
 
             {!isLoadingPerformance && performanceData && (
               <>
                 {/* 1. Overview Stat Tiles */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
-                  <div style={{ padding: "14px", backgroundColor: "rgba(255, 255, 255, 0.03)", borderRadius: 4, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                    <div style={{ fontSize: 11, color: "#888899", letterSpacing: ".1em" }}>TOURNAMENT RANK</div>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: performanceData.teamOverview.overallRank <= 3 ? "#ff2d3a" : "#ffffff", marginTop: 4 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 24 }}>
+                  <div style={{ padding: "12px 14px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.05em" }}>RANK</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: performanceData.teamOverview.overallRank <= 3 ? "#d97706" : "#0f172a", marginTop: 4, fontFamily: "var(--font-mono), monospace" }}>
                       #{performanceData.teamOverview.overallRank}
                     </div>
                   </div>
 
-                  <div style={{ padding: "14px", backgroundColor: "rgba(255, 180, 84, 0.06)", borderRadius: 4, border: "1px solid rgba(255, 180, 84, 0.25)" }}>
-                    <div style={{ fontSize: 11, color: "#ffb454", letterSpacing: ".1em" }}>TOTAL NET POINTS</div>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: "#ffb454", marginTop: 4 }}>
-                      {performanceData.teamOverview.currentTotalPoints} PTS
+                  <div style={{ padding: "12px 14px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.05em" }}>TOTAL NET POINTS</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "#2563eb", marginTop: 4, fontFamily: "var(--font-mono), monospace" }}>
+                      {performanceData.teamOverview.currentTotalPoints} pts
                     </div>
                   </div>
 
-                  <div style={{ padding: "14px", backgroundColor: "rgba(54, 224, 196, 0.06)", borderRadius: 4, border: "1px solid rgba(54, 224, 196, 0.25)" }}>
-                    <div style={{ fontSize: 11, color: "#36e0c4", letterSpacing: ".1em" }}>CURRENT LOCATION</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#36e0c4", marginTop: 8 }}>
+                  <div style={{ padding: "12px 14px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.05em" }}>CURRENT LOCATION</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", marginTop: 8 }}>
                       {performanceData.teamOverview.currentStage}
                     </div>
                   </div>
 
-                  <div style={{ padding: "14px", backgroundColor: "rgba(255, 255, 255, 0.03)", borderRadius: 4, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                    <div style={{ fontSize: 11, color: "#888899", letterSpacing: ".1em" }}>
-                      {performanceData.teamOverview.role === "VECNA" ? "TRIALS CONQUERED" : "STAGES CLEARED"}
-                    </div>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: "#ffffff", marginTop: 4 }}>
+                  <div style={{ padding: "12px 14px", backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                    <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.05em" }}>STAGES CLEARED</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "#059669", marginTop: 4, fontFamily: "var(--font-mono), monospace" }}>
                       {performanceData.stages.filter((s: any) => s.status === "Completed").length} / 6
                     </div>
                   </div>
@@ -4286,47 +4607,48 @@ export default function AdminDashboard() {
 
                 {/* 2. Stage-by-Stage History Table (6 Stages) */}
                 <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#d0d0d8", letterSpacing: ".08em", marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 10 }}>
                     {performanceData.teamOverview.role === "VECNA"
-                      ? "TRIAL-BY-TRIAL PROGRESSION & SCORING (6 CANONICAL TRIALS)"
-                      : "STAGE-BY-STAGE PROGRESSION & SCORING (6 CANONICAL STAGES)"}
+                      ? "Trial Progression & Scoring Breakdown"
+                      : "Stage Progression & Scoring Breakdown"}
                   </div>
-                  <div style={{ border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
                       <thead>
-                        <tr style={{ backgroundColor: "#12121c", color: "#888899", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                          <th style={{ padding: "10px 12px" }}>
-                            {performanceData.teamOverview.role === "VECNA" ? "TRIAL" : "STAGE"}
-                          </th>
-                          <th style={{ padding: "10px 12px" }}>STATUS</th>
-                          <th style={{ padding: "10px 12px" }}>STARTED (IST)</th>
-                          <th style={{ padding: "10px 12px" }}>COMPLETED (IST)</th>
-                          <th style={{ padding: "10px 12px" }}>DURATION</th>
-                          <th style={{ padding: "10px 12px", textAlign: "right" }}>EARNED</th>
-                          <th style={{ padding: "10px 12px", textAlign: "right" }}>LOST</th>
-                          <th style={{ padding: "10px 12px", textAlign: "right" }}>NET SCORE</th>
-                          <th style={{ padding: "10px 12px", textAlign: "center" }}>EVENTS</th>
+                        <tr style={{ backgroundColor: "#f8fafc", color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>
+                          <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Stage</th>
+                          <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Status</th>
+                          <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Started</th>
+                          <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Completed</th>
+                          <th style={{ padding: "10px 14px", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Duration</th>
+                          <th style={{ padding: "10px 14px", textAlign: "right", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Earned</th>
+                          <th style={{ padding: "10px 14px", textAlign: "right", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Lost</th>
+                          <th style={{ padding: "10px 14px", textAlign: "right", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Net</th>
+                          <th style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>Details</th>
                         </tr>
                       </thead>
                       <tbody>
                         {performanceData.stages.map((stg: any) => {
-                          let badgeBg = "rgba(255, 255, 255, 0.05)";
-                          let badgeColor = "#666677";
+                          let badgeBg = "#f1f5f9";
+                          let badgeColor = "#64748b";
+                          let badgeBorder = "#e2e8f0";
                           if (stg.status === "Completed") {
-                            badgeBg = "rgba(54, 224, 196, 0.15)";
-                            badgeColor = "#36e0c4";
+                            badgeBg = "#f0fdf4";
+                            badgeColor = "#059669";
+                            badgeBorder = "#bbf7d0";
                           } else if (stg.status === "In Progress") {
-                            badgeBg = "rgba(255, 180, 84, 0.15)";
-                            badgeColor = "#ffb454";
+                            badgeBg = "#fffbeb";
+                            badgeColor = "#d97706";
+                            badgeBorder = "#fde68a";
                           }
 
                           const formatTime = (ts: string) => {
-                            if (!ts || ts === "Unavailable") return "Unavailable";
+                            if (!ts || ts === "Unavailable") return "—";
                             try {
                               const d = new Date(ts);
-                              return isNaN(d.getTime()) ? "Unavailable" : d.toLocaleTimeString();
+                              return isNaN(d.getTime()) ? "—" : d.toLocaleTimeString();
                             } catch {
-                              return "Unavailable";
+                              return "—";
                             }
                           };
 
@@ -4334,69 +4656,69 @@ export default function AdminDashboard() {
 
                           return (
                             <React.Fragment key={stg.stageId}>
-                              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", backgroundColor: isExpanded ? "rgba(255, 45, 58, 0.05)" : "transparent" }}>
-                                <td style={{ padding: "12px", fontWeight: 600, color: "#ffffff" }}>
-                                  {stg.stageName.startsWith("TRIAL") ? stg.stageName : `STAGE ${stg.stageId}: ${stg.stageName}`}
+                              <tr style={{ borderBottom: "1px solid #f1f5f9", backgroundColor: isExpanded ? "#f8fafc" : "transparent" }}>
+                                <td style={{ padding: "10px 14px", fontWeight: 600, color: "#0f172a" }}>
+                                  {stg.stageName.startsWith("TRIAL") ? stg.stageName : `Stage ${stg.stageId}: ${stg.stageName}`}
                                 </td>
-                                <td style={{ padding: "12px" }}>
-                                  <span style={{ padding: "3px 8px", borderRadius: 3, fontSize: 11, fontWeight: "bold", backgroundColor: badgeBg, color: badgeColor, border: `1px solid ${badgeColor}40` }}>
+                                <td style={{ padding: "10px 14px" }}>
+                                  <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, backgroundColor: badgeBg, color: badgeColor, border: `1px solid ${badgeBorder}` }}>
                                     {stg.status}
                                   </span>
                                 </td>
-                                <td style={{ padding: "12px", color: stg.startedAt === "Unavailable" ? "#555566" : "#d0d0d8" }}>
+                                <td style={{ padding: "10px 14px", color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>
                                   {stg.startedAt === "Unavailable" ? "—" : formatToIST(stg.startedAt)}
                                 </td>
-                                <td style={{ padding: "12px", color: stg.completedAt === "Unavailable" ? "#555566" : "#d0d0d8" }}>
+                                <td style={{ padding: "10px 14px", color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>
                                   {stg.completedAt === "Unavailable" ? "—" : formatToIST(stg.completedAt)}
                                 </td>
-                                <td style={{ padding: "12px", color: stg.duration === "Unavailable" ? "#555566" : "#ffb454", fontWeight: stg.duration !== "Unavailable" ? 600 : 400 }}>
-                                  {stg.duration}
+                                <td style={{ padding: "10px 14px", color: "#475569", fontFamily: "var(--font-mono), monospace" }}>
+                                  {stg.duration === "Unavailable" ? "—" : stg.duration}
                                 </td>
-                                <td style={{ padding: "12px", textAlign: "right", color: "#36e0c4", fontWeight: "bold" }}>
+                                <td style={{ padding: "10px 14px", textAlign: "right", color: "#059669", fontWeight: 600, fontFamily: "var(--font-mono), monospace" }}>
                                   +{stg.pointsEarned}
                                 </td>
-                                <td style={{ padding: "12px", textAlign: "right", color: stg.pointsLost < 0 ? "#ff2d3a" : "#666677", fontWeight: "bold" }}>
+                                <td style={{ padding: "10px 14px", textAlign: "right", color: stg.pointsLost < 0 ? "#dc2626" : "#64748b", fontWeight: 600, fontFamily: "var(--font-mono), monospace" }}>
                                   {stg.pointsLost < 0 ? stg.pointsLost : 0}
                                 </td>
-                                <td style={{ padding: "12px", textAlign: "right", color: stg.netStageScore >= 0 ? "#ffb454" : "#ff2d3a", fontWeight: 800 }}>
-                                  {stg.netStageScore >= 0 ? `+${stg.netStageScore}` : stg.netStageScore} PTS
+                                <td style={{ padding: "10px 14px", textAlign: "right", color: "#0f172a", fontWeight: 700, fontFamily: "var(--font-mono), monospace" }}>
+                                  {stg.netStageScore >= 0 ? `+${stg.netStageScore}` : stg.netStageScore} pts
                                 </td>
-                                <td style={{ padding: "12px", textAlign: "center" }}>
+                                <td style={{ padding: "10px 14px", textAlign: "center" }}>
                                   <button
                                     type="button"
                                     onClick={() => setExpandedPerformanceStage(isExpanded ? null : stg.stageId)}
                                     style={{
                                       padding: "3px 8px",
                                       fontSize: 11,
-                                      backgroundColor: isExpanded ? "#ff2d3a" : "rgba(255,255,255,0.06)",
-                                      color: isExpanded ? "#000000" : "#d0d0d8",
-                                      border: "1px solid rgba(255,255,255,0.15)",
-                                      borderRadius: 3,
+                                      fontWeight: 600,
+                                      backgroundColor: isExpanded ? "#e2e8f0" : "#ffffff",
+                                      color: isExpanded ? "#0f172a" : "#475569",
+                                      border: "1px solid #cbd5e1",
+                                      borderRadius: 4,
                                       cursor: "pointer",
-                                      fontWeight: "bold",
                                     }}
                                   >
-                                    {isExpanded ? "Hide Details" : "Questions & Audit (10 Qs)"}
+                                    {isExpanded ? "Close" : "Audit"}
                                   </button>
                                 </td>
                               </tr>
 
                               {/* Expanded itemized events for this stage */}
                               {isExpanded && (
-                                <tr style={{ backgroundColor: "#08080f" }}>
+                                <tr style={{ backgroundColor: "#f8fafc" }}>
                                   <td colSpan={9} style={{ padding: "12px 16px" }}>
-                                    <div style={{ fontSize: 11, color: "#888899", marginBottom: 6, fontWeight: 600 }}>
-                                      ITEMIZED EVENTS FOR {stg.stageName.startsWith("TRIAL") ? stg.stageName : `STAGE ${stg.stageId} (${stg.stageName})`}:
+                                    <div style={{ fontSize: 11, color: "#475569", marginBottom: 8, fontWeight: 600 }}>
+                                      Itemized audit events for {stg.stageName.startsWith("TRIAL") ? stg.stageName : `Stage ${stg.stageId}`}:
                                     </div>
                                     {(!stg.events || stg.events.length === 0) ? (
-                                      <div style={{ fontSize: 11, color: "#555566", fontStyle: "italic" }}>
+                                      <div style={{ fontSize: 11, color: "#64748b", fontStyle: "italic" }}>
                                         No itemized events recorded for this stage yet.
                                       </div>
                                     ) : (
-                                      <div style={{ border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 4, overflow: "hidden" }}>
+                                      <div style={{ border: "1px solid #e2e8f0", borderRadius: 6, overflow: "hidden", backgroundColor: "#ffffff" }}>
                                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                                           <thead>
-                                            <tr style={{ backgroundColor: "#101018", color: "#666677" }}>
+                                            <tr style={{ backgroundColor: "#f1f5f9", color: "#475569" }}>
                                               <th style={{ padding: "6px 10px", textAlign: "left" }}>TIMESTAMP</th>
                                               <th style={{ padding: "6px 10px", textAlign: "left" }}>EVENT TYPE</th>
                                               <th style={{ padding: "6px 10px", textAlign: "left" }}>DETAIL / REASON</th>
@@ -4405,22 +4727,22 @@ export default function AdminDashboard() {
                                           </thead>
                                           <tbody>
                                             {stg.events.map((ev: any, evIdx: number) => {
-                                              let deltaColor = "#888899";
-                                              if (ev.pointDelta > 0) deltaColor = "#36e0c4";
-                                              else if (ev.pointDelta < 0) deltaColor = "#ff2d3a";
+                                              let deltaColor = "#64748b";
+                                              if (ev.pointDelta > 0) deltaColor = "#059669";
+                                              else if (ev.pointDelta < 0) deltaColor = "#dc2626";
 
                                               return (
-                                                <tr key={evIdx} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                                                  <td style={{ padding: "6px 10px", color: "#888899" }}>
+                                                <tr key={evIdx} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                                  <td style={{ padding: "6px 10px", color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>
                                                     {formatTime(ev.timestamp)}
                                                   </td>
-                                                  <td style={{ padding: "6px 10px", color: "#ffffff", fontWeight: 600 }}>
+                                                  <td style={{ padding: "6px 10px", color: "#0f172a", fontWeight: 600 }}>
                                                     {ev.type}
                                                   </td>
-                                                  <td style={{ padding: "6px 10px", color: "#d0d0d8" }}>
+                                                  <td style={{ padding: "6px 10px", color: "#475569" }}>
                                                     {ev.detail || "-"}
                                                   </td>
-                                                  <td style={{ padding: "6px 10px", textAlign: "right", color: deltaColor, fontWeight: "bold" }}>
+                                                  <td style={{ padding: "6px 10px", textAlign: "right", color: deltaColor, fontWeight: 700, fontFamily: "var(--font-mono), monospace" }}>
                                                     {ev.pointDelta > 0 ? `+${ev.pointDelta}` : ev.pointDelta}
                                                   </td>
                                                 </tr>
@@ -4443,38 +4765,38 @@ export default function AdminDashboard() {
 
                 {/* 3. Non-Stage Events (Event-wide Actions) */}
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#d0d0d8", letterSpacing: ".08em", marginBottom: 10 }}>
-                    NON-STAGE ACTIONS &amp; EVENT-WIDE ADJUSTMENTS
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 10 }}>
+                    Event-wide Score Adjustments
                   </div>
                   {(!performanceData.eventWideActions || performanceData.eventWideActions.length === 0) ? (
-                    <div style={{ padding: "12px 16px", backgroundColor: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 4, color: "#666677", fontSize: 12 }}>
-                      No event-wide non-stage score actions recorded for this squad.
+                    <div style={{ padding: "12px 14px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, color: "#64748b", fontSize: 12 }}>
+                      No event-wide adjustments recorded for this squad.
                     </div>
                   ) : (
-                    <div style={{ border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ border: "1px solid #e2e8f0", borderRadius: 6, overflow: "hidden", backgroundColor: "#ffffff" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
                         <thead>
-                          <tr style={{ backgroundColor: "#12121c", color: "#888899", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                            <th style={{ padding: "8px 12px" }}>TIMESTAMP (IST)</th>
-                            <th style={{ padding: "8px 12px" }}>ACTION TYPE</th>
-                            <th style={{ padding: "8px 12px" }}>DETAIL</th>
-                            <th style={{ padding: "8px 12px", textAlign: "right" }}>POINT DELTA</th>
+                          <tr style={{ backgroundColor: "#f8fafc", color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>
+                            <th style={{ padding: "8px 12px", fontSize: 11, fontWeight: 700 }}>TIMESTAMP</th>
+                            <th style={{ padding: "8px 12px", fontSize: 11, fontWeight: 700 }}>ACTION TYPE</th>
+                            <th style={{ padding: "8px 12px", fontSize: 11, fontWeight: 700 }}>DETAIL</th>
+                            <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 11, fontWeight: 700 }}>POINT DELTA</th>
                           </tr>
                         </thead>
                         <tbody>
                           {performanceData.eventWideActions.map((act: any, actIdx: number) => {
-                            let deltaColor = "#888899";
-                            if (act.pointDelta > 0) deltaColor = "#36e0c4";
-                            else if (act.pointDelta < 0) deltaColor = "#ff2d3a";
+                            let deltaColor = "#64748b";
+                            if (act.pointDelta > 0) deltaColor = "#059669";
+                            else if (act.pointDelta < 0) deltaColor = "#dc2626";
 
                             return (
-                              <tr key={actIdx} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                                <td style={{ padding: "8px 12px", color: "#888899" }}>
-                                  {act.timestamp !== "Unavailable" ? new Date(act.timestamp).toLocaleTimeString() : "Unavailable"}
+                              <tr key={actIdx} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                <td style={{ padding: "8px 12px", color: "#64748b", fontFamily: "var(--font-mono), monospace" }}>
+                                  {act.timestamp !== "Unavailable" ? new Date(act.timestamp).toLocaleTimeString() : "—"}
                                 </td>
-                                <td style={{ padding: "8px 12px", color: "#ffffff", fontWeight: 600 }}>{act.type}</td>
-                                <td style={{ padding: "8px 12px", color: "#d0d0d8" }}>{act.detail || "-"}</td>
-                                <td style={{ padding: "8px 12px", textAlign: "right", color: deltaColor, fontWeight: "bold" }}>
+                                <td style={{ padding: "8px 12px", color: "#0f172a", fontWeight: 600 }}>{act.type}</td>
+                                <td style={{ padding: "8px 12px", color: "#475569" }}>{act.detail || "-"}</td>
+                                <td style={{ padding: "8px 12px", textAlign: "right", color: deltaColor, fontWeight: 700, fontFamily: "var(--font-mono), monospace" }}>
                                   {act.pointDelta > 0 ? `+${act.pointDelta}` : act.pointDelta}
                                 </td>
                               </tr>
@@ -4497,18 +4819,17 @@ export default function AdminDashboard() {
                   setPerformanceData(null);
                 }}
                 style={{
-                  padding: "10px 22px",
+                  padding: "8px 18px",
                   fontSize: 12,
-                  fontWeight: "bold",
-                  backgroundColor: "rgba(255, 255, 255, 0.08)",
-                  border: "1px solid rgba(255, 255, 255, 0.2)",
-                  color: "#ffffff",
-                  borderRadius: 4,
+                  fontWeight: 600,
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#475569",
+                  borderRadius: 6,
                   cursor: "pointer",
-                  letterSpacing: ".05em",
                 }}
               >
-                CLOSE PERFORMANCE VIEW
+                Close Performance View
               </button>
             </div>
           </div>
