@@ -307,11 +307,13 @@ function PokemonFireRedBottomDialog({
   mode = "intro",
   onComplete,
   onNextEpisode,
+  isNextLocked = false,
 }: {
   chapter: ChapterDef;
   mode?: "intro" | "completion";
   onComplete: () => void;
   onNextEpisode?: () => void;
+  isNextLocked?: boolean;
 }) {
   const character = getCharacterForChapter(chapter.id);
   const themeCol = character.themeColor || "#ff2d3a";
@@ -695,7 +697,7 @@ function PokemonFireRedBottomDialog({
                 gap: 4,
               }}
             >
-              {isTyping ? "[TYPING...]" : isFinalLine ? (mode === "completion" ? "NEXT EPISODE" : "ENTER MISSION") : "[SPACE / CLICK]"}
+              {isTyping ? "[TYPING...]" : isFinalLine ? (mode === "completion" ? (isNextLocked ? "[LOCKED BY COMMAND · EXIT TO BOARD]" : "NEXT EPISODE") : "ENTER MISSION") : "[SPACE / CLICK]"}
             </motion.div>
           </div>
         </motion.div>
@@ -712,11 +714,13 @@ function ChapterCompletionView({
   onNextEpisode,
   isLastEpisode,
   onViewDossier,
+  nextChapterUnlocked = false,
 }: {
   chapter: ChapterDef;
   onNextEpisode: () => void;
   isLastEpisode?: boolean;
   onViewDossier: () => void;
+  nextChapterUnlocked?: boolean;
 }) {
   return (
     <motion.div
@@ -828,32 +832,51 @@ function ChapterCompletionView({
         }}
       >
         {!isLastEpisode ? (
-          <button
-            type="button"
-            onClick={() => {
-              sfx("ok");
-              onNextEpisode();
-            }}
-            style={{
-              background: "#ff2d3a",
-              color: "#000000",
-              fontWeight: 900,
-              fontSize: 17,
-              letterSpacing: ".18em",
-              padding: "14px 40px",
-              border: "2px solid #ff2d3a",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontFamily: "var(--font-term)",
-              textTransform: "uppercase",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              transition: "all 0.15s ease",
-            }}
-          >
-            NEXT EPISODE
-          </button>
+          nextChapterUnlocked ? (
+            <button
+              type="button"
+              onClick={() => {
+                sfx("ok");
+                onNextEpisode();
+              }}
+              style={{
+                background: "#ff2d3a",
+                color: "#000000",
+                fontWeight: 900,
+                fontSize: 17,
+                letterSpacing: ".18em",
+                padding: "14px 40px",
+                border: "2px solid #ff2d3a",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontFamily: "var(--font-term)",
+                textTransform: "uppercase",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                transition: "all 0.15s ease",
+              }}
+            >
+              NEXT EPISODE
+            </button>
+          ) : (
+            <div
+              style={{
+                padding: "12px 24px",
+                border: "1.5px dashed #eab308",
+                background: "rgba(234, 179, 8, 0.15)",
+                color: "#facc15",
+                fontSize: 14,
+                letterSpacing: ".15em",
+                fontFamily: "var(--font-term)",
+                borderRadius: 4,
+                textAlign: "center",
+                fontWeight: "bold",
+              }}
+            >
+              🔒 NEXT CHAPTER LOCKED: AWAITING COMMAND BROADCAST
+            </div>
+          )
         ) : (
           <div
             style={{
@@ -986,6 +1009,12 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
     };
   }, []);
 
+  useEffect(() => {
+    if (s.unlockedStages && Array.isArray(s.unlockedStages) && s.unlockedStages.length > 0) {
+      setUnlockedStages(s.unlockedStages);
+    }
+  }, [s.unlockedStages]);
+
   const isLocationLocked = Boolean(
     sabotage &&
     sabotage.kind === "LOCK" &&
@@ -1006,6 +1035,14 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
       setViewMode("board");
     }
   }, [isLocationLocked, onBackToBoard, say, setViewMode]);
+
+  // Guard: If admin locks the active chapter while player is viewing it, redirect to board
+  useEffect(() => {
+    if (activeChapterId > 1 && unlockedStages.length > 0 && !unlockedStages.includes(activeChapterId)) {
+      say(`STAGE ${activeChapterId} IS LOCKED: Awaiting broadcast authorization from Command.`);
+      handleBackToBoard();
+    }
+  }, [activeChapterId, unlockedStages, handleBackToBoard, say]);
 
   const isChapterAllQuestionsGiven = useCallback((chId: number) => {
     const cfg = STAGE_QUIZ_CONFIGS[chId];
@@ -1075,10 +1112,14 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
       const p = new URLSearchParams(window.location.search);
       const chParam = parseInt(p.get("chapter") || "", 10);
       if ([1, 2, 3, 4, 5, 6].includes(chParam)) {
-        setActiveChapterId(chParam as ChapterId);
+        if (chParam === 1 || unlockedStages.includes(chParam)) {
+          setActiveChapterId(chParam as ChapterId);
+        } else {
+          say(`STAGE ${chParam} IS LOCKED: Awaiting broadcast authorization from Command.`);
+        }
       }
     }
-  }, [setActiveChapterId]);
+  }, [setActiveChapterId, unlockedStages, say]);
 
   const currentChapter = CHAPTERS.find((c) => c.id === activeChapterId) || CHAPTERS[0];
 
@@ -1237,6 +1278,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
             key={`completion-dialog-${completionStoryChapterId}`}
             chapter={CHAPTERS.find((c) => c.id === completionStoryChapterId) || CHAPTERS[0]}
             mode="completion"
+            isNextLocked={completionStoryChapterId < 7 && !unlockedStages.includes(completionStoryChapterId + 1)}
             onComplete={() => setCompletionStoryChapterId(null)}
             onNextEpisode={
               completionStoryChapterId < 7

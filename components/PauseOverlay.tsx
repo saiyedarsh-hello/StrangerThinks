@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 
 interface PauseOverlayProps {
   teamName?: string;
@@ -7,12 +7,72 @@ interface PauseOverlayProps {
 }
 
 export default function PauseOverlay({ teamName, isVecna = false }: PauseOverlayProps) {
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    // Capture original body/documentElement scroll styles
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyOverscroll = document.body.style.overscrollBehavior;
+    const originalTouchAction = document.body.style.touchAction;
+
+    // Hard-lock background scrolling
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    document.body.style.touchAction = "none";
+
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+    };
+
+    const blockScrollKeys = (e: KeyboardEvent) => {
+      if (
+        [
+          "ArrowUp",
+          "ArrowDown",
+          "PageUp",
+          "PageDown",
+          "Space",
+          "Home",
+          "End",
+        ].includes(e.code)
+      ) {
+        e.preventDefault();
+      }
+    };
+
+    // Attach non-passive listeners to guarantee wheel & touchmove cancelation
+    window.addEventListener("wheel", preventScroll, { passive: false });
+    window.addEventListener("touchmove", preventScroll, { passive: false });
+    window.addEventListener("keydown", blockScrollKeys, { passive: false });
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.overscrollBehavior = originalBodyOverscroll;
+      document.body.style.touchAction = originalTouchAction;
+
+      window.removeEventListener("wheel", preventScroll);
+      window.removeEventListener("touchmove", preventScroll);
+      window.removeEventListener("keydown", blockScrollKeys);
+    };
+  }, []);
+
   return (
     <div
       role="alertdialog"
       aria-modal="true"
       aria-label="Tournament Paused"
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md text-amber-100 select-none p-4"
+      onWheel={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onTouchMove={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 backdrop-blur-md text-amber-100 select-none p-4 overflow-hidden overscroll-none touch-none pointer-events-auto"
     >
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-950/40 via-black/80 to-black pointer-events-none" />
 
@@ -25,7 +85,7 @@ export default function PauseOverlay({ teamName, isVecna = false }: PauseOverlay
         }}
       />
 
-      <div className="relative max-w-lg w-full border-2 border-red-700/80 bg-stone-950/95 p-6 md:p-8 shadow-[0_0_50px_rgba(220,38,38,0.4)] text-center rounded-none font-mono">
+      <div className="relative max-w-lg w-full max-h-[92vh] overflow-hidden border-2 border-red-700/80 bg-stone-950/95 p-6 md:p-8 shadow-[0_0_50px_rgba(220,38,38,0.4)] text-center rounded-none font-mono">
         {/* Pulsing Beacon Header */}
         <div className="flex items-center justify-center gap-3 mb-4">
           <span className="relative flex h-4 w-4">

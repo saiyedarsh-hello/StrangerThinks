@@ -423,6 +423,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const sRef = useRef(s);
   sRef.current = s;
 
+  // Guard: if current activeChapterId is not unlocked by admin, fall back to 1
+  useEffect(() => {
+    if (s.unlockedStages && Array.isArray(s.unlockedStages) && s.unlockedStages.length > 0) {
+      if (activeChapterId > 1 && !s.unlockedStages.includes(activeChapterId)) {
+        setActiveChapterId(1);
+      }
+    }
+  }, [s.unlockedStages, activeChapterId]);
+
   // Hydrate from localStorage
   useEffect(() => {
     if (!isGame) {
@@ -736,6 +745,19 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setToast(msg);
     setTimeout(() => setToast((t) => (t === msg ? null : t)), 3200);
   }, []);
+
+  const setGuardedActiveChapterId = useCallback(
+    (target: 1 | 2 | 3 | 4 | 5 | 6 | 7) => {
+      const allowedStages = sRef.current.unlockedStages || [1];
+      if (target > 1 && !allowedStages.includes(target)) {
+        sfx("err");
+        say(`SECTOR ${target} RESTRICTED: Awaiting broadcast authorization from Command.`);
+        return;
+      }
+      setActiveChapterId(target);
+    },
+    [say]
+  );
 
   // Sabotage expiry
   useEffect(() => {
@@ -1952,7 +1974,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       submitRadiometerCode,
       radiometerPinCount,
       activeChapterId,
-      setActiveChapterId,
+      setActiveChapterId: setGuardedActiveChapterId,
       chapterModalOpen,
       setChapterModalOpen,
       unlockedHints: s.unlockedHints || {},
@@ -2003,6 +2025,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       submitRadiometerCode,
       radiometerPinCount,
       activeChapterId,
+      setGuardedActiveChapterId,
       chapterModalOpen,
       unlockHint,
       isHintUnlocked,

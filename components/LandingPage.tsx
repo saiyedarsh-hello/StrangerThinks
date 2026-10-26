@@ -211,11 +211,6 @@ export default function LandingPage(_props: LandingPageProps) {
   const handleOpenAuth = () => {
     sfx("click");
     setSoundOn(true);
-    if (typeof document !== "undefined" && !document.fullscreenElement) {
-      try {
-        document.documentElement.requestFullscreen?.().catch(() => {});
-      } catch {}
-    }
     setShowModal(true);
   };
 
@@ -236,7 +231,7 @@ export default function LandingPage(_props: LandingPageProps) {
       return;
     }
 
-    if (typeof document !== "undefined" && !document.fullscreenElement) {
+    if (!isAdminAttempt && typeof document !== "undefined" && !document.fullscreenElement) {
       try {
         document.documentElement.requestFullscreen?.().catch(() => {});
       } catch {}

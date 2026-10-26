@@ -9,7 +9,7 @@ import InvestigationBoard from "./InvestigationBoard";
 import EventStandby from "./EventStandby";
 
 export default function StageView() {
-  const { vecnaCutscene, dismissVecnaCutscene, activeChapterId, setActiveChapterId, viewMode, setViewMode, isLocationLocked, say } = useGame();
+  const { s, vecnaCutscene, dismissVecnaCutscene, activeChapterId, setActiveChapterId, viewMode, setViewMode, isLocationLocked, say } = useGame();
   const [eventStatus, setEventStatus] = useState<string>("active");
 
   useEffect(() => {
@@ -47,6 +47,12 @@ export default function StageView() {
     if (isLocationLocked && chapterId !== activeChapterId) {
       sfx("err");
       say("VECNA INTERFERENCE — LOCATION LOCKED · Stage movement restricted.");
+      return;
+    }
+    const isUnlocked = chapterId === 1 || (s.unlockedStages && s.unlockedStages.includes(chapterId));
+    if (!isUnlocked) {
+      sfx("err");
+      say(`SECTOR ${chapterId} RESTRICTED: Awaiting broadcast authorization from Command.`);
       return;
     }
     if (chapterId >= 1 && chapterId <= 7) {

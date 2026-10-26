@@ -107,7 +107,18 @@ export default function InvestigationBoard({
 }: InvestigationBoardProps) {
   const { s, score, isLocationLocked, say } = useGame();
   const [selectedCardId, setSelectedCardId] = useState<number>(activeChapterId);
-  const [unlockedStages, setUnlockedStages] = useState<number[]>([1]);
+  const [unlockedStages, setUnlockedStages] = useState<number[]>(() => {
+    if (s.unlockedStages && Array.isArray(s.unlockedStages) && s.unlockedStages.length > 0) {
+      return s.unlockedStages;
+    }
+    return [1];
+  });
+
+  useEffect(() => {
+    if (s.unlockedStages && Array.isArray(s.unlockedStages) && s.unlockedStages.length > 0) {
+      setUnlockedStages(s.unlockedStages);
+    }
+  }, [s.unlockedStages]);
 
   useEffect(() => {
     let active = true;
@@ -115,8 +126,11 @@ export default function InvestigationBoard({
       try {
         const res = await fetch("/api/admin/stages");
         const data = await res.json();
-        if (active && data.success && Array.isArray(data.unlockedStages)) {
-          setUnlockedStages(data.unlockedStages);
+        if (active && data.success) {
+          const hwk = data.unlockedStagesHawkins || data.unlockedStages;
+          if (Array.isArray(hwk) && hwk.length > 0) {
+            setUnlockedStages(hwk);
+          }
         }
       } catch {}
     };
@@ -124,15 +138,21 @@ export default function InvestigationBoard({
 
     const sock = getSocket();
     const handleStageUnlocked = (d: any) => {
-      if (d?.unlockedStages && Array.isArray(d.unlockedStages)) {
-        setUnlockedStages(d.unlockedStages);
+      if (d?.target === "vecna") return;
+      const hwk = d?.unlockedStagesHawkins || d?.unlockedStages;
+      if (Array.isArray(hwk) && hwk.length > 0) {
+        setUnlockedStages(hwk);
       }
     };
     sock?.on("stage:unlocked", handleStageUnlocked);
 
     const unsubRealtime = subscribe((m: any) => {
-      if (m.type === "stage_unlocked" && Array.isArray(m.unlockedStages)) {
-        setUnlockedStages(m.unlockedStages);
+      if (m.type === "stage_unlocked") {
+        if (m.target === "vecna") return;
+        const hwk = m.unlockedStagesHawkins || m.unlockedStages;
+        if (Array.isArray(hwk) && hwk.length > 0) {
+          setUnlockedStages(hwk);
+        }
       }
       if (m.type === "event_reset") {
         setUnlockedStages([1]);
