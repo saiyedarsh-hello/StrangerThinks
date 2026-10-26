@@ -140,12 +140,17 @@ export default function ChapterSummaryView({
         position: "relative",
         width: "100%",
         minHeight: "calc(100vh - 64px)",
-        padding: "clamp(16px, 3vw, 40px) clamp(14px, 4vw, 48px)",
+        height: "auto",
+        flex: "1 0 auto",
+        flexShrink: 0,
+        padding: "clamp(16px, 3vw, 40px) clamp(14px, 4vw, 48px) 80px",
         background: "#f4eedf",
         backgroundImage:
           "radial-gradient(#e4dac5 1px, transparent 1px), radial-gradient(#dcd0ba 1px, transparent 1px)",
         backgroundSize: "20px 20px, 40px 40px",
         backgroundPosition: "0 0, 20px 20px",
+        backgroundAttachment: "fixed",
+        backgroundRepeat: "repeat",
         fontFamily: "'Courier New', Courier, monospace",
         color: "#231e1a",
         boxSizing: "border-box",
@@ -170,6 +175,7 @@ export default function ChapterSummaryView({
           padding: "clamp(20px, 3.5vw, 42px)",
           position: "relative",
           boxSizing: "border-box",
+          flexShrink: 0,
         }}
       >
         {/* Top Header Bar with Close (✕) */}

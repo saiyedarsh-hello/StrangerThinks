@@ -526,19 +526,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     setHydrated(true);
 
+    // Fetch current tournament event state & unlocked stages from server
+    fetch("/api/admin/event/state")
+      .then((r) => r.json())
+      .then((evData) => {
+        if (evData?.eventState?.unlockedStages && Array.isArray(evData.eventState.unlockedStages)) {
+          setS((prev) => ({ ...prev, unlockedStages: evData.eventState.unlockedStages }));
+        }
+      })
+      .catch(() => {});
+
     // Validate live session with server if token available
     const sessionToken = (currentSession as any)?.token;
     if (!sessionToken) {
       setSessionVerified(true);
     } else {
-      fetch("/api/admin/event/state")
-        .then((r) => r.json())
-        .then((evData) => {
-          if (evData?.eventState?.unlockedStages && Array.isArray(evData.eventState.unlockedStages)) {
-            setS((prev) => ({ ...prev, unlockedStages: evData.eventState.unlockedStages }));
-          }
-        })
-        .catch(() => {});
       fetch("/api/auth/session", {
         headers: { Authorization: `Bearer ${sessionToken}` },
       })
@@ -753,6 +755,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }));
         sfx("ok");
         say(`AWARDED +${m.points} TEAMWORK BY ${m.operatorName || "ORGANIZER"}`);
+      }
+
+      if (m.type === "stage_unlocked") {
+        const stages = (m as any).unlockedStages;
+        if (Array.isArray(stages) && stages.length > 0) {
+          setS((p) => ({
+            ...p,
+            unlockedStages: stages,
+          }));
+        }
       }
 
       if (m.type === "SCORE_UPDATE") {

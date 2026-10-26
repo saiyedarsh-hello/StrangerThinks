@@ -561,6 +561,8 @@ export function publish(msg: RealtimeMessage): void {
           sock.emit("award", msg);
         } else if (msg.type === "force_logout") {
           sock.emit("force_logout", msg);
+        } else if (msg.type === "stage_unlocked") {
+          sock.emit("stage:unlocked", msg);
         }
       } catch (e) {
         console.warn("[SOCKET.IO] Emit error:", e);

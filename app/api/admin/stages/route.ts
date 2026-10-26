@@ -16,22 +16,45 @@ export async function GET(req: NextRequest) {
         token = cookieTok.startsWith("Bearer ") ? cookieTok : `Bearer ${cookieTok}`;
       }
     }
-    if (!token || token.trim() === "" || token.trim() === "Bearer") {
-      return NextResponse.json(
-        { success: false, error: "UNAUTHORIZED", message: "Admin authorization required." },
-        { status: 401 }
-      );
+    if (token && token.trim() !== "Bearer") {
+      const res = await fetch(`${base}/admin/stages`, {
+        method: "GET",
+        headers: {
+          Authorization: token,
+        },
+        cache: "no-store",
+      }).catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.success && Array.isArray(data.unlockedStages)) {
+          return NextResponse.json(data);
+        }
+      }
     }
-    const res = await fetch(`${base}/admin/stages`, {
-      method: "GET",
-      headers: {
-        Authorization: token,
-      },
-      cache: "no-store",
-    });
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
+
+    // Public / Participant fallback
+    const pubRes = await fetch(`${base}/stages`, { cache: "no-store" }).catch(() => null);
+    if (pubRes && pubRes.ok) {
+      const data = await pubRes.json().catch(() => ({}));
+      if (data.success && Array.isArray(data.unlockedStages)) {
+        return NextResponse.json(data);
+      }
+    }
+
+    // Fallback 2: /event/state
+    const evRes = await fetch(`${base}/event/state`, { cache: "no-store" }).catch(() => null);
+    if (evRes && evRes.ok) {
+      const evData = await evRes.json().catch(() => ({}));
+      const stages = Array.isArray(evData.unlockedStages)
+        ? evData.unlockedStages
+        : Array.isArray(evData.event?.unlockedStages)
+        ? evData.event.unlockedStages
+        : [1];
+      return NextResponse.json({ success: true, unlockedStages: stages });
+    }
+
+    return NextResponse.json({ success: true, unlockedStages: [1] });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: true, unlockedStages: [1] });
   }
 }

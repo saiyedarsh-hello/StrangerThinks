@@ -186,6 +186,24 @@ export const TasksController = {
     const updated = db.updateTeam(team.id, updates);
     socketService.broadcastLeaderboard();
 
+    if (updated) {
+      const scorePayload = {
+        type: "SCORE_UPDATE",
+        teamId: team.id,
+        teamName: team.teamName,
+        newScore: updated.totalScore,
+        score: updated.totalScore,
+        delta: (updated.totalScore || 0) - (team.totalScore || 0),
+        breakdown: updated.breakdown,
+        solvedCount: updated.solvedChapters?.length || 0,
+        completedTasks: updated.completedTasks,
+        source: "PROGRESS_SYNC",
+        ts: Date.now(),
+      };
+      socketService.broadcast("score:update", scorePayload);
+      socketService.broadcastToAdmins("score:update", scorePayload);
+    }
+
     return res.json({
       success: true,
       team: updated,

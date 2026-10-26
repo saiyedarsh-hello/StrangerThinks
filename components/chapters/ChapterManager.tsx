@@ -1161,7 +1161,7 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
 
   return (
     <div
-      className="screen"
+      className={isCurrentSolved ? undefined : "screen"}
       style={{
         minHeight: "100vh",
         width: "100%",
@@ -1177,15 +1177,24 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
         paddingLeft: 0,
         paddingRight: 0,
         boxSizing: "border-box",
+        backgroundColor: isCurrentSolved ? "#f4eedf" : undefined,
+        backgroundImage: isCurrentSolved
+          ? "radial-gradient(#e4dac5 1px, transparent 1px), radial-gradient(#dcd0ba 1px, transparent 1px)"
+          : undefined,
+        backgroundSize: isCurrentSolved ? "20px 20px, 40px 40px" : undefined,
+        backgroundPosition: isCurrentSolved ? "0 0, 20px 20px" : undefined,
+        backgroundAttachment: isCurrentSolved ? "fixed" : undefined,
       }}
     >
-      <CinematicBackground
-        key={`bg-${currentChapter.id}`}
-        src={currentChapter.bgSrc}
-        particles="spores"
-        vignette="heavy"
-        overlayOpacity={0.65}
-      />
+      {!isCurrentSolved && (
+        <CinematicBackground
+          key={`bg-${currentChapter.id}`}
+          src={currentChapter.bgSrc}
+          particles="spores"
+          vignette="heavy"
+          overlayOpacity={0.65}
+        />
+      )}
 
       {/* Pokemon FireRed Style Bottom Dialogue Box (Pops up automatically on enter) */}
       <AnimatePresence>
@@ -1246,7 +1255,10 @@ export default function ChapterManager({ onBackToBoard }: ChapterManagerProps = 
         style={{
           width: "100%",
           minHeight: "calc(100vh - 64px)",
-          background: "transparent",
+          height: "auto",
+          flex: "1 0 auto",
+          flexShrink: 0,
+          background: isCurrentSolved ? "#f4eedf" : "transparent",
           display: "flex",
           flexDirection: "column",
           position: "relative",

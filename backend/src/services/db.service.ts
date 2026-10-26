@@ -72,9 +72,9 @@ class DatabaseService {
           } catch {}
 
           const team: TeamRecord = {
-            id: r.team_id,
-            teamName: r.team_name,
-            leaderName: r.squad_leader,
+            id: r.team_id || r.id,
+            teamName: r.team_name || r.teamName || "Squad",
+            leaderName: r.squad_leader || r.leader_name || r.leaderName || "Squad Leader",
             role: r.role || "PLAYER",
             status: r.status || "ACTIVE",
             totalScore: r.total_score || 0,
