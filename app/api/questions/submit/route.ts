@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getApiBase } from "@/lib/api";
-import { STAGE_QUIZ_CONFIGS } from "@/lib/chapterQuestions";
+import { STAGE_QUIZ_CONFIGS } from "@/lib/serverQuestionVault";
 
 function evaluateLocally(questionId: string, answer: string) {
   const normalizedCode = questionId.toLowerCase();

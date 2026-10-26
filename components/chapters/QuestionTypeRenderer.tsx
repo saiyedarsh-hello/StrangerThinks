@@ -2112,9 +2112,8 @@ export default function QuestionTypeRenderer({
             {question.options.map((opt) => {
               const isSelected = selectedAnswer === opt.id;
               // Determine verified correct / wrong-locked states for coloring
-              const isThisCorrect = showVerifiedState && isSelected &&
-                opt.id.toUpperCase() === (question.correctAnswerId || "").toUpperCase();
-              const isThisWrongLocked = disabled && isSelected && !isThisCorrect;
+              const isThisCorrect = Boolean(showVerifiedState && isSelected);
+              const isThisWrongLocked = Boolean(disabled && isSelected && !isThisCorrect);
 
               // Border/bg/stamp based on outcome
               const borderColor = isThisCorrect ? "#27ae60"

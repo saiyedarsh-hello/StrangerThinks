@@ -10,6 +10,8 @@ import ChapterCard from "@/components/ChapterCard";
 import Hud, { Toast } from "@/components/Hud";
 import SabotageOverlay from "@/components/SabotageOverlay";
 import PauseOverlay from "@/components/PauseOverlay";
+import SecurityGuard from "@/components/SecurityGuard";
+import SecurityDisqualifiedScreen from "@/components/SecurityDisqualifiedScreen";
 import dynamic from "next/dynamic";
 
 const AdminPage = dynamic(() => import("@/components/admin/AdminDashboard"), { ssr: false });
@@ -22,6 +24,13 @@ export default function Home() {
   const [vecnaIntroSeen, setVecnaIntroSeen] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       return sessionStorage.getItem("vecna_intro_seen") === "true";
+    }
+    return false;
+  });
+
+  const [isKicked, setIsKicked] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("hawkins_security_kicked") === "true";
     }
     return false;
   });
@@ -46,6 +55,20 @@ export default function Home() {
       logout();
     }
   }, [logout]);
+
+  // If player was disqualified due to anti-cheat violation, show Disqualified screen
+  if (isKicked && session?.role !== "ADMIN") {
+    const kickReason =
+      typeof window !== "undefined"
+        ? sessionStorage.getItem("hawkins_kicked_reason") || undefined
+        : undefined;
+    return (
+      <SecurityDisqualifiedScreen
+        reason={kickReason}
+        onAdminReset={() => setIsKicked(false)}
+      />
+    );
+  }
 
   // Wait for the server to confirm the session role before rendering any
   // privileged dashboard. A locally edited session cannot promote a role.

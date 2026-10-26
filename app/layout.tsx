@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { GameProvider } from "@/lib/store";
 import Crt from "@/components/Crt";
 import FullscreenEnforcer from "@/components/FullscreenEnforcer";
+import SecurityGuard from "@/components/SecurityGuard";
 
 import GameModalHost from "@/components/GameModalHost";
 
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body suppressHydrationWarning>
         <FullscreenEnforcer />
         <GameProvider>
+          <SecurityGuard />
           {children}
           <GameModalHost />
           <Crt />

@@ -3022,7 +3022,7 @@
       "radiometerCodeSolved": false,
       "unlockedHints": {},
       "createdAt": "2026-10-21T13:54:05.095Z",
-      "updatedAt": "2026-10-25T11:14:21.288Z",
+      "updatedAt": "2026-10-26T20:34:54.966Z",
       "taskScores": {
         "ch1-q1": 10,
         "ch1-q2": 20,
@@ -18453,5 +18453,14 @@
     2,
     3,
     4
+  ],
+  "unlockedStagesHawkins": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "unlockedStagesVecna": [
+    1
   ]
 }

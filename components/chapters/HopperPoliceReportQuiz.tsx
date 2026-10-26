@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sfx } from "@/lib/audio";
 import { useGame } from "@/lib/store";
@@ -243,6 +243,14 @@ export default function HopperPoliceReportQuiz({
   };
 
   const currentQ = questions[currentIdx] || questions[0];
+  const sanitizedCurrentQ = useMemo(() => {
+    if (!currentQ) return currentQ;
+    if (currentQ.stageType !== "connection" && currentQ.stageType !== "rearrange") {
+      const { correctAnswerId, ...rest } = currentQ;
+      return rest as QuizQuestion;
+    }
+    return currentQ;
+  }, [currentQ]);
   const currentSelectedOption = selectedAnswers[currentIdx] || (currentIdx === 0 ? legacySelectedId : null);
 
   const answeredCount = Object.keys(selectedAnswers).filter(
@@ -799,7 +807,7 @@ export default function HopperPoliceReportQuiz({
             {/* Specialized Question Formation by Stage */}
             <QuestionTypeRenderer
               key={currentQ.id || `q-${currentIdx}`}
-              question={currentQ}
+              question={sanitizedCurrentQ}
               selectedAnswer={currentSelectedOption}
               onSelectOption={handleOptionClick}
               isVecnaMode={false}

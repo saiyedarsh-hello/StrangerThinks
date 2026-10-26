@@ -2,7 +2,7 @@
   "name": "hawkins-protocol",
   "version": "0.1.0",
   "scripts": {
-    "dev": "concurrently -k -p \"[{name}]\" -n \"BACKEND,FRONTEND\" -c \"cyan.bold,magenta.bold\" \"npm --prefix backend run dev\" \"next dev -H 0.0.0.0\"",
+    "dev": "node scripts/start-all.mjs",
     "dev:frontend": "next dev -H 0.0.0.0",
     "dev:backend": "npm --prefix backend run dev",
     "dev:all": "node scripts/start-all.mjs",
